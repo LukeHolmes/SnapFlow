@@ -109,6 +109,7 @@ const mock: SnapFlowApi = {
       { destination: 'notion', connected: true, state: 'connected', label: 'Release Notes', secondary: 'Share pages with SnapFlow' },
       { destination: 'gmail', connected: true, state: 'connected', label: 'luke@snapflow.app', secondary: 'Gmail' },
       { destination: 'github', connected: true, state: 'connected', label: 'acme/snapflow', secondary: 'repo' },
+      { destination: 'zapier', connected: true, state: 'connected', label: 'hooks.zapier.com', secondary: 'Webhook configured' },
     ]),
     connect: async (_destination, _params) => ({ ok: true, detail: 'Opened OAuth provider' }),
     slackChannels: async () => ([{ id: 'C1', label: '#qa-bugs' }, { id: 'C2', label: '#design-reviews' }]),

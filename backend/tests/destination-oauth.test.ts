@@ -22,6 +22,7 @@ const { accounts } = await import('../src/accounts/store');
 const { issueToken } = await import('../src/auth/tokens');
 const { createApp } = await import('../src/index');
 const { vault } = await import('../src/vault/store');
+const { readDestinationToken } = await import('../src/oauth/destination-tokens');
 
 const { default: supertest } = await import('supertest');
 const app = createApp();
@@ -160,6 +161,33 @@ for (const c of cases) {
     assert.equal(stored.profile.label, c.expectedLabel);
   });
 }
+
+test('legacy raw vault tokens still read as access tokens', async () => {
+  const account = await accounts.getOrCreate('legacy-token@example.com', 'pro');
+  await vault.put(account.id, 'slack', 'xoxb-legacy-token');
+  const stored = await readDestinationToken(account.id, 'slack');
+  assert.equal(stored?.accessToken, 'xoxb-legacy-token');
+});
+
+test('missing destination token surfaces not_connected instead of 500', async () => {
+  const account = await accounts.getOrCreate('missing-destination@example.com', 'pro');
+  const token = issueToken(account.id);
+  const response = await request.get('/v1/integrations/slack/channels').set('authorization', `Bearer ${token}`);
+  assert.equal(response.status, 409);
+  assert.equal(response.body.error, 'not_connected');
+});
+
+test('expired destination token without refresh surfaces reconnect_required', async () => {
+  const account = await accounts.getOrCreate('expired-destination@example.com', 'pro');
+  const token = issueToken(account.id);
+  await vault.put(account.id, 'gmail', JSON.stringify({
+    accessToken: 'expired-gmail-token',
+    expiresAt: Date.now() - 60_000,
+  }));
+  const response = await request.get('/v1/integrations/gmail/profile').set('authorization', `Bearer ${token}`);
+  assert.equal(response.status, 409);
+  assert.equal(response.body.error, 'reconnect_required');
+});
 
 function mockFetch(handler: (url: string, init?: RequestInit) => Response | Promise<Response>): void {
   globalThis.fetch = (async (input: URL | string | { url: string }, init?: RequestInit) => {

@@ -16,7 +16,7 @@ import { integrationBackendClientFromEnv } from './integrations/backend-client';
 import { testZapierWebhook } from './integrations/zapier';
 import type { Engine } from './engine';
 import type { SyncAgent } from './sync/agent';
-import type { AnnotationDocument, Capture, DestinationId, Guide, GuideType } from '../shared/types';
+import type { AnnotationDocument, Capture, DestinationId, Guide, GuideType, IntegrationStatus } from '../shared/types';
 
 export function registerIpc(engine: Engine, sync: SyncAgent): void {
   const { history, presets, events, ent, workspace: WS } = engine;
@@ -161,16 +161,30 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   ipcMain.handle(CH.entitlementsGet, () => ent());
   ipcMain.handle(CH.statsGet, () => history.stats(WS));
   ipcMain.handle(CH.eventsRecent, (_e, limit = 8) => events.recent(WS, limit));
-  ipcMain.handle(CH.integrationsStatuses, async () => (
-    integrations.configured
-      ? integrations.getStatuses()
+  ipcMain.handle(CH.integrationsStatuses, async () => {
+    const remote: IntegrationStatus[] = integrations.configured
+      ? await integrations.getStatuses()
       : [
           { destination: 'slack', connected: false, state: 'disconnected', message: 'SnapFlow backend is not configured' },
           { destination: 'notion', connected: false, state: 'disconnected', message: 'SnapFlow backend is not configured' },
           { destination: 'gmail', connected: false, state: 'disconnected', message: 'SnapFlow backend is not configured' },
           { destination: 'github', connected: false, state: 'disconnected', message: 'SnapFlow backend is not configured' },
-        ]
-  ));
+        ];
+    const zapier = presets.getByDestination(WS, 'zapier');
+    const webhookUrl = typeof zapier?.config.webhook_url === 'string' ? zapier.config.webhook_url : '';
+    remote.push({
+      destination: 'zapier',
+      connected: isHttpsUrl(webhookUrl),
+      state: !zapier
+        ? 'disconnected'
+        : isHttpsUrl(webhookUrl)
+          ? 'connected'
+          : 'error',
+      label: zapier?.target || webhookUrl || undefined,
+      secondary: zapier ? (isHttpsUrl(webhookUrl) ? 'Webhook configured' : 'Enter a valid HTTPS webhook URL') : undefined,
+    });
+    return remote;
+  });
   ipcMain.handle(CH.integrationsConnect, async (_e, args: { destination: DestinationId; params?: Record<string, string> }) => {
     if (args.destination === 'clipboard' || args.destination === 'zapier') return { ok: false, detail: 'This destination does not use OAuth' };
     const url = await integrations.getOAuthUrl(args.destination, args.params ?? {});
@@ -223,6 +237,15 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     try { return 'data:image/png;base64,' + readFileSync(capture.imagePath).toString('base64'); }
     catch { return null; }
   });
+}
+
+function isHttpsUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function piiBoxes(ocr: OcrResult): RedactionBox[] {
