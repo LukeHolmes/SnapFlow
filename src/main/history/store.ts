@@ -1,5 +1,6 @@
 import type { Db } from '../db';
 import { randomUUID } from 'node:crypto';
+import { deserialiseAnnotationDocument, serialiseAnnotationDocument } from '../../annotation/model';
 import type { AnnotationDocument, Capture, ContentTag, Guide, GuideListItem, GuideStep, GuideType, Stats, SyncRecord } from '../../shared/types';
 
 export class HistoryStore {
@@ -22,13 +23,17 @@ export class HistoryStore {
   }
 
   get(workspaceId: string, id: string): Capture | undefined {
-    const r = this.db.prepare(`SELECT * FROM captures WHERE id = ? AND workspace_id = ? AND deleted = 0`).get(id, workspaceId);
+    const r = this.db.prepare(
+      `SELECT c.*, EXISTS(SELECT 1 FROM capture_annotations a WHERE a.capture_id = c.id) AS has_annotations
+       FROM captures c WHERE c.id = ? AND c.workspace_id = ? AND c.deleted = 0`
+    ).get(id, workspaceId);
     return r ? toCapture(r as Record<string, unknown>) : undefined;
   }
 
   list(workspaceId: string, opts: { limit?: number; sinceDays?: number | null } = {}): Capture[] {
     const params: unknown[] = [workspaceId];
-    let sql = `SELECT * FROM captures WHERE workspace_id = ? AND deleted = 0`;
+    let sql = `SELECT c.*, EXISTS(SELECT 1 FROM capture_annotations a WHERE a.capture_id = c.id) AS has_annotations
+      FROM captures c WHERE c.workspace_id = ? AND c.deleted = 0`;
     if (opts.sinceDays != null) { sql += ` AND created_at >= ?`; params.push(Date.now() - opts.sinceDays * 86_400_000); }
     sql += ` ORDER BY created_at DESC`;
     if (opts.limit) { sql += ` LIMIT ?`; params.push(opts.limit); }
@@ -41,6 +46,7 @@ export class HistoryStore {
     if (!match) return [];
     const rows = this.db.prepare(
       `SELECT c.*, snippet(captures_fts, 1, '[', ']', '…', 10) AS snippet
+       , EXISTS(SELECT 1 FROM capture_annotations a WHERE a.capture_id = c.id) AS has_annotations
        FROM captures_fts JOIN captures c ON c.rowid = captures_fts.rowid
        WHERE captures_fts MATCH ? AND c.workspace_id = ? AND c.deleted = 0
        ORDER BY bm25(captures_fts) LIMIT ?`
@@ -78,7 +84,7 @@ export class HistoryStore {
     const row = this.db.prepare(`SELECT data_json FROM capture_annotations WHERE capture_id = ? AND workspace_id = ?`)
       .get(captureId, workspaceId) as { data_json: string } | undefined;
     if (!row) return null;
-    try { return JSON.parse(row.data_json) as AnnotationDocument; }
+    try { return deserialiseAnnotationDocument(row.data_json); }
     catch { return null; }
   }
 
@@ -90,7 +96,7 @@ export class HistoryStore {
          workspace_id = excluded.workspace_id,
          data_json = excluded.data_json,
          updated_at = excluded.updated_at`
-    ).run(captureId, workspaceId, JSON.stringify(doc), Date.now());
+    ).run(captureId, workspaceId, serialiseAnnotationDocument(doc), Date.now());
   }
 
   createGuide(workspaceId: string, input: { title: string; type: GuideType; captureIds: string[] }): Guide {
@@ -235,6 +241,7 @@ function toCapture(r: Record<string, unknown>): Capture {
     ocrText: (r.ocr_text as string) ?? '',
     hasPii: !!r.has_pii,
     createdAt: r.created_at as number,
+    hasAnnotations: !!r.has_annotations,
   };
 }
 
