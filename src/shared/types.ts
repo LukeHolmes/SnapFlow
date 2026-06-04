@@ -58,6 +58,16 @@ export interface CaptureSource {
   kind: 'screen' | 'window';
 }
 
+export interface ScrollCapturePreview {
+  dataUrl: string;
+  filename: string;
+  confidence: number;
+  frameCount: number;
+  width: number;
+  height: number;
+  warnings: string[];
+}
+
 export interface Preset {
   id: string;
   workspaceId: string;

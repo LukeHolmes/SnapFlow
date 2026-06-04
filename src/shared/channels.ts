@@ -3,6 +3,8 @@ export const CH = {
   captureListSources: 'capture:listSources',
   captureScreen:      'capture:screen',
   captureScroll:      'capture:scroll',
+  captureScrollPreview:'capture:scrollPreview',
+  captureScrollSave:  'capture:scrollSave',
   captureSaveAnnotated:'capture:saveAnnotated',
   captureSaveRedacted:'capture:saveRedacted',
   captureAnnotationsGet:'capture:annotations:get',

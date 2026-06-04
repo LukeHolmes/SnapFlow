@@ -1,7 +1,7 @@
 // Typed access to the preload bridge. Falls back to an in-memory mock when opened
 // in a plain browser (vite without Electron) so the UI still renders for design work.
 import type { SnapFlowApi } from '../../preload';
-import type { AnnotationDocument, Capture, Preset, ActivityEvent, Stats, Entitlements, CaptureSource, DeliverResult } from '../../shared/types';
+import type { AnnotationDocument, Capture, Preset, ActivityEvent, Stats, Entitlements, CaptureSource, DeliverResult, ScrollCapturePreview } from '../../shared/types';
 
 declare global { interface Window { snapflow?: SnapFlowApi } }
 
@@ -42,6 +42,16 @@ const mock: SnapFlowApi = {
     ],
     screen: async (): Promise<Capture> => mockNewCapture(),
     scroll: async (): Promise<Capture> => mockNewCapture(),
+    scrollPreview: async (): Promise<ScrollCapturePreview> => ({
+      dataUrl: '',
+      filename: 'Guided scroll preview',
+      confidence: 0.92,
+      frameCount: 4,
+      width: 1280,
+      height: 2400,
+      warnings: [],
+    }),
+    saveScrollPreview: async (_preview: { dataUrl: string; filename: string }): Promise<Capture> => mockNewCapture(),
     saveAnnotated: async (_id: string, _dataUrl: string): Promise<Capture> => {
       const c = mockNewCapture();
       c.filename = `${c.filename} annotated`;

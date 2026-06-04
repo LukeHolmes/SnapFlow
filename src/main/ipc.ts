@@ -2,7 +2,7 @@ import { clipboard, ipcMain, nativeImage } from 'electron';
 import { unlink } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { CH } from '../shared/channels';
-import { listSources, captureSource, captureScrollingSource, persistDataUrl, persistRedactedImage, type RawCapture, type RedactionBox } from './capture';
+import { listSources, captureSource, captureScrollingSource, captureScrollingPreview, persistDataUrl, persistRedactedImage, type RawCapture, type RedactionBox } from './capture';
 import { getDestination } from './integrations/registry';
 import { contextualise } from './pipeline';
 import { detectPii } from './ai/pii';
@@ -37,6 +37,14 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
 
   ipcMain.handle(CH.captureScroll, async (_e, args?: { sourceId?: string; frames?: number; intervalMs?: number }) => {
     return saveRawCapture(await captureScrollingSource(args));
+  });
+
+  ipcMain.handle(CH.captureScrollPreview, async (_e, args?: { sourceId?: string; frames?: number; intervalMs?: number }) => {
+    return captureScrollingPreview(args);
+  });
+
+  ipcMain.handle(CH.captureScrollSave, async (_e, args: { dataUrl: string; filename: string }) => {
+    return saveRawCapture(persistDataUrl(args.dataUrl, args.filename || 'Scrolling capture'));
   });
 
   ipcMain.handle(CH.captureSaveAnnotated, async (_e, args: { captureId: string; dataUrl: string }) => {
