@@ -1,25 +1,25 @@
-export type ContentTag = 'ui' | 'code' | 'chart' | 'document' | 'web';
-
-export type DestinationId = 'slack' | 'jira' | 'notion' | 'email' | 'clipboard';
+// Shared domain types — the single contract between main, preload and renderer.
 
 export type Tier = 'free' | 'pro' | 'team' | 'perpetual';
+export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web';
+export type DestinationId = 'clipboard' | 'slack' | 'jira' | 'notion' | 'email';
 
 export interface Capture {
   id: string;
-  workspaceId: string;
+  workspaceId: string;        // multi-tenant from day one (architecture §9)
   filename: string;
   imagePath: string;
   tag: ContentTag | null;
   ocrText: string;
   hasPii: boolean;
-  createdAt: number;
-  snippet?: string;
+  createdAt: number;          // epoch ms
+  snippet?: string;           // populated by search results only
 }
 
 export interface CaptureSource {
   id: string;
   name: string;
-  thumbnail: string;
+  thumbnail: string;          // data URL
   kind: 'screen' | 'window';
 }
 
@@ -27,8 +27,8 @@ export interface Preset {
   id: string;
   workspaceId: string;
   destination: DestinationId;
-  name: string;
-  target: string;
+  name: string;               // display name, e.g. "Slack"
+  target: string;             // "#qa-bugs", "PROJ-441", "client@agency.com"
   config: Record<string, unknown>;
   createdAt: number;
 }
@@ -50,11 +50,11 @@ export interface Stats {
 
 export interface Entitlements {
   tier: Tier;
-  historyWindowDays: number | null;
-  maxPresets: number | null;
+  historyWindowDays: number | null;  // null = unlimited
+  maxPresets: number | null;         // null = unlimited
   aiEnabled: boolean;
   cloudSync: boolean;
-  sharedLibrary?: boolean;
+  sharedLibrary?: boolean;           // backend Team search capability; optional for older desktop mirrors
 }
 
 export interface DeliverResult {
@@ -62,6 +62,7 @@ export interface DeliverResult {
   detail: string;
 }
 
+/** A capture's metadata as it travels over the sync wire (no image bytes — blobs sync lazily). */
 export interface SyncRecord {
   id: string;
   workspaceId: string;
@@ -71,12 +72,12 @@ export interface SyncRecord {
   hasPii: boolean;
   createdAt: number;
   updatedAt: number;
-  deleted: boolean;
+  deleted: boolean;           // soft-delete tombstone
 }
 
 export interface SyncResult {
+  skipped?: boolean;          // tier without cloudSync
+  error?: string;
   pushed?: number;
   pulled?: number;
-  skipped?: boolean;
-  error?: string;
 }
