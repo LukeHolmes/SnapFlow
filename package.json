@@ -11,6 +11,7 @@
     "dev": "electron-vite dev",
     "web:dev": "vite --host 0.0.0.0 src/renderer",
     "web:build": "vite build src/renderer",
+    "web:build:pages": "VITE_BASE=/SnapFlow/ vite build src/renderer",
     "web:preview": "vite preview --host 0.0.0.0 src/renderer",
     "build": "electron-vite build",
     "prepreview": "npm run rebuild:electron",
