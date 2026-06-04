@@ -2,12 +2,15 @@ import { clipboard, ipcMain, nativeImage } from 'electron';
 import { unlink } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { CH } from '../shared/channels';
-import { listSources, captureSource, captureScrollingSource, persistDataUrl, type RawCapture } from './capture';
+import { listSources, captureSource, captureScrollingSource, persistDataUrl, persistRedactedImage, type RawCapture, type RedactionBox } from './capture';
 import { getDestination } from './integrations/registry';
 import { contextualise } from './pipeline';
+import { detectPii } from './ai/pii';
 import { aiProxyFromEnv } from './ai/proxy-client';
+import { runOcr, type OcrResult } from './ocr';
 import { computeDiff } from './diff';
 import { diffsDir } from './paths';
+import { pinCapture } from './pin';
 import { deliverClientFromEnv } from './deliver/client';
 import { canAddPreset } from './entitlements';
 import type { Engine } from './engine';
@@ -42,6 +45,14 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     return saveRawCapture(persistDataUrl(args.dataUrl, `${original.filename} annotated`));
   });
 
+  ipcMain.handle(CH.captureSaveRedacted, async (_e, id: string) => {
+    const original = history.get(WS, id);
+    if (!original?.imagePath) throw new Error('Capture not found');
+    const ocr = await runOcr(original.imagePath);
+    const boxes = piiBoxes(ocr);
+    return saveRawCapture(persistRedactedImage(original.imagePath, boxes, `${original.filename} redacted`));
+  });
+
   ipcMain.handle(CH.captureCopyImage, (_e, id: string) => {
     const capture = history.get(WS, id);
     if (!capture?.imagePath) return { ok: false, detail: 'Capture not found' };
@@ -57,6 +68,12 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     if (!capture.ocrText.trim()) return { ok: false, detail: 'No OCR text available yet' };
     clipboard.writeText(capture.ocrText);
     return { ok: true, detail: 'Copied OCR text to clipboard' };
+  });
+
+  ipcMain.handle(CH.capturePin, (_e, id: string) => {
+    const capture = history.get(WS, id);
+    if (!capture) return { ok: false, detail: 'Capture not found' };
+    return pinCapture(capture);
   });
 
   ipcMain.handle(CH.historyList, (_e, limit = 50) => history.list(WS, { limit, sinceDays: ent().historyWindowDays }));
@@ -136,5 +153,53 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     if (!capture?.imagePath) return null;
     try { return 'data:image/png;base64,' + readFileSync(capture.imagePath).toString('base64'); }
     catch { return null; }
+  });
+}
+
+function piiBoxes(ocr: OcrResult): RedactionBox[] {
+  const hits = detectPii(ocr.text).map(hit => normalise(hit.value)).filter(Boolean);
+  if (!hits.length) return [];
+
+  const words = ocr.words
+    .filter(word => word.text?.trim() && word.bbox)
+    .map(word => ({ ...word, norm: normalise(word.text) }))
+    .filter(word => word.norm);
+
+  const boxes: RedactionBox[] = [];
+  for (let start = 0; start < words.length; start += 1) {
+    let joined = '';
+    let box: RedactionBox | null = null;
+    for (let end = start; end < Math.min(words.length, start + 8); end += 1) {
+      const word = words[end];
+      joined += word.norm;
+      box = mergeBox(box, word.bbox);
+      if (hits.some(hit => joined.includes(hit) || hit.includes(joined))) {
+        if (box) boxes.push(box);
+        break;
+      }
+      if (joined.length > 64) break;
+    }
+  }
+
+  return dedupeBoxes(boxes);
+}
+
+function normalise(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9+]/g, '');
+}
+
+function mergeBox(a: RedactionBox | null, b: RedactionBox): RedactionBox {
+  return a
+    ? { x0: Math.min(a.x0, b.x0), y0: Math.min(a.y0, b.y0), x1: Math.max(a.x1, b.x1), y1: Math.max(a.y1, b.y1) }
+    : { x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1 };
+}
+
+function dedupeBoxes(boxes: RedactionBox[]): RedactionBox[] {
+  const seen = new Set<string>();
+  return boxes.filter(box => {
+    const key = `${Math.round(box.x0)}:${Math.round(box.y0)}:${Math.round(box.x1)}:${Math.round(box.y1)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 }

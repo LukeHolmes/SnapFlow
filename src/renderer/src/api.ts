@@ -46,8 +46,15 @@ const mock: SnapFlowApi = {
       c.filename = `${c.filename} annotated`;
       return c;
     },
+    saveRedacted: async (_id: string): Promise<Capture> => {
+      const c = mockNewCapture();
+      c.filename = `${c.filename} redacted`;
+      c.hasPii = false;
+      return c;
+    },
     copyImage: async (_id: string): Promise<DeliverResult> => ({ ok: true, detail: 'Copied image to clipboard' }),
     copyOcr: async (_id: string): Promise<DeliverResult> => ({ ok: true, detail: 'Copied OCR text to clipboard' }),
+    pin: async (_id: string): Promise<DeliverResult> => ({ ok: true, detail: 'Pinned capture on screen' }),
     getImageDataUrl: async (_id: string): Promise<string | null> => null,
   },
   region: {

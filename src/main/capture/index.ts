@@ -3,7 +3,7 @@
 // v0.x implementation uses Electron's desktopCapturer (cross-platform, zero native build).
 
 import { desktopCapturer, screen, nativeImage } from 'electron';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { PNG } from 'pngjs';
@@ -11,6 +11,7 @@ import { imagesDir } from '../paths';
 import type { CaptureSource } from '../../shared/types';
 
 export interface RawCapture { id: string; imagePath: string; filename: string; }
+export interface RedactionBox { x0: number; y0: number; x1: number; y1: number; }
 
 export interface Frame {
   image: Electron.NativeImage;  // full-resolution screenshot (device pixels)
@@ -116,6 +117,31 @@ export function persistDataUrl(dataUrl: string, filename: string): RawCapture {
   const img = nativeImage.createFromDataURL(dataUrl);
   if (img.isEmpty()) throw new Error('Annotated image is empty or invalid');
   return persistImage(img, filename);
+}
+
+export function persistRedactedImage(imagePath: string, boxes: RedactionBox[], filename: string): RawCapture {
+  if (!boxes.length) throw new Error('No PII regions were located in the image');
+  const png = PNG.sync.read(readFileSync(imagePath));
+  for (const box of boxes) {
+    const x0 = clamp(Math.floor(box.x0) - 4, 0, png.width);
+    const y0 = clamp(Math.floor(box.y0) - 4, 0, png.height);
+    const x1 = clamp(Math.ceil(box.x1) + 4, 0, png.width);
+    const y1 = clamp(Math.ceil(box.y1) + 4, 0, png.height);
+    for (let y = y0; y < y1; y += 1) {
+      for (let x = x0; x < x1; x += 1) {
+        const idx = (png.width * y + x) * 4;
+        png.data[idx] = 17;
+        png.data[idx + 1] = 17;
+        png.data[idx + 2] = 17;
+        png.data[idx + 3] = 255;
+      }
+    }
+  }
+  return persistImage(nativeImage.createFromBuffer(PNG.sync.write(png)), filename);
+}
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, n));
 }
 
 function stitchVertical(images: Electron.NativeImage[]): Electron.NativeImage {

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Camera, Bell, Search, History, Library, LayoutDashboard, EyeOff,
   User, Cable, Send, Monitor, AppWindow, X, RefreshCw, GitCompare,
-  Copy, Edit3, FileText, Timer, ScrollText,
+  Copy, Edit3, FileText, Timer, ScrollText, Pin, Shield,
 } from 'lucide-react';
 import { api, isLive } from './api';
 import type { Capture, Entitlements, CaptureSource } from '../../shared/types';
@@ -125,6 +125,24 @@ export default function App() {
   const copyCaptureOcr = async (capture: Capture) => {
     const r = await api.capture.copyOcr(capture.id);
     flash(r.detail, r.ok);
+  };
+
+  const pinCapture = async (capture: Capture) => {
+    const r = await api.capture.pin(capture.id);
+    flash(r.detail, r.ok);
+  };
+
+  const redactCapture = async (capture: Capture) => {
+    setCapturing(true);
+    try {
+      const redacted = await api.capture.saveRedacted(capture.id);
+      rememberCapture(redacted);
+      flash('Redacted copy saved');
+    } catch (e) {
+      flash(e instanceof Error ? e.message : 'Could not create redacted copy', false);
+    } finally {
+      setCapturing(false);
+    }
   };
 
   const sendCapture = async (capture: Capture) => {
@@ -320,7 +338,9 @@ export default function App() {
           </div>
           <button className="quick-action-btn" onClick={() => copyCaptureImage(quickCapture)}><Copy size={14} />Copy</button>
           <button className="quick-action-btn" onClick={() => setEditorCapture(quickCapture)}><Edit3 size={14} />Annotate</button>
+          <button className="quick-action-btn" onClick={() => pinCapture(quickCapture)}><Pin size={14} />Pin</button>
           <button className="quick-action-btn" onClick={() => copyCaptureOcr(quickCapture)}><FileText size={14} />OCR</button>
+          <button className="quick-action-btn" onClick={() => redactCapture(quickCapture)}><Shield size={14} />Redact</button>
           <button className="quick-action-btn" onClick={() => sendCapture(quickCapture)}><Send size={14} />Send</button>
           <button className="quick-action-close" onClick={() => setQuickCapture(null)} aria-label="Dismiss"><X size={14} /></button>
         </div>

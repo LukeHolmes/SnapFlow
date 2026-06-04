@@ -9,6 +9,7 @@ import { registerRegion, startRegionCapture } from './region';
 import { createSyncAgent } from './sync/agent';
 import { registerBuiltins } from './integrations/registry';
 import { disposeOcr } from './ocr';
+import { closePinnedCaptures } from './pin';
 
 let win: BrowserWindow | null = null;
 
@@ -52,4 +53,7 @@ app.on('window-all-closed', async () => {
   await disposeOcr();
   if (process.platform !== 'darwin') app.quit();
 });
-app.on('will-quit', () => globalShortcut.unregisterAll());
+app.on('will-quit', () => {
+  closePinnedCaptures();
+  globalShortcut.unregisterAll();
+});
