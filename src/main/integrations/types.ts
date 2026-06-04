@@ -3,10 +3,10 @@
 // plugin implementing one method. Adding a destination (or, in v1.2, a marketplace
 // plugin) never requires touching capture, OCR or history.
 
-import type { Capture, DeliverResult } from '../../shared/types';
+import type { Capture, DeliverResult, DestinationId } from '../../shared/types';
 
 export interface OutputDestination {
-  id: string;
+  id: DestinationId;
   label: string;
   requiresAuth: boolean;
   deliver(capture: Capture, config: Record<string, unknown>): Promise<DeliverResult>;

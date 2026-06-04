@@ -6,7 +6,7 @@
 // SERVER-SIDE by the backend, which is the single source of truth. The desktop
 // app must never be the sole enforcement point for paid capabilities.
 
-import type { Entitlements, Tier } from '../../shared/types';
+import type { DestinationId, Entitlements, Tier } from '../../shared/types';
 
 const TABLE: Record<Tier, Omit<Entitlements, 'tier'>> = {
   free:      { historyWindowDays: 30,   maxPresets: 1,    aiEnabled: false, cloudSync: false },
@@ -28,4 +28,9 @@ export function currentTier(): Tier {
 
 export function canAddPreset(ent: Entitlements, currentCount: number): boolean {
   return ent.maxPresets == null || currentCount < ent.maxPresets;
+}
+
+export function canUseDestination(ent: Entitlements, destination: DestinationId): boolean {
+  if (destination === 'clipboard') return true;
+  return ent.tier !== 'free';
 }

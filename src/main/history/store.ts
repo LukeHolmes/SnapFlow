@@ -91,7 +91,7 @@ export class HistoryStore {
     return {
       total:       n(`SELECT COUNT(*) n FROM captures WHERE workspace_id = ? AND deleted = 0`),
       ocrIndexed:  n(`SELECT COUNT(*) n FROM captures WHERE workspace_id = ? AND deleted = 0 AND length(ocr_text) > 0`),
-      sent:        n(`SELECT COUNT(*) n FROM events   WHERE workspace_id = ? AND kind = 'sent'`),
+      sent:        n(`SELECT COUNT(*) n FROM events   WHERE workspace_id = ? AND kind IN ('sent', 'delivered')`),
       piiRedacted: n(`SELECT COUNT(*) n FROM captures WHERE workspace_id = ? AND deleted = 0 AND has_pii = 1`),
     };
   }

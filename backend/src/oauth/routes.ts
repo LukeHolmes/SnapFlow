@@ -4,6 +4,8 @@
 //                                         get-or-create the account, issue our bearer
 import { Router } from 'express';
 import { getProvider, buildAuthorizeUrl, exchangeCode, fetchEmail } from './providers';
+import { getDestinationProvider } from './destination-providers';
+import { storeDestinationToken } from './destination-tokens';
 import { oauthState } from './state';
 import { accounts } from '../accounts/store';
 import { issueToken } from '../auth/tokens';
@@ -29,10 +31,32 @@ oauthRouter.get('/auth/oauth/:provider/callback', asyncHandler(async (req, res) 
   if (!code || !state) throw new AppError(400, 'bad_request', 'code and state are required');
 
   // Single-use CSRF state; must match the provider in the path.
-  const provdierForState = await oauthState.consume(state);
+  const oauth = await oauthState.consumeContext(state);
+  const provdierForState = oauth?.provider;
   if (!provdierForState || provdierForState !== req.params.provider) {
     throw new AppError(400, 'invalid_state', 'OAuth state is missing, expired, or mismatched');
   }
+  const flow = String(oauth?.data.flow ?? 'account');
+
+  if (flow === 'destination') {
+    const destination = String(oauth?.data.destination ?? '');
+    const accountId = String(oauth?.data.accountId ?? '');
+    const provider = getDestinationProvider(destination);
+    if (!provider || provider.providerId !== provdierForState) {
+      throw new AppError(400, 'invalid_state', 'Destination OAuth state is missing destination metadata');
+    }
+    if (!accountId) throw new AppError(400, 'invalid_state', 'Destination OAuth state is missing account metadata');
+    const token = await provider.exchangeCode(code, callbackUri(provider.providerId));
+    const profile = await provider.describe(token);
+    await storeDestinationToken(accountId, provider.destination, token, profile);
+    if (config.appRedirectUrl) {
+      res.redirect(`${config.appRedirectUrl}?oauth=connected&destination=${encodeURIComponent(provider.destination)}`);
+    } else {
+      res.json({ ok: true, destination: provider.destination, profile });
+    }
+    return;
+  }
+
   const provider = getProvider(provdierForState)!;
 
   const accessToken = await exchangeCode(provider, code, callbackUri(provider.id));

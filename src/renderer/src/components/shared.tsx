@@ -1,5 +1,5 @@
 // Shared constants + components used across all screens.
-import { Camera, ScanText, Send, Shield, MessageSquare, Bug, FileText, Mail, Crop } from 'lucide-react';
+import { Camera, ScanText, Send, Shield, MessageSquare, FileText, Mail, Crop, Github, Webhook } from 'lucide-react';
 export type { Capture, Preset, ActivityEvent, Stats, Entitlements } from '../../../shared/types';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
@@ -11,13 +11,13 @@ export const TAGS: Record<string, { bg: string; fg: string }> = {
   web:      { bg: '#F0F9FF', fg: '#0369A1' },
 };
 export const PRESET_ICONS: Record<string, React.ComponentType<any>> = {
-  slack: MessageSquare, jira: Bug, notion: FileText, email: Mail, clipboard: Crop,
+  slack: MessageSquare, notion: FileText, gmail: Mail, github: Github, zapier: Webhook, clipboard: Crop,
 };
 export const PRESET_BG: Record<string, string> = {
-  slack: '#4A154B', jira: '#0052CC', notion: '#191919', email: '#059669', clipboard: '#666',
+  slack: '#4A154B', notion: '#191919', gmail: '#EA4335', github: '#24292F', zapier: '#FF4A00', clipboard: '#666',
 };
 export const DOT: Record<string, string> = {
-  capture: '#818CF8', sent: '#34D399', pii: '#F472B6', tag: '#FB923C',
+  capture: '#818CF8', sent: '#34D399', delivered: '#34D399', delivery_failed: '#F87171', delivery_queued: '#FBBF24', pii: '#F472B6', tag: '#FB923C',
 };
 export const STAT_META = [
   { key: 'total',       label: 'Total Captures',   Icon: Camera,   fg: 'var(--color-brand)',      bg: '#EEF0FD' },

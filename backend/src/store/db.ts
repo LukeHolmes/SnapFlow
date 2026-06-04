@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS blobs (
 CREATE TABLE IF NOT EXISTS oauth_state (
   state      TEXT PRIMARY KEY,
   provider   TEXT NOT NULL,
+  data_json  TEXT NOT NULL DEFAULT '{}',
   created_at ${intType} NOT NULL
 );
 `;

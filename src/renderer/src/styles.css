@@ -303,6 +303,14 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .preset-list-full { display: flex; flex-direction: column; gap: 8px; }
 .preset-row-full { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
 .preset-row-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.preset-config-list { display: flex; flex-direction: column; gap: 12px; }
+.preset-config-card { padding: 14px 16px; }
+.preset-config-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.preset-config-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.preset-config-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.preset-config-body { display: flex; flex-direction: column; gap: 10px; }
+.preset-status-dot { width: 9px; height: 9px; border-radius: 999px; display: inline-flex; }
+.integration-hint { font-size: 12px; color: var(--color-text-body); line-height: 1.5; margin: 0; }
 .danger-btn { color: #DC2626 !important; }
 .danger-btn:hover { background: #FEE2E2 !important; border-color: #FCA5A5 !important; }
 

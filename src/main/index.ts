@@ -8,6 +8,7 @@ import { registerIpc } from './ipc';
 import { registerRegion, startRegionCapture } from './region';
 import { createSyncAgent } from './sync/agent';
 import { registerBuiltins } from './integrations/registry';
+import { configureIntegrationRuntime } from './integrations/runtime';
 import { disposeOcr } from './ocr';
 import { closePinnedCaptures } from './pin';
 
@@ -30,6 +31,7 @@ app.whenReady().then(() => {
   const engine = createEngine(openDb(dbPath()));
   const sync = createSyncAgent(engine);
   registerBuiltins();
+  configureIntegrationRuntime({ sync });
   registerIpc(engine, sync);
   registerRegion(engine, () => win);
   createWindow();

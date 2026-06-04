@@ -1,7 +1,7 @@
 // Typed access to the preload bridge. Falls back to an in-memory mock when opened
 // in a plain browser (vite without Electron) so the UI still renders for design work.
 import type { SnapFlowApi } from '../../preload';
-import type { AnnotationDocument, Capture, Preset, ActivityEvent, Stats, Entitlements, CaptureSource, DeliverResult, ScrollCapturePreview, Guide, GuideExportResult, GuideListItem, GuideType } from '../../shared/types';
+import type { AnnotationDocument, Capture, Preset, ActivityEvent, Stats, Entitlements, CaptureSource, DeliverResult, ScrollCapturePreview, Guide, GuideExportResult, GuideListItem, GuideType, IntegrationStatus } from '../../shared/types';
 
 declare global { interface Window { snapflow?: SnapFlowApi } }
 
@@ -13,13 +13,14 @@ let mockCaptures: Capture[] = [
 ];
 let mockPresets: Preset[] = [
   { id: 'p1', workspaceId: 'ws_local', destination: 'slack', name: 'Slack', target: '#qa-bugs', config: {}, createdAt: now },
-  { id: 'p2', workspaceId: 'ws_local', destination: 'jira', name: 'Jira', target: 'PROJ-441', config: {}, createdAt: now },
   { id: 'p3', workspaceId: 'ws_local', destination: 'notion', name: 'Notion', target: 'Release Notes', config: {}, createdAt: now },
-  { id: 'p4', workspaceId: 'ws_local', destination: 'email', name: 'Email', target: 'client@agency.com', config: {}, createdAt: now },
+  { id: 'p4', workspaceId: 'ws_local', destination: 'gmail', name: 'Gmail', target: 'client@agency.com', config: {}, createdAt: now },
+  { id: 'p5', workspaceId: 'ws_local', destination: 'github', name: 'GitHub', target: 'acme/snapflow', config: {}, createdAt: now },
+  { id: 'p6', workspaceId: 'ws_local', destination: 'zapier', name: 'Zapier', target: 'hooks.zapier.com', config: {}, createdAt: now },
 ];
 let mockEvents: ActivityEvent[] = [
   { id: 'e1', workspaceId: 'ws_local', kind: 'capture', text: 'Login page capture saved & indexed', createdAt: now - 120_000 },
-  { id: 'e2', workspaceId: 'ws_local', kind: 'sent', text: 'Sent to #qa-bugs on Slack', createdAt: now - 120_000 },
+  { id: 'e2', workspaceId: 'ws_local', kind: 'delivered', text: 'Delivered to Slack · https://slack.com/files/F123', createdAt: now - 120_000 },
   { id: 'e3', workspaceId: 'ws_local', kind: 'pii', text: 'PII detected and redacted (email address)', createdAt: now - 840_000 },
   { id: 'e4', workspaceId: 'ws_local', kind: 'tag', text: "Auto-tagged as 'code'", createdAt: now - 840_000 },
 ];
@@ -89,8 +90,32 @@ const mock: SnapFlowApi = {
       mockPresets = [...mockPresets, preset];
       return { ok: true, preset };
     },
+    upsert: async (p: any) => {
+      const existing = mockPresets.find(item => item.destination === p.destination);
+      const preset: Preset = existing
+        ? { ...existing, ...p, config: p.config ?? {}, target: p.target ?? existing.target }
+        : { id: `${Date.now()}`, workspaceId: 'ws_local', ...p, config: p.config ?? {}, createdAt: Date.now() };
+      mockPresets = existing
+        ? mockPresets.map(item => item.id === existing.id ? preset : item)
+        : [...mockPresets, preset];
+      return { ok: true, preset };
+    },
     remove: async (id: string) => { mockCaptures = mockCaptures.filter(c => c.id !== id); return { ok: true }; },
     send: async (_c: string, p: string): Promise<DeliverResult> => ({ ok: true, detail: 'Sent to ' + (mockPresets.find(x => x.id === p)?.target ?? 'destination') }),
+  },
+  integrations: {
+    statuses: async (): Promise<IntegrationStatus[]> => ([
+      { destination: 'slack', connected: true, state: 'connected', label: 'SnapFlow HQ', secondary: '#qa-bugs' },
+      { destination: 'notion', connected: true, state: 'connected', label: 'Release Notes', secondary: 'Share pages with SnapFlow' },
+      { destination: 'gmail', connected: true, state: 'connected', label: 'luke@snapflow.app', secondary: 'Gmail' },
+      { destination: 'github', connected: true, state: 'connected', label: 'acme/snapflow', secondary: 'repo' },
+    ]),
+    connect: async (_destination, _params) => ({ ok: true, detail: 'Opened OAuth provider' }),
+    slackChannels: async () => ([{ id: 'C1', label: '#qa-bugs' }, { id: 'C2', label: '#design-reviews' }]),
+    notionPages: async (query: string) => ([{ id: 'page_1', label: query ? `Result for ${query}` : 'Release Notes', secondary: 'Share this page with SnapFlow' }]),
+    gmailProfile: async () => ({ email: 'luke@snapflow.app' }),
+    githubRepos: async (query: string) => ([{ id: 'acme/snapflow', label: 'acme/snapflow', secondary: query ? 'Matched repo' : 'Public' }]),
+    testZapier: async () => ({ ok: true, detail: 'Delivered to hooks.zapier.com' }),
   },
   guides: {
     list: async (): Promise<GuideListItem[]> => mockGuides.map(g => ({ ...g, stepCount: g.steps.length })),

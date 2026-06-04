@@ -99,4 +99,10 @@ export const sync = {
     if (!row || !existsSync(row.path)) return null;
     return readFileSync(row.path).toString('base64');
   },
+
+  async getBlobPath(accountId: string, captureId: string): Promise<string | null> {
+    const row = await db().get<{ path: string }>(`SELECT path FROM blobs WHERE account_id = ? AND capture_id = ?`, [accountId, captureId]);
+    if (!row || !existsSync(row.path)) return null;
+    return row.path;
+  },
 };

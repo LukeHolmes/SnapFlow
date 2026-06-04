@@ -1,14 +1,23 @@
 import type { OutputDestination } from './types';
 import { NotConfiguredError } from './types';
+import { backendClient, ensureCaptureUrl, queuedResult } from './common';
 
-// Stub with the correct contract. Appends an image block to a Notion page.
+export interface NotionPresetConfig {
+  page_id: string;
+  page_title?: string;
+}
+
 export const notionDestination: OutputDestination = {
   id: 'notion',
   label: 'Notion',
   requiresAuth: true,
-  async deliver(_capture, config) {
-    if (!config.token || !config.pageId) throw new NotConfiguredError('Notion');
-    // PATCH /v1/blocks/{pageId}/children  with an image block
-    return { ok: true, detail: 'Appended to page' };
+  async deliver(capture, config) {
+    const cfg = config as unknown as NotionPresetConfig;
+    if (!cfg.page_id) throw new NotConfiguredError('Notion');
+    const backend = backendClient();
+    if (!backend.configured) throw new NotConfiguredError('Notion');
+    const url = await ensureCaptureUrl(capture);
+    if (!url) return queuedResult();
+    return backend.deliver('notion', capture, { ...cfg });
   },
 };

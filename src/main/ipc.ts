@@ -1,4 +1,4 @@
-import { BrowserWindow, clipboard, ipcMain, nativeImage, type IpcMainInvokeEvent } from 'electron';
+import { BrowserWindow, clipboard, ipcMain, nativeImage, shell, type IpcMainInvokeEvent } from 'electron';
 import { unlink } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { CH } from '../shared/channels';
@@ -11,8 +11,9 @@ import { runOcr, type OcrResult } from './ocr';
 import { computeDiff } from './diff';
 import { diffsDir } from './paths';
 import { pinCapture } from './pin';
-import { deliverClientFromEnv } from './deliver/client';
-import { canAddPreset } from './entitlements';
+import { canAddPreset, canUseDestination } from './entitlements';
+import { integrationBackendClientFromEnv } from './integrations/backend-client';
+import { testZapierWebhook } from './integrations/zapier';
 import type { Engine } from './engine';
 import type { SyncAgent } from './sync/agent';
 import type { AnnotationDocument, Capture, DestinationId, Guide, GuideType } from '../shared/types';
@@ -20,7 +21,7 @@ import type { AnnotationDocument, Capture, DestinationId, Guide, GuideType } fro
 export function registerIpc(engine: Engine, sync: SyncAgent): void {
   const { history, presets, events, ent, workspace: WS } = engine;
   const proxy = aiProxyFromEnv();
-  const deliver = deliverClientFromEnv();
+  const integrations = integrationBackendClientFromEnv();
 
   ipcMain.handle(CH.captureListSources, () => listSources());
 
@@ -105,28 +106,38 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     if (!canAddPreset(ent(), presets.count(WS))) return { ok: false, error: `Your plan allows ${ent().maxPresets} preset(s). Upgrade for more.` };
     return { ok: true, preset: presets.add({ workspaceId: WS, ...p }) };
   });
+  ipcMain.handle(CH.presetsUpsert, (_e, p: { destination: DestinationId; name: string; target: string; config?: Record<string, unknown> }) => {
+    const existing = presets.getByDestination(WS, p.destination);
+    if (!existing && !canAddPreset(ent(), presets.count(WS))) {
+      return { ok: false, error: `Your plan allows ${ent().maxPresets} preset(s). Upgrade for more.` };
+    }
+    return { ok: true, preset: presets.upsertByDestination({ workspaceId: WS, ...p }) };
+  });
   ipcMain.handle(CH.presetsRemove, (_e, id: string) => { presets.remove(WS, id); return { ok: true }; });
   ipcMain.handle(CH.presetsSend, async (_e, args: { captureId: string; presetId: string }) => {
     const preset = presets.get(WS, args.presetId);
     const capture = history.get(WS, args.captureId);
     if (!preset || !capture) return { ok: false, detail: 'Preset or capture not found' };
+    if (!canUseDestination(ent(), preset.destination)) {
+      return { ok: false, detail: 'Your current plan only supports clipboard delivery for this destination' };
+    }
 
-    // Clipboard is local. Auth'd destinations go through the backend, which holds the
-    // OAuth token in its vault — the token never lives on the client. Falls back to the
-    // local plugin when no backend is configured (the plugin throws NotConfiguredError).
     try {
-      let result;
-      if (preset.destination !== 'clipboard' && deliver.configured) {
-        result = await deliver.deliver(preset.destination, capture, preset.target);
+      const dest = getDestination(preset.destination);
+      if (!dest) return { ok: false, detail: 'Unknown destination' };
+      const result = await dest.deliver(capture, preset.config);
+      if (result.queued) {
+        events.append(WS, 'delivery_queued', `${preset.name} queued — ${result.detail}`);
+      } else if (result.ok) {
+        events.append(WS, 'delivered', `Delivered to ${preset.name}${result.url ? ` · ${result.url}` : ''}`);
       } else {
-        const dest = getDestination(preset.destination);
-        if (!dest) return { ok: false, detail: 'Unknown destination' };
-        result = await dest.deliver(capture, preset.config);
+        events.append(WS, 'delivery_failed', `${preset.name} failed — ${result.detail}`);
       }
-      if (result.ok) events.append(WS, 'sent', `Sent to ${preset.target} on ${preset.name}`);
       return result;
     } catch (err) {
-      return { ok: false, detail: err instanceof Error ? err.message : 'Delivery failed' };
+      const detail = err instanceof Error ? err.message : 'Delivery failed';
+      events.append(WS, 'delivery_failed', `${preset.name} failed — ${detail}`);
+      return { ok: false, detail };
     }
   });
 
@@ -150,6 +161,31 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   ipcMain.handle(CH.entitlementsGet, () => ent());
   ipcMain.handle(CH.statsGet, () => history.stats(WS));
   ipcMain.handle(CH.eventsRecent, (_e, limit = 8) => events.recent(WS, limit));
+  ipcMain.handle(CH.integrationsStatuses, async () => (
+    integrations.configured
+      ? integrations.getStatuses()
+      : [
+          { destination: 'slack', connected: false, state: 'disconnected', message: 'SnapFlow backend is not configured' },
+          { destination: 'notion', connected: false, state: 'disconnected', message: 'SnapFlow backend is not configured' },
+          { destination: 'gmail', connected: false, state: 'disconnected', message: 'SnapFlow backend is not configured' },
+          { destination: 'github', connected: false, state: 'disconnected', message: 'SnapFlow backend is not configured' },
+        ]
+  ));
+  ipcMain.handle(CH.integrationsConnect, async (_e, args: { destination: DestinationId; params?: Record<string, string> }) => {
+    if (args.destination === 'clipboard' || args.destination === 'zapier') return { ok: false, detail: 'This destination does not use OAuth' };
+    const url = await integrations.getOAuthUrl(args.destination, args.params ?? {});
+    await shell.openExternal(url);
+    return { ok: true, detail: `Opening ${args.destination} connection` };
+  });
+  ipcMain.handle(CH.integrationsSlackChannels, () => integrations.getSlackChannels());
+  ipcMain.handle(CH.integrationsNotionPages, (_e, query: string) => integrations.searchNotionPages(query));
+  ipcMain.handle(CH.integrationsGmailProfile, () => integrations.getGmailProfile());
+  ipcMain.handle(CH.integrationsGithubRepos, (_e, query: string) => integrations.listGithubRepos(query));
+  ipcMain.handle(CH.integrationsZapierTest, async (_e, config: Record<string, unknown>) => {
+    const capture = history.list(WS, { limit: 1 })[0];
+    if (!capture) return { ok: false, detail: 'Take a capture first' };
+    return testZapierWebhook(config as any, capture);
+  });
 
   ipcMain.handle(CH.syncNow, () => sync.run());
 

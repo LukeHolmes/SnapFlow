@@ -1,7 +1,7 @@
 // The main↔renderer bridge for the dashboard window.
 import { contextBridge, ipcRenderer } from 'electron';
 import { CH } from '../shared/channels';
-import type { AnnotationDocument, Capture, CaptureSource, Preset, ActivityEvent, Stats, Entitlements, DeliverResult, DestinationId, ScrollCapturePreview, Guide, GuideExportResult, GuideListItem, GuideType } from '../shared/types';
+import type { AnnotationDocument, Capture, CaptureSource, Preset, ActivityEvent, Stats, Entitlements, DeliverResult, DestinationId, ScrollCapturePreview, Guide, GuideExportResult, GuideListItem, GuideType, IntegrationOption, IntegrationStatus } from '../shared/types';
 
 const api = {
   capture: {
@@ -30,8 +30,18 @@ const api = {
   presets: {
     list: (): Promise<Preset[]> => ipcRenderer.invoke(CH.presetsList),
     add: (p: { destination: DestinationId; name: string; target: string; config?: Record<string, unknown> }) => ipcRenderer.invoke(CH.presetsAdd, p),
+    upsert: (p: { destination: DestinationId; name: string; target: string; config?: Record<string, unknown> }) => ipcRenderer.invoke(CH.presetsUpsert, p),
     remove: (id: string) => ipcRenderer.invoke(CH.presetsRemove, id),
     send: (captureId: string, presetId: string): Promise<DeliverResult> => ipcRenderer.invoke(CH.presetsSend, { captureId, presetId }),
+  },
+  integrations: {
+    statuses: (): Promise<IntegrationStatus[]> => ipcRenderer.invoke(CH.integrationsStatuses),
+    connect: (destination: DestinationId, params?: Record<string, string>): Promise<{ ok: boolean; detail: string }> => ipcRenderer.invoke(CH.integrationsConnect, { destination, params }),
+    slackChannels: (): Promise<IntegrationOption[]> => ipcRenderer.invoke(CH.integrationsSlackChannels),
+    notionPages: (query: string): Promise<IntegrationOption[]> => ipcRenderer.invoke(CH.integrationsNotionPages, query),
+    gmailProfile: (): Promise<{ email: string }> => ipcRenderer.invoke(CH.integrationsGmailProfile),
+    githubRepos: (query: string): Promise<IntegrationOption[]> => ipcRenderer.invoke(CH.integrationsGithubRepos, query),
+    testZapier: (config: Record<string, unknown>): Promise<DeliverResult> => ipcRenderer.invoke(CH.integrationsZapierTest, config),
   },
   guides: {
     list: (): Promise<GuideListItem[]> => ipcRenderer.invoke(CH.guidesList),

@@ -11,6 +11,7 @@ import { billingRouter } from './billing/routes';
 import { syncRouter } from './sync/routes';
 import { deliverRouter } from './deliver/routes';
 import { oauthRouter } from './oauth/routes';
+import { integrationsRouter } from './integrations/routes';
 import { initDb } from './store';
 
 export function createApp() {
@@ -27,6 +28,7 @@ export function createApp() {
   app.use(syncRouter);
   app.use(deliverRouter);
   app.use(oauthRouter);
+  app.use(integrationsRouter);
 
   app.use(errorMiddleware);
   return app;

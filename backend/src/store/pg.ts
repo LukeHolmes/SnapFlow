@@ -58,6 +58,7 @@ export class PostgresDb extends PgQueries implements Db {
   }
   async init(): Promise<void> {
     await this.pool.query(buildSchema('BIGINT'));
+    await this.pool.query(`ALTER TABLE IF EXISTS oauth_state ADD COLUMN IF NOT EXISTS data_json TEXT NOT NULL DEFAULT '{}'`);
   }
   async close(): Promise<void> {
     await this.pool.end();

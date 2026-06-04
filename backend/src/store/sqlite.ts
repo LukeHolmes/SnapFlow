@@ -33,6 +33,11 @@ export class SqliteDb implements Db {
   }
   async init(): Promise<void> {
     this.db.exec(buildSchema('INTEGER'));
+    const stateTable = this.db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'oauth_state'`).get();
+    if (stateTable) {
+      const cols = (this.db.prepare(`PRAGMA table_info(oauth_state)`).all() as { name: string }[]).map(col => col.name);
+      if (!cols.includes('data_json')) this.db.exec(`ALTER TABLE oauth_state ADD COLUMN data_json TEXT NOT NULL DEFAULT '{}'`);
+    }
   }
   async close(): Promise<void> {
     this.db.close();

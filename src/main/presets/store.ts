@@ -16,11 +16,26 @@ export class PresetStore {
     const r = this.db.prepare(`SELECT * FROM presets WHERE id = ? AND workspace_id = ?`).get(id, workspaceId);
     return r ? toPreset(r as Record<string, unknown>) : undefined;
   }
+  getByDestination(workspaceId: string, destination: DestinationId): Preset | undefined {
+    const r = this.db.prepare(`SELECT * FROM presets WHERE workspace_id = ? AND destination = ? ORDER BY created_at DESC LIMIT 1`).get(workspaceId, destination);
+    return r ? toPreset(r as Record<string, unknown>) : undefined;
+  }
   add(p: { workspaceId: string; destination: DestinationId; name: string; target: string; config?: Record<string, unknown> }): Preset {
     const preset: Preset = { id: randomUUID(), createdAt: Date.now(), config: p.config ?? {}, ...p };
     this.db.prepare(
       `INSERT INTO presets (id, workspace_id, destination, name, target, config, created_at)
        VALUES (@id, @workspaceId, @destination, @name, @target, @config, @createdAt)`
+    ).run({ ...preset, config: JSON.stringify(preset.config) });
+    return preset;
+  }
+  upsertByDestination(p: { workspaceId: string; destination: DestinationId; name: string; target: string; config?: Record<string, unknown> }): Preset {
+    const existing = this.getByDestination(p.workspaceId, p.destination);
+    if (!existing) return this.add(p);
+    const preset: Preset = { ...existing, name: p.name, target: p.target, config: p.config ?? {}, createdAt: existing.createdAt };
+    this.db.prepare(
+      `UPDATE presets
+       SET name = @name, target = @target, config = @config
+       WHERE id = @id AND workspace_id = @workspaceId`
     ).run({ ...preset, config: JSON.stringify(preset.config) });
     return preset;
   }

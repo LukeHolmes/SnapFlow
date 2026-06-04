@@ -1,6 +1,7 @@
 // Sync agent: metadata-first, last-write-wins, lazy blobs (architecture §6).
 // Push local changes, pull remote changes, then fetch any missing image blobs.
 // Cloud sync is gated on the cloudSync entitlement; Free/Perpetual skip silently.
+import { EventEmitter } from 'node:events';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { imagesDir } from '../paths';
@@ -10,6 +11,7 @@ import type { SyncResult } from '../../shared/types';
 
 export class SyncAgent {
   private running = false;
+  private events = new EventEmitter();
   constructor(private engine: Engine, private client: SyncClient | null) {}
 
   async run(): Promise<SyncResult> {
@@ -27,7 +29,10 @@ export class SyncAgent {
           if (r.deleted) continue;
           const cap = history.get(WS, r.id);
           if (cap?.imagePath && existsSync(cap.imagePath)) {
-            try { await this.client.putBlob(r.id, readFileSync(cap.imagePath)); } catch { /* retry next run */ }
+            try {
+              await this.client.putBlob(r.id, readFileSync(cap.imagePath));
+              this.events.emit(`blob:${r.id}`);
+            } catch { /* retry next run */ }
           }
         }
         history.markClean(dirty.map(r => r.id));
@@ -54,6 +59,23 @@ export class SyncAgent {
     } finally {
       this.running = false;
     }
+  }
+
+  async waitForBlobUpload(captureId: string, timeoutMs = 30_000): Promise<boolean> {
+    if (!this.client) return false;
+    return new Promise(resolve => {
+      const event = `blob:${captureId}`;
+      const onDone = () => {
+        clearTimeout(timer);
+        this.events.removeListener(event, onDone);
+        resolve(true);
+      };
+      const timer = setTimeout(() => {
+        this.events.removeListener(event, onDone);
+        resolve(false);
+      }, timeoutMs);
+      this.events.once(event, onDone);
+    });
   }
 }
 

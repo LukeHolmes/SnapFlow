@@ -2,7 +2,7 @@
 
 export type Tier = 'free' | 'pro' | 'team' | 'perpetual';
 export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web';
-export type DestinationId = 'clipboard' | 'slack' | 'jira' | 'notion' | 'email';
+export type DestinationId = 'clipboard' | 'slack' | 'notion' | 'gmail' | 'github' | 'zapier';
 export type GuideType = 'sop' | 'bug_report' | 'training' | 'validation' | 'walkthrough';
 export type AnnotationTool = 'arrow' | 'rect' | 'ellipse' | 'highlight' | 'text' | 'redact' | 'step' | 'callout' | 'blur';
 
@@ -95,7 +95,7 @@ export interface Preset {
 export interface ActivityEvent {
   id: string;
   workspaceId: string;
-  kind: 'capture' | 'sent' | 'pii' | 'tag';
+  kind: 'capture' | 'delivered' | 'delivery_failed' | 'delivery_queued' | 'pii' | 'tag';
   text: string;
   createdAt: number;
 }
@@ -119,6 +119,25 @@ export interface Entitlements {
 export interface DeliverResult {
   ok: boolean;
   detail: string;
+  url?: string;
+  queued?: boolean;
+}
+
+export type IntegrationConnectionState = 'connected' | 'pending' | 'error' | 'disconnected';
+
+export interface IntegrationStatus {
+  destination: DestinationId;
+  connected: boolean;
+  state: IntegrationConnectionState;
+  label?: string;
+  secondary?: string;
+  message?: string;
+}
+
+export interface IntegrationOption {
+  id: string;
+  label: string;
+  secondary?: string;
 }
 
 export interface GuideStep {

@@ -3,14 +3,15 @@
 import type { OutputDestination } from './types';
 import { clipboardDestination } from './clipboard';
 import { slackDestination } from './slack';
-import { jiraDestination } from './jira';
 import { notionDestination } from './notion';
-import { emailDestination } from './email';
+import { gmailDestination } from './gmail';
+import { githubDestination } from './github';
+import { zapierDestination } from './zapier';
 
 const registry = new Map<string, OutputDestination>();
 
 export function registerBuiltins(): void {
-  for (const d of [clipboardDestination, slackDestination, jiraDestination, notionDestination, emailDestination]) {
+  for (const d of [clipboardDestination, slackDestination, notionDestination, gmailDestination, githubDestination, zapierDestination]) {
     registry.set(d.id, d);
   }
 }
