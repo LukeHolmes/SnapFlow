@@ -1,7 +1,7 @@
 // Typed access to the preload bridge. Falls back to an in-memory mock when opened
 // in a plain browser (vite without Electron) so the UI still renders for design work.
 import type { SnapFlowApi } from '../../preload';
-import type { Capture, Preset, ActivityEvent, Stats, Entitlements, CaptureSource, DeliverResult } from '../../shared/types';
+import type { AnnotationDocument, Capture, Preset, ActivityEvent, Stats, Entitlements, CaptureSource, DeliverResult } from '../../shared/types';
 
 declare global { interface Window { snapflow?: SnapFlowApi } }
 
@@ -24,6 +24,7 @@ let mockEvents: ActivityEvent[] = [
   { id: 'e4', workspaceId: 'ws_local', kind: 'tag', text: "Auto-tagged as 'code'", createdAt: now - 840_000 },
 ];
 let addedListener: ((c: Capture) => void) | null = null;
+const mockAnnotationDocs = new Map<string, AnnotationDocument>();
 
 function mockNewCapture(): Capture {
   const c: Capture = { id: 'c' + Math.random().toString(36).slice(2, 7), workspaceId: 'ws_local', filename: 'Region capture', imagePath: '', tag: 'ui', ocrText: 'demo capture', hasPii: false, createdAt: Date.now() };
@@ -51,6 +52,11 @@ const mock: SnapFlowApi = {
       c.filename = `${c.filename} redacted`;
       c.hasPii = false;
       return c;
+    },
+    getAnnotations: async (id: string): Promise<AnnotationDocument | null> => mockAnnotationDocs.get(id) ?? null,
+    saveAnnotations: async (captureId: string, doc: AnnotationDocument): Promise<DeliverResult> => {
+      mockAnnotationDocs.set(captureId, doc);
+      return { ok: true, detail: 'Annotation draft saved' };
     },
     copyImage: async (_id: string): Promise<DeliverResult> => ({ ok: true, detail: 'Copied image to clipboard' }),
     copyOcr: async (_id: string): Promise<DeliverResult> => ({ ok: true, detail: 'Copied OCR text to clipboard' }),

@@ -5,6 +5,8 @@ export const CH = {
   captureScroll:      'capture:scroll',
   captureSaveAnnotated:'capture:saveAnnotated',
   captureSaveRedacted:'capture:saveRedacted',
+  captureAnnotationsGet:'capture:annotations:get',
+  captureAnnotationsSave:'capture:annotations:save',
   captureCopyImage:   'capture:copyImage',
   captureCopyOcr:     'capture:copyOcr',
   capturePin:         'capture:pin',

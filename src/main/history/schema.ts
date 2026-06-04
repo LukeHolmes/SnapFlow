@@ -63,6 +63,14 @@ CREATE TABLE IF NOT EXISTS events (
   created_at   INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_events_ws_time ON events(workspace_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS capture_annotations (
+  capture_id   TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  data_json    TEXT NOT NULL,
+  updated_at   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_capture_annotations_ws ON capture_annotations(workspace_id, updated_at DESC);
 `;
 
 // Per-workspace sync cursor (the highest server sequence number we've pulled).

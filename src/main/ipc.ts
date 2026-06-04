@@ -15,7 +15,7 @@ import { deliverClientFromEnv } from './deliver/client';
 import { canAddPreset } from './entitlements';
 import type { Engine } from './engine';
 import type { SyncAgent } from './sync/agent';
-import type { Capture, DestinationId } from '../shared/types';
+import type { AnnotationDocument, Capture, DestinationId } from '../shared/types';
 
 export function registerIpc(engine: Engine, sync: SyncAgent): void {
   const { history, presets, events, ent, workspace: WS } = engine;
@@ -51,6 +51,14 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     const ocr = await runOcr(original.imagePath);
     const boxes = piiBoxes(ocr);
     return saveRawCapture(persistRedactedImage(original.imagePath, boxes, `${original.filename} redacted`));
+  });
+
+  ipcMain.handle(CH.captureAnnotationsGet, (_e, id: string) => history.getAnnotationDocument(WS, id));
+  ipcMain.handle(CH.captureAnnotationsSave, (_e, args: { captureId: string; doc: AnnotationDocument }) => {
+    const capture = history.get(WS, args.captureId);
+    if (!capture) return { ok: false, detail: 'Capture not found' };
+    history.saveAnnotationDocument(WS, args.captureId, args.doc);
+    return { ok: true, detail: 'Annotation draft saved' };
   });
 
   ipcMain.handle(CH.captureCopyImage, (_e, id: string) => {

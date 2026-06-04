@@ -1,7 +1,7 @@
 // The main↔renderer bridge for the dashboard window.
 import { contextBridge, ipcRenderer } from 'electron';
 import { CH } from '../shared/channels';
-import type { Capture, CaptureSource, Preset, ActivityEvent, Stats, Entitlements, DeliverResult, DestinationId } from '../shared/types';
+import type { AnnotationDocument, Capture, CaptureSource, Preset, ActivityEvent, Stats, Entitlements, DeliverResult, DestinationId } from '../shared/types';
 
 const api = {
   capture: {
@@ -10,6 +10,8 @@ const api = {
     scroll: (options?: { sourceId?: string; frames?: number; intervalMs?: number }): Promise<Capture> => ipcRenderer.invoke(CH.captureScroll, options),
     saveAnnotated: (captureId: string, dataUrl: string): Promise<Capture> => ipcRenderer.invoke(CH.captureSaveAnnotated, { captureId, dataUrl }),
     saveRedacted: (id: string): Promise<Capture> => ipcRenderer.invoke(CH.captureSaveRedacted, id),
+    getAnnotations: (id: string): Promise<AnnotationDocument | null> => ipcRenderer.invoke(CH.captureAnnotationsGet, id),
+    saveAnnotations: (captureId: string, doc: AnnotationDocument): Promise<DeliverResult> => ipcRenderer.invoke(CH.captureAnnotationsSave, { captureId, doc }),
     copyImage: (id: string): Promise<DeliverResult> => ipcRenderer.invoke(CH.captureCopyImage, id),
     copyOcr: (id: string): Promise<DeliverResult> => ipcRenderer.invoke(CH.captureCopyOcr, id),
     pin: (id: string): Promise<DeliverResult> => ipcRenderer.invoke(CH.capturePin, id),

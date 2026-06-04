@@ -3,6 +3,41 @@
 export type Tier = 'free' | 'pro' | 'team' | 'perpetual';
 export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web';
 export type DestinationId = 'clipboard' | 'slack' | 'jira' | 'notion' | 'email';
+export type AnnotationTool = 'arrow' | 'rect' | 'highlight' | 'text' | 'redact' | 'step' | 'callout' | 'blur';
+
+export interface AnnotationPoint {
+  x: number;
+  y: number;
+}
+
+export interface CaptureAnnotation {
+  id: string;
+  type: AnnotationTool;
+  start: AnnotationPoint;
+  end: AnnotationPoint;
+  color: string;
+  text?: string;
+  order?: number;
+}
+
+export interface AnnotationEffects {
+  border: boolean;
+  shadow: boolean;
+  watermark: string;
+}
+
+export interface AnnotationCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface AnnotationDocument {
+  annotations: CaptureAnnotation[];
+  effects: AnnotationEffects;
+  crop: AnnotationCrop | null;
+}
 
 export interface Capture {
   id: string;

@@ -1,5 +1,5 @@
 import type { Db } from '../db';
-import type { Capture, ContentTag, Stats, SyncRecord } from '../../shared/types';
+import type { AnnotationDocument, Capture, ContentTag, Stats, SyncRecord } from '../../shared/types';
 
 export class HistoryStore {
   constructor(private db: Db) {}
@@ -71,6 +71,25 @@ export class HistoryStore {
       sent:        n(`SELECT COUNT(*) n FROM events   WHERE workspace_id = ? AND kind = 'sent'`),
       piiRedacted: n(`SELECT COUNT(*) n FROM captures WHERE workspace_id = ? AND deleted = 0 AND has_pii = 1`),
     };
+  }
+
+  getAnnotationDocument(workspaceId: string, captureId: string): AnnotationDocument | null {
+    const row = this.db.prepare(`SELECT data_json FROM capture_annotations WHERE capture_id = ? AND workspace_id = ?`)
+      .get(captureId, workspaceId) as { data_json: string } | undefined;
+    if (!row) return null;
+    try { return JSON.parse(row.data_json) as AnnotationDocument; }
+    catch { return null; }
+  }
+
+  saveAnnotationDocument(workspaceId: string, captureId: string, doc: AnnotationDocument): void {
+    this.db.prepare(
+      `INSERT INTO capture_annotations (capture_id, workspace_id, data_json, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(capture_id) DO UPDATE SET
+         workspace_id = excluded.workspace_id,
+         data_json = excluded.data_json,
+         updated_at = excluded.updated_at`
+    ).run(captureId, workspaceId, JSON.stringify(doc), Date.now());
   }
 
   // ---- Sync support (cloud sync, architecture §6) -------------------------
