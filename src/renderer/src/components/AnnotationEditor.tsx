@@ -224,24 +224,24 @@ function drawAnnotation(ctx: CanvasRenderingContext2D, shape: CaptureAnnotation)
   ctx.lineJoin = 'round';
   ctx.lineWidth = Math.max(4, Math.round(ctx.canvas.width / 360));
 
-  if (shape.tool === 'highlight') {
+  if (shape.type === 'highlight') {
     ctx.fillStyle = 'rgba(250, 204, 21, 0.36)';
     fillRect(ctx, start, end);
-  } else if (shape.tool === 'redact') {
+  } else if (shape.type === 'redact') {
     ctx.fillStyle = '#111111';
     fillRect(ctx, start, end);
-  } else if (shape.tool === 'blur') {
+  } else if (shape.type === 'blur') {
     blurRect(ctx, start, end);
-  } else if (shape.tool === 'rect') {
+  } else if (shape.type === 'rect') {
     ctx.strokeStyle = shape.color;
     strokeRect(ctx, start, end);
-  } else if (shape.tool === 'text') {
+  } else if (shape.type === 'text') {
     ctx.fillStyle = shape.color;
     ctx.font = `${Math.max(24, Math.round(ctx.canvas.width / 32))}px sans-serif`;
     ctx.fillText(shape.text ?? '', start.x, start.y);
-  } else if (shape.tool === 'step') {
+  } else if (shape.type === 'step') {
     drawStep(ctx, shape);
-  } else if (shape.tool === 'callout') {
+  } else if (shape.type === 'callout') {
     drawCallout(ctx, shape);
   } else {
     drawArrow(ctx, start, end, shape.color);
