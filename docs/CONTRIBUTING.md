@@ -10,13 +10,19 @@
 ```bash
 git clone https://github.com/<org>/snapflow.git
 cd snapflow
-npm install        # also rebuilds better-sqlite3 for your Electron version
+npm install
+cp .env.example .env
 npm run dev        # launches the app with hot reload
 ```
 
-If the native module rebuild fails:
+`better-sqlite3` is native and must be rebuilt for the runtime that loads it.
+The npm scripts handle the common flows:
+
 ```bash
-npm run rebuild    # runs electron-rebuild manually
+npm test                 # pretest rebuilds for Node
+npm run dev              # predev rebuilds for Electron
+npm run rebuild:node     # manual Node/test rebuild
+npm run rebuild:electron # manual Electron/runtime rebuild
 ```
 
 ## Environment
@@ -27,15 +33,29 @@ SNAPFLOW_TIER=free   # tests the free-tier limits
 SNAPFLOW_TIER=pro    # default
 ```
 
+For backend development:
+
+```bash
+cd backend
+npm install
+cp .env.example .env
+npm run dev
+```
+
 ## Testing
 
 ```bash
 npm test           # headless unit tests (no Electron required)
 npm run typecheck  # tsc --noEmit
+
+cd backend
+npm test
+npm run typecheck
 ```
 
-Tests live in `tests/` and cover the history engine, PII detection, and entitlements.
-They import only `better-sqlite3` and the shared types, so they run without Electron.
+Tests live in `tests/` and `backend/tests/`. They cover the desktop history engine,
+PII detection, entitlements, pipeline, sync and diff logic, plus backend auth, vault,
+AI, delivery, OAuth, sync and entitlement behavior.
 
 ## Branching strategy
 

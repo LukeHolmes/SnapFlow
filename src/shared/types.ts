@@ -54,6 +54,7 @@ export interface Entitlements {
   maxPresets: number | null;         // null = unlimited
   aiEnabled: boolean;
   cloudSync: boolean;
+  sharedLibrary?: boolean;           // backend Team search capability; optional for older desktop mirrors
 }
 
 export interface DeliverResult {

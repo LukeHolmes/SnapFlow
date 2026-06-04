@@ -15,9 +15,10 @@ npm run dev              # http://localhost:3001
 npm test                 # headless unit tests
 ```
 
-Dev uses **SQLite** so it runs with zero external services. The production target is
-Postgres + Redis + S3-compatible storage (`docker-compose up`), reached by rewriting the
-`*Store` classes only — routes and business logic are unaffected.
+Dev uses **SQLite** so it runs with zero external services. Set `DATABASE_URL` to use
+the Postgres adapter. `docker-compose up` starts the production-adjacent backing
+services (Postgres, Redis, MinIO); Redis/object-storage wiring remains behind the
+current store/rate-limit ports.
 
 ## Endpoints
 

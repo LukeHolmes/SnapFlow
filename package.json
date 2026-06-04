@@ -7,13 +7,18 @@
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {
+    "predev": "npm run rebuild:electron",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "prepreview": "npm run rebuild:electron",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "pretest": "npm run rebuild:node",
     "test": "node --test --import tsx ./tests/*.test.ts",
-    "rebuild": "electron-rebuild -f -w better-sqlite3",
-    "postinstall": "electron-rebuild -f -w better-sqlite3 || echo 'run: npm run rebuild'",
+    "rebuild": "npm run rebuild:electron",
+    "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
+    "rebuild:node": "npm rebuild better-sqlite3",
+    "predist": "npm run rebuild:electron",
     "dist": "electron-vite build && electron-builder"
   },
   "dependencies": {

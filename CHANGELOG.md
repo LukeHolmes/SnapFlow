@@ -2,6 +2,20 @@
 
 All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisition readiness).
 
+## [0.6.1] — Unreleased — Project health
+### Added
+- Shared TypeScript contract file (`src/shared/types.ts`) restored so IPC, stores, tests,
+  and renderer code compile against one source of truth.
+- Root and backend `.env.example` files for local desktop/backend configuration.
+- npm lockfiles for reproducible root and backend installs.
+- `.gitignore` for generated dependencies, build output, local env files, SQLite files,
+  blobs, and logs.
+### Changed
+- Native `better-sqlite3` rebuild workflow is explicit:
+  `npm test` rebuilds for Node, while `npm run dev`/`preview`/`dist` rebuild for Electron.
+- README and contributor docs now describe the current v0.6 implementation state,
+  59-test suite, and remaining integration/product gaps.
+
 ## [0.6.0] — Unreleased — Production-grade backend
 ### Added
 - **Postgres-capable store** (architecture §6): async `Db` port with SQLite (dev/test)

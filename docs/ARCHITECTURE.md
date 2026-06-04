@@ -47,7 +47,7 @@ Main process (Node)           Renderer process (React)
        ↓
   detectPii()                 ← local regex (email / phone)
        ↓
-  heuristicTag()              ← offline; replaced by AI proxy once backend is live
+  AI proxy tag or heuristicTag() ← backend when configured; offline fallback otherwise
        ↓
   HistoryStore.updateAnalysis() ← FTS5 index updated
        ↓
