@@ -1,0 +1,26 @@
+# Production data stores (architecture §6). The dev server uses SQLite out of the
+# box; point DB_PATH/connection at these when migrating the *Store classes to Postgres.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: snapflow
+      POSTGRES_PASSWORD: snapflow
+      POSTGRES_DB: snapflow
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+  # S3-compatible object storage for encrypted image blobs
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: snapflow
+      MINIO_ROOT_PASSWORD: snapflow123
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["miniodata:/data"]
+volumes:
+  pgdata:
+  miniodata:

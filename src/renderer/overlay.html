@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SnapFlow — Select a region</title>
+    <style>
+      :root { --indigo: #818CF8; --scrim: rgba(17,17,20,0.45); }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 100vw; height: 100vh; overflow: hidden; cursor: crosshair; user-select: none; background: transparent; }
+      #frame { position: absolute; inset: 0; width: 100vw; height: 100vh; display: block; }
+      #scrim { position: absolute; inset: 0; background: var(--scrim); }
+      .cross { position: fixed; background: rgba(129,140,248,0.7); pointer-events: none; }
+      #cv { top: 0; bottom: 0; width: 1px; }
+      #ch { left: 0; right: 0; height: 1px; }
+      #sel { position: fixed; display: none; border: 1.5px solid var(--indigo); background: transparent;
+             box-shadow: 0 0 0 100vmax var(--scrim); border-radius: 2px; pointer-events: none; }
+      #pill { position: fixed; font-family: 'DM Mono','SF Mono',monospace; font-size: 12px; color: #fff;
+              background: #1a1a1a; border-radius: 6px; padding: 3px 8px; pointer-events: none; white-space: nowrap; }
+      #hint { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+              background: rgba(26,26,26,0.92); border: 0.5px solid rgba(255,255,255,0.12); border-radius: 12px;
+              padding: 16px 22px; color: #fff; text-align: center; box-shadow: 0 16px 50px rgba(0,0,0,0.4);
+              font-family: -apple-system, 'Segoe UI', sans-serif; }
+      #hint b { font-weight: 600; font-size: 14px; }
+      #hint small { display: block; margin-top: 6px; font-size: 12px; color: rgba(255,255,255,0.6); }
+      #hint kbd { font-family: 'DM Mono', monospace; background: rgba(255,255,255,0.12); border-radius: 4px; padding: 1px 5px; }
+    </style>
+  </head>
+  <body>
+    <img id="frame" alt="" />
+    <div id="scrim"></div>
+    <div class="cross" id="cv"></div>
+    <div class="cross" id="ch"></div>
+    <div id="sel"></div>
+    <div id="pill">0 × 0 px</div>
+    <div id="hint"><b>Select a region</b><small>Drag to capture · <kbd>Esc</kbd> to cancel</small></div>
+    <script type="module" src="/src/overlay.ts"></script>
+  </body>
+</html>
