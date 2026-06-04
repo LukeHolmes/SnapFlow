@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Trash2, Filter } from 'lucide-react';
+import { Trash2, Filter, Pencil } from 'lucide-react';
 import { api } from '../api';
 import { TAGS, CaptureThumb, rel } from '../components/shared';
 import type { Capture } from '../components/shared';
 
-interface Props { flash: (text: string, ok?: boolean) => void; refreshKey: number; }
+interface Props { flash: (text: string, ok?: boolean) => void; refreshKey: number; onAnnotate?: (capture: Capture) => void; }
 
 const TAG_FILTERS = ['all', 'ui', 'code', 'chart', 'document', 'web'] as const;
 const DATE_FILTERS = [
@@ -14,7 +14,7 @@ const DATE_FILTERS = [
   { id: 'month', label: 'This month',ms: 30 * 86_400_000 },
 ] as const;
 
-export default function History({ flash, refreshKey }: Props) {
+export default function History({ flash, refreshKey, onAnnotate }: Props) {
   const [all, setAll] = useState<Capture[]>([]);
   const [loading, setLoading] = useState(true);
   const [tag, setTag] = useState<string>('all');
@@ -103,8 +103,15 @@ export default function History({ flash, refreshKey }: Props) {
           {filtered.map(c => {
             const t = TAGS[c.tag ?? 'ui'] ?? TAGS.ui;
             return (
-              <div className="card capture-card capture-card-deletable" key={c.id}>
-                <CaptureThumb tag={c.tag} />
+              <div className="card capture-card capture-card-deletable" key={c.id} onClick={() => onAnnotate?.(c)}>
+                <div style={{ position: 'relative' }}>
+                  <CaptureThumb tag={c.tag} />
+                  {c.hasAnnotations && (
+                    <span className="annotation-badge" title="Annotation layer present">
+                      <Pencil size={10} strokeWidth={2.4} />
+                    </span>
+                  )}
+                </div>
                 <div className="capture-info">
                   <div className="capture-name">{c.filename}</div>
                   <div className="capture-meta">
@@ -113,7 +120,7 @@ export default function History({ flash, refreshKey }: Props) {
                     <span className="capture-time">{rel(c.createdAt)}</span>
                   </div>
                 </div>
-                <button className="delete-btn" title="Delete capture" onClick={() => del(c.id)} aria-label="Delete">
+                <button className="delete-btn" title="Delete capture" onClick={(e) => { e.stopPropagation(); del(c.id); }} aria-label="Delete">
                   <Trash2 size={13} strokeWidth={2} />
                 </button>
               </div>
