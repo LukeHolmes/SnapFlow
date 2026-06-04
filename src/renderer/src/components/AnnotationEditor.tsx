@@ -505,13 +505,14 @@ function drawCallout(ctx: CanvasRenderingContext2D, shape: CaptureAnnotation): v
   const padding = 12;
   const width = Math.max(110, ctx.measureText(text).width + padding * 2);
   const height = Math.max(46, Math.round(ctx.canvas.width / 34));
-  ctx.fillStyle = shape.style?.fillColor && shape.style.fillColor !== 'transparent'
-    ? hexToRgba(shape.style.fillColor, Math.max(0.85, shape.style.fillOpacity ?? 1))
-    : '#ffffff';
   ctx.strokeStyle = shape.style?.strokeColor ?? shape.color;
   ctx.lineWidth = shape.style?.strokeWidth ?? Math.max(3, Math.round(ctx.canvas.width / 420));
   roundRect(ctx, x, y, width, height, 12);
-  ctx.fill();
+  const fillOpacity = shape.style?.fillOpacity ?? 0;
+  if (fillOpacity > 0) {
+    ctx.fillStyle = hexToRgba(shape.style?.fillColor ?? '#ffffff', fillOpacity);
+    ctx.fill();
+  }
   ctx.stroke();
   ctx.fillStyle = shape.style?.textColor ?? shape.color;
   ctx.fillText(text, x + padding, y + height / 2 + 7);

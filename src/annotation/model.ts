@@ -48,6 +48,17 @@ export function normaliseAnnotationDocument(doc: AnnotationDocument | null | und
   };
 }
 
+export function hasMeaningfulAnnotationLayer(doc: AnnotationDocument | null | undefined): boolean {
+  const normalised = normaliseAnnotationDocument(doc);
+  return (
+    normalised.annotations.length > 0 ||
+    normalised.crop !== null ||
+    normalised.effects.border ||
+    normalised.effects.shadow ||
+    normalised.effects.watermark.trim().length > 0
+  );
+}
+
 export function serialiseAnnotationDocument(doc: AnnotationDocument): string {
   return JSON.stringify(normaliseAnnotationDocument(doc));
 }
