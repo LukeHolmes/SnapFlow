@@ -2,6 +2,10 @@
 export const CH = {
   captureListSources: 'capture:listSources',
   captureScreen:      'capture:screen',
+  captureScroll:      'capture:scroll',
+  captureSaveAnnotated:'capture:saveAnnotated',
+  captureCopyImage:   'capture:copyImage',
+  captureCopyOcr:     'capture:copyOcr',
   historyList:        'history:list',
   historySearch:      'history:search',
   historyDelete:      'history:delete',

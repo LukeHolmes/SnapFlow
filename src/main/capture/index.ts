@@ -6,6 +6,7 @@ import { desktopCapturer, screen, nativeImage } from 'electron';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { PNG } from 'pngjs';
 import { imagesDir } from '../paths';
 import type { CaptureSource } from '../../shared/types';
 
@@ -33,15 +34,43 @@ export async function listSources(): Promise<CaptureSource[]> {
     .map(s => ({ id: s.id, name: s.name, thumbnail: s.thumbnail.toDataURL(), kind: s.id.startsWith('screen') ? 'screen' : 'window' }));
 }
 
-/** Full-resolution capture of a source (window or screen), at the best available resolution. */
-export async function captureSource(sourceId?: string, filename?: string): Promise<RawCapture> {
+async function sourceImage(sourceId?: string): Promise<{ image: Electron.NativeImage; name: string }> {
   const displays = screen.getAllDisplays();
   const maxW = Math.max(...displays.map(d => deviceBox(d).w));
   const maxH = Math.max(...displays.map(d => deviceBox(d).h));
   const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: maxW, height: maxH } });
   const src = (sourceId && sources.find(s => s.id === sourceId)) || sources[0];
   if (!src) throw new Error('No capture source available (check screen-recording permission)');
-  return persistImage(src.thumbnail, filename || src.name || 'Capture');
+  return { image: src.thumbnail, name: src.name || 'Capture' };
+}
+
+/** Full-resolution capture of a source (window or screen), at the best available resolution. */
+export async function captureSource(sourceId?: string, filename?: string): Promise<RawCapture> {
+  const src = await sourceImage(sourceId);
+  return persistImage(src.image, filename || src.name || 'Capture');
+}
+
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+/**
+ * Guided scrolling capture MVP: samples the same source several times while the
+ * user scrolls, then stitches the frames vertically. A native/browser sidecar can
+ * later replace this with auto-scroll and overlap detection without changing IPC.
+ */
+export async function captureScrollingSource(options: { sourceId?: string; frames?: number; intervalMs?: number } = {}): Promise<RawCapture> {
+  const count = Math.max(2, Math.min(8, Math.round(options.frames ?? 4)));
+  const intervalMs = Math.max(250, Math.min(3000, Math.round(options.intervalMs ?? 850)));
+  const images: Electron.NativeImage[] = [];
+  let sourceName = 'Scrolling capture';
+
+  for (let i = 0; i < count; i += 1) {
+    const src = await sourceImage(options.sourceId);
+    sourceName = src.name || sourceName;
+    images.push(src.image);
+    if (i < count - 1) await sleep(intervalMs);
+  }
+
+  return persistImage(stitchVertical(images), `${sourceName} scroll`);
 }
 
 /** Grab a single full-resolution frame of one display, for the freeze-frame overlay. */
@@ -81,4 +110,34 @@ export function persistImage(img: Electron.NativeImage, filename: string): RawCa
   const imagePath = join(imagesDir(), `${id}.png`);
   writeFileSync(imagePath, img.toPNG());
   return { id, imagePath, filename };
+}
+
+export function persistDataUrl(dataUrl: string, filename: string): RawCapture {
+  const img = nativeImage.createFromDataURL(dataUrl);
+  if (img.isEmpty()) throw new Error('Annotated image is empty or invalid');
+  return persistImage(img, filename);
+}
+
+function stitchVertical(images: Electron.NativeImage[]): Electron.NativeImage {
+  const pngs = images
+    .map(img => PNG.sync.read(img.toPNG()))
+    .filter(png => png.width > 0 && png.height > 0);
+  if (!pngs.length) throw new Error('No frames captured for scrolling capture');
+
+  const width = Math.max(...pngs.map(png => png.width));
+  const height = pngs.reduce((sum, png) => sum + png.height, 0);
+  const out = new PNG({ width, height, colorType: 6 });
+  out.data.fill(255);
+
+  let yOffset = 0;
+  for (const png of pngs) {
+    for (let y = 0; y < png.height; y += 1) {
+      const srcStart = y * png.width * 4;
+      const destStart = ((yOffset + y) * width) * 4;
+      png.data.copy(out.data, destStart, srcStart, srcStart + png.width * 4);
+    }
+    yOffset += png.height;
+  }
+
+  return nativeImage.createFromBuffer(PNG.sync.write(out));
 }

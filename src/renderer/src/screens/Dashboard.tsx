@@ -10,9 +10,11 @@ interface Props {
   setActive: (screen: string) => void;
   startRegion: () => void;
   openPicker: () => Promise<void>;
+  startScroll: () => void;
+  startDelay: () => void;
 }
 
-export default function Dashboard({ flash, refreshKey, setActive, startRegion, openPicker }: Props) {
+export default function Dashboard({ flash, refreshKey, setActive, startRegion, openPicker, startScroll, startDelay }: Props) {
   const [stats, setStats] = useState<Stats>({ total: 0, ocrIndexed: 0, sent: 0, piiRedacted: 0 });
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -38,6 +40,8 @@ export default function Dashboard({ flash, refreshKey, setActive, startRegion, o
   const onQuick = (label: string) => {
     if (label === 'Region') return startRegion();
     if (label === 'Window') return openPicker();
+    if (label === 'Scroll') return startScroll();
+    if (label === 'Delay') return startDelay();
     flash(`${label} capture is coming in a later build`);
   };
 

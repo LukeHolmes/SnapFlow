@@ -40,6 +40,14 @@ const mock: SnapFlowApi = {
       { id: 'window:2', name: 'Chrome — SnapFlow', thumbnail: '', kind: 'window' },
     ],
     screen: async (): Promise<Capture> => mockNewCapture(),
+    scroll: async (): Promise<Capture> => mockNewCapture(),
+    saveAnnotated: async (_id: string, _dataUrl: string): Promise<Capture> => {
+      const c = mockNewCapture();
+      c.filename = `${c.filename} annotated`;
+      return c;
+    },
+    copyImage: async (_id: string): Promise<DeliverResult> => ({ ok: true, detail: 'Copied image to clipboard' }),
+    copyOcr: async (_id: string): Promise<DeliverResult> => ({ ok: true, detail: 'Copied OCR text to clipboard' }),
     getImageDataUrl: async (_id: string): Promise<string | null> => null,
   },
   region: {

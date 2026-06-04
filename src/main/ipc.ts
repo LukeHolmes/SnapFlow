@@ -1,8 +1,8 @@
-import { ipcMain } from 'electron';
+import { clipboard, ipcMain, nativeImage } from 'electron';
 import { unlink } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { CH } from '../shared/channels';
-import { listSources, captureSource } from './capture';
+import { listSources, captureSource, captureScrollingSource, persistDataUrl, type RawCapture } from './capture';
 import { getDestination } from './integrations/registry';
 import { contextualise } from './pipeline';
 import { aiProxyFromEnv } from './ai/proxy-client';
@@ -21,12 +21,42 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
 
   ipcMain.handle(CH.captureListSources, () => listSources());
 
-  // Full-screen capture (used by the Window quick action until a window picker lands).
-  ipcMain.handle(CH.captureScreen, async (_e, sourceId?: string) => {
-    const raw = await captureSource(sourceId);
+  const saveRawCapture = async (raw: RawCapture): Promise<Capture> => {
     const capture: Capture = { id: raw.id, workspaceId: WS, filename: raw.filename, imagePath: raw.imagePath, tag: null, ocrText: '', hasPii: false, createdAt: Date.now() };
     history.insert(capture);
     return contextualise(capture, ent(), history, events);
+  };
+
+  // Full-screen capture (used by the Window quick action until a window picker lands).
+  ipcMain.handle(CH.captureScreen, async (_e, sourceId?: string) => {
+    return saveRawCapture(await captureSource(sourceId));
+  });
+
+  ipcMain.handle(CH.captureScroll, async (_e, args?: { sourceId?: string; frames?: number; intervalMs?: number }) => {
+    return saveRawCapture(await captureScrollingSource(args));
+  });
+
+  ipcMain.handle(CH.captureSaveAnnotated, async (_e, args: { captureId: string; dataUrl: string }) => {
+    const original = history.get(WS, args.captureId);
+    if (!original) throw new Error('Capture not found');
+    return saveRawCapture(persistDataUrl(args.dataUrl, `${original.filename} annotated`));
+  });
+
+  ipcMain.handle(CH.captureCopyImage, (_e, id: string) => {
+    const capture = history.get(WS, id);
+    if (!capture?.imagePath) return { ok: false, detail: 'Capture not found' };
+    const image = nativeImage.createFromPath(capture.imagePath);
+    if (image.isEmpty()) return { ok: false, detail: 'Capture image is unavailable' };
+    clipboard.writeImage(image);
+    return { ok: true, detail: 'Copied image to clipboard' };
+  });
+
+  ipcMain.handle(CH.captureCopyOcr, (_e, id: string) => {
+    const capture = history.get(WS, id);
+    if (!capture) return { ok: false, detail: 'Capture not found' };
+    if (!capture.ocrText.trim()) return { ok: false, detail: 'No OCR text available yet' };
+    clipboard.writeText(capture.ocrText);
+    return { ok: true, detail: 'Copied OCR text to clipboard' };
   });
 
   ipcMain.handle(CH.historyList, (_e, limit = 50) => history.list(WS, { limit, sinceDays: ent().historyWindowDays }));

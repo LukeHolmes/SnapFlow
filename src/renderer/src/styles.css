@@ -153,6 +153,40 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .toast-ok { color: var(--color-green-600); }
 .toast-err { color: #DC2626; }
 
+/* Snipping mode modals + post-capture actions */
+.capture-mode-modal { width: 520px; }
+.mode-copy { font-size: 13px; color: var(--color-text-body); line-height: 1.55; margin-bottom: 14px; }
+.mode-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mode-card { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; min-height: 106px; background: var(--color-surface-2); border: .5px solid var(--color-border); border-radius: 12px; padding: 14px 16px; cursor: pointer; color: var(--color-text-primary); font-family: inherit; text-align: left; transition: border-color 120ms, background-color 120ms; }
+.mode-card:hover { background: #fff; border-color: #A5B4FC; }
+.mode-card span { font-size: 14px; font-weight: 500; }
+.mode-card small { font-size: 12px; color: var(--color-text-muted); line-height: 1.4; }
+.mode-card svg { color: var(--color-brand-dark); }
+.mode-card-wide { grid-column: 1 / -1; }
+.quick-action-bar { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 75; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.96); border: .5px solid var(--color-border); border-radius: 14px; padding: 8px 10px 8px 14px; box-shadow: 0 12px 42px rgba(26,26,26,.18); backdrop-filter: blur(14px); animation: toast-in 180ms ease-out; }
+.quick-action-meta { display: flex; flex-direction: column; gap: 2px; min-width: 170px; max-width: 260px; padding-right: 5px; }
+.quick-action-meta strong { font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.quick-action-meta span { font-size: 11px; color: var(--color-text-muted); }
+.quick-action-btn { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: .5px solid var(--color-border); border-radius: 8px; background: var(--color-surface-2); color: var(--color-text-body); font-family: inherit; font-size: 12px; cursor: pointer; transition: background-color 120ms, border-color 120ms; }
+.quick-action-btn:hover { background: var(--color-brand-light); border-color: var(--color-indigo-200); color: var(--color-brand-dark); }
+.quick-action-close { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background: none; color: var(--color-text-muted); cursor: pointer; }
+.quick-action-close:hover { background: var(--color-surface-2); color: var(--color-text-primary); }
+
+/* Annotation editor */
+.annotation-scrim { z-index: 90; }
+.annotation-modal { width: min(1120px, 94vw); height: min(780px, 90vh); display: flex; flex-direction: column; background: var(--color-surface-1); border: .5px solid var(--color-border); border-radius: 16px; padding: 16px; box-shadow: 0 24px 80px rgba(0,0,0,.28); }
+.annotation-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.annotation-sub { font-size: 12px; color: var(--color-text-muted); margin-top: 3px; max-width: 700px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.annotation-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px; background: var(--color-surface-2); border: .5px solid var(--color-border); border-radius: 12px; margin-bottom: 12px; }
+.tool-btn { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: .5px solid var(--color-border); border-radius: 8px; background: #fff; color: var(--color-text-body); font-family: inherit; font-size: 12px; cursor: pointer; }
+.tool-btn:hover:not(:disabled), .tool-btn-active { background: var(--color-brand-light); border-color: var(--color-indigo-200); color: var(--color-brand-dark); }
+.tool-btn:disabled { opacity: .5; cursor: default; }
+.color-pick { display: flex; align-items: center; gap: 7px; margin-left: auto; font-size: 12px; color: var(--color-text-body); }
+.color-pick input { width: 28px; height: 24px; border: none; background: none; cursor: pointer; }
+.annotation-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: auto; background: #161616; border-radius: 12px; padding: 14px; }
+.annotation-canvas { max-width: 100%; max-height: 100%; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.3); cursor: crosshair; touch-action: none; }
+.annotation-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
 /* ── Screens — shared ─────────────────────────────────────────────────────── */
 .screen { padding-bottom: 32px; }
 .screen-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }

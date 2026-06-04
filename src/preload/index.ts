@@ -7,6 +7,10 @@ const api = {
   capture: {
     listSources: (): Promise<CaptureSource[]> => ipcRenderer.invoke(CH.captureListSources),
     screen: (sourceId?: string): Promise<Capture> => ipcRenderer.invoke(CH.captureScreen, sourceId),
+    scroll: (options?: { sourceId?: string; frames?: number; intervalMs?: number }): Promise<Capture> => ipcRenderer.invoke(CH.captureScroll, options),
+    saveAnnotated: (captureId: string, dataUrl: string): Promise<Capture> => ipcRenderer.invoke(CH.captureSaveAnnotated, { captureId, dataUrl }),
+    copyImage: (id: string): Promise<DeliverResult> => ipcRenderer.invoke(CH.captureCopyImage, id),
+    copyOcr: (id: string): Promise<DeliverResult> => ipcRenderer.invoke(CH.captureCopyOcr, id),
     getImageDataUrl: (id: string): Promise<string | null> => ipcRenderer.invoke(CH.captureGetImage, id),
   },
   region: {
