@@ -1,8 +1,10 @@
 # SnapFlow
 
 **Capture → Context → Deliver.** A local-first, cross-platform screen-capture utility.
-This repository is the **foundation scaffold (v0.1)** — a real, runnable Electron application
-with the two core-IP engines working and a clean structure to build the rest of the roadmap on.
+This repository is a real, runnable Electron desktop app plus a thin Node backend.
+The codebase is currently in the **v0.6 unreleased** track: the desktop foundation,
+backend, cloud sync, server-side delivery path, Team search, and Diff mode are all
+present, with several integrations still intentionally stubbed.
 
 It is built directly to the project's *Technical Architecture* and *Developer Instructions*.
 
@@ -20,7 +22,7 @@ It is built directly to the project's *Technical Architecture* and *Developer In
 | **OCR** (Tesseract, on-device, background) | ✅ working |
 | **History engine** — SQLite + **FTS5** full-text search, workspace-scoped | ✅ working & unit-tested |
 | **Local PII detection** (email + phone) | ✅ working & unit-tested |
-| **Heuristic auto-tagging** (offline; AI proxy comes later) | ✅ working |
+| **Heuristic auto-tagging** (offline fallback) | ✅ working |
 | **Output presets** — plugin contract + **clipboard** destination | ✅ working |
 | Slack / Jira / Notion / Email destinations | 🟡 contract implemented, credentials/OAuth pending |
 | **Backend** — auth, entitlements, metered AI proxy, OAuth vault, billing | ✅ working (in `backend/`) |
@@ -28,22 +30,30 @@ It is built directly to the project's *Technical Architecture* and *Developer In
 | **Cloud sync** — metadata-first, LWW, tombstones, lazy blobs (Pro/Team) | ✅ working |
 | **Tier & entitlement model** (free/pro/team/perpetual) | ✅ working & unit-tested |
 | **Dashboard UI** wired to the live engine | ✅ working |
-| AI proxy backend, cloud sync, Team library, Diff mode | ⬜ next layers (structure is ready) |
+| **Diff mode** — pixel diff + AI summary path | ✅ working & unit-tested |
+| **Team server-side search** over the shared workspace library | ✅ backend implemented |
+| Native sidecar, scrolling capture, Team admin/library UI | ⬜ next layers |
 
-13 headless unit tests cover the history engine, PII detection, and entitlements (`npm test`).
+59 headless unit tests cover the desktop history/PII/entitlements/pipeline/sync/diff
+logic and backend auth/vault/AI/sync/delivery/OAuth modules.
 
 ---
 
 ## Running it
 
 ```bash
-npm install        # installs deps; postinstall rebuilds better-sqlite3 for Electron
+npm install        # installs deps
 npm run dev        # launches the desktop app with hot reload
 ```
 
-If the native module needs a manual rebuild for your Electron version:
+`better-sqlite3` is a native dependency. The scripts rebuild it for the runtime that
+needs it:
+
 ```bash
-npm run rebuild
+npm test                 # pretest rebuilds better-sqlite3 for Node
+npm run dev              # predev rebuilds better-sqlite3 for Electron
+npm run rebuild:node     # manual Node/test rebuild
+npm run rebuild:electron # manual Electron/runtime rebuild
 ```
 
 Other scripts:
@@ -57,7 +67,8 @@ npm run dist       # package installers (electron-builder)
 **macOS:** first capture will prompt for Screen Recording permission
 (System Settings → Privacy & Security → Screen Recording).
 
-Set the tier for local testing: `SNAPFLOW_TIER=free npm run dev` (default `pro`).
+Copy `.env.example` to `.env` to configure local desktop runs. Set the tier for local
+testing with `SNAPFLOW_TIER=free npm run dev` (default `pro`).
 
 ---
 
@@ -98,9 +109,9 @@ These are the things the architecture says are *painful to change later*, so the
   plugin system have no dependency on the UI shell or on each other.
 - **Capture behind a narrow interface.** `captureSource` / `captureRegion` only — a native
   capture sidecar can replace this without touching anything upstream.
-- **AI is gated and metered.** The free tier never reaches a model; all model access is meant
-  to flow through the backend proxy (the API key never touches the client). Offline heuristic
-  tagging stands in until that backend exists.
+- **AI is gated and metered.** The free tier never reaches a model; all model access flows
+  through the backend proxy when configured (the API key never touches the client). Offline
+  heuristic tagging is the fallback.
 - **PII detection is fully local** (resolves the §11 contradiction — no screenshots sent out to find PII).
 - **Entitlements** express recurring (Pro/Team), non-recurring (Perpetual) and future on-prem states.
 
@@ -124,11 +135,13 @@ rectangle back to the engine and never touches the stores directly.
 2. ✅ ~~Window picker + multi-display region support~~ — done.
 3. ✅ ~~Backend (auth, entitlements, metered AI proxy, OAuth vault, billing)~~ — done (`backend/`).
    ✅ ~~Cloud sync service~~ — done (metadata + blobs, tier-gated).
-   Remaining backend work: Postgres migration of the stores, real OAuth login flow,
-   server-side Team search index.
-4. **Finish the destination integrations** end-to-end (server-side delivery using the vault).
-5. **Scrolling capture & window-shadow accuracy** via the native capture sidecar.
-6. **v1.1**: Diff mode, screen recording, Team shared library + admin/SSO.
+   ✅ ~~Postgres-capable store, real OAuth login, and server-side Team search~~ — done.
+4. ✅ ~~Diff mode~~ — done (pixel diff, UI, backend AI summary path).
+5. **Finish the destination integrations** end-to-end (Slack is live server-side;
+   Jira/Notion/email remain stubbed behind the same contract).
+6. **Team shared-library product surface** — admin, membership/SSO, and richer client UI.
+7. **Scrolling capture & window-shadow accuracy** via the native capture sidecar.
+8. **Screen recording** and deeper collaboration workflows.
 
 The backend lives in `backend/` — see `backend/README.md` to run it.
 
