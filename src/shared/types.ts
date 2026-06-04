@@ -3,6 +3,42 @@
 export type Tier = 'free' | 'pro' | 'team' | 'perpetual';
 export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web';
 export type DestinationId = 'clipboard' | 'slack' | 'jira' | 'notion' | 'email';
+export type GuideType = 'sop' | 'bug_report' | 'training' | 'validation' | 'walkthrough';
+export type AnnotationTool = 'arrow' | 'rect' | 'highlight' | 'text' | 'redact' | 'step' | 'callout' | 'blur';
+
+export interface AnnotationPoint {
+  x: number;
+  y: number;
+}
+
+export interface CaptureAnnotation {
+  id: string;
+  type: AnnotationTool;
+  start: AnnotationPoint;
+  end: AnnotationPoint;
+  color: string;
+  text?: string;
+  order?: number;
+}
+
+export interface AnnotationEffects {
+  border: boolean;
+  shadow: boolean;
+  watermark: string;
+}
+
+export interface AnnotationCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface AnnotationDocument {
+  annotations: CaptureAnnotation[];
+  effects: AnnotationEffects;
+  crop: AnnotationCrop | null;
+}
 
 export interface Capture {
   id: string;
@@ -21,6 +57,16 @@ export interface CaptureSource {
   name: string;
   thumbnail: string;          // data URL
   kind: 'screen' | 'window';
+}
+
+export interface ScrollCapturePreview {
+  dataUrl: string;
+  filename: string;
+  confidence: number;
+  frameCount: number;
+  width: number;
+  height: number;
+  warnings: string[];
 }
 
 export interface Preset {
@@ -60,6 +106,41 @@ export interface Entitlements {
 export interface DeliverResult {
   ok: boolean;
   detail: string;
+}
+
+export interface GuideStep {
+  id: string;
+  captureId: string;
+  order: number;
+  title: string;
+  description: string;
+  capture?: Capture;
+}
+
+export interface Guide {
+  id: string;
+  workspaceId: string;
+  title: string;
+  type: GuideType;
+  summary: string;
+  createdAt: number;
+  updatedAt: number;
+  steps: GuideStep[];
+}
+
+export interface GuideListItem {
+  id: string;
+  workspaceId: string;
+  title: string;
+  type: GuideType;
+  summary: string;
+  stepCount: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface GuideExportResult extends DeliverResult {
+  markdown?: string;
 }
 
 /** A capture's metadata as it travels over the sync wire (no image bytes — blobs sync lazily). */

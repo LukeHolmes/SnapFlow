@@ -1,5 +1,6 @@
 import type { Db } from '../db';
-import type { Capture, ContentTag, Stats, SyncRecord } from '../../shared/types';
+import { randomUUID } from 'node:crypto';
+import type { AnnotationDocument, Capture, ContentTag, Guide, GuideListItem, GuideStep, GuideType, Stats, SyncRecord } from '../../shared/types';
 
 export class HistoryStore {
   constructor(private db: Db) {}
@@ -73,6 +74,100 @@ export class HistoryStore {
     };
   }
 
+  getAnnotationDocument(workspaceId: string, captureId: string): AnnotationDocument | null {
+    const row = this.db.prepare(`SELECT data_json FROM capture_annotations WHERE capture_id = ? AND workspace_id = ?`)
+      .get(captureId, workspaceId) as { data_json: string } | undefined;
+    if (!row) return null;
+    try { return JSON.parse(row.data_json) as AnnotationDocument; }
+    catch { return null; }
+  }
+
+  saveAnnotationDocument(workspaceId: string, captureId: string, doc: AnnotationDocument): void {
+    this.db.prepare(
+      `INSERT INTO capture_annotations (capture_id, workspace_id, data_json, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(capture_id) DO UPDATE SET
+         workspace_id = excluded.workspace_id,
+         data_json = excluded.data_json,
+         updated_at = excluded.updated_at`
+    ).run(captureId, workspaceId, JSON.stringify(doc), Date.now());
+  }
+
+  createGuide(workspaceId: string, input: { title: string; type: GuideType; captureIds: string[] }): Guide {
+    const now = Date.now();
+    const id = randomUUID();
+    const title = input.title.trim() || defaultGuideTitle(input.type);
+    const captureIds = input.captureIds.filter(Boolean);
+    const captures = captureIds
+      .map(captureId => this.get(workspaceId, captureId))
+      .filter((capture): capture is Capture => !!capture);
+
+    const summary = defaultGuideSummary(input.type, captures.length);
+    const insertGuide = this.db.prepare(
+      `INSERT INTO guides (id, workspace_id, title, type, summary, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    );
+    const insertStep = this.db.prepare(
+      `INSERT INTO guide_steps (id, guide_id, capture_id, step_order, title, description)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    );
+    const tx = this.db.transaction(() => {
+      insertGuide.run(id, workspaceId, title, input.type, summary, now, now);
+      captures.forEach((capture, idx) => {
+        insertStep.run(randomUUID(), id, capture.id, idx + 1, stepTitle(capture, idx), stepDescription(capture));
+      });
+    });
+    tx();
+
+    return this.getGuide(workspaceId, id)!;
+  }
+
+  listGuides(workspaceId: string): GuideListItem[] {
+    const rows = this.db.prepare(
+      `SELECT g.*, COUNT(s.id) AS step_count
+       FROM guides g LEFT JOIN guide_steps s ON s.guide_id = g.id
+       WHERE g.workspace_id = ?
+       GROUP BY g.id
+       ORDER BY g.updated_at DESC`
+    ).all(workspaceId) as Record<string, unknown>[];
+    return rows.map(toGuideListItem);
+  }
+
+  getGuide(workspaceId: string, id: string): Guide | undefined {
+    const row = this.db.prepare(`SELECT * FROM guides WHERE id = ? AND workspace_id = ?`).get(id, workspaceId) as Record<string, unknown> | undefined;
+    if (!row) return undefined;
+    const steps = this.db.prepare(
+      `SELECT s.*, c.workspace_id, c.filename, c.image_path, c.tag, c.ocr_text, c.has_pii, c.created_at
+       FROM guide_steps s
+       JOIN captures c ON c.id = s.capture_id
+       WHERE s.guide_id = ? AND c.workspace_id = ? AND c.deleted = 0
+       ORDER BY s.step_order`
+    ).all(id, workspaceId) as Record<string, unknown>[];
+    return { ...toGuide(row), steps: steps.map(toGuideStep) };
+  }
+
+  updateGuide(workspaceId: string, guide: Guide): Guide | undefined {
+    const existing = this.getGuide(workspaceId, guide.id);
+    if (!existing) return undefined;
+
+    const now = Date.now();
+    const updateGuide = this.db.prepare(`UPDATE guides SET title = ?, type = ?, summary = ?, updated_at = ? WHERE id = ? AND workspace_id = ?`);
+    const deleteSteps = this.db.prepare(`DELETE FROM guide_steps WHERE guide_id = ?`);
+    const insertStep = this.db.prepare(
+      `INSERT INTO guide_steps (id, guide_id, capture_id, step_order, title, description)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    );
+    const tx = this.db.transaction(() => {
+      updateGuide.run(guide.title, guide.type, guide.summary, now, guide.id, workspaceId);
+      deleteSteps.run(guide.id);
+      guide.steps.forEach((step, idx) => {
+        insertStep.run(step.id || randomUUID(), guide.id, step.captureId, idx + 1, step.title, step.description);
+      });
+    });
+    tx();
+    return this.getGuide(workspaceId, guide.id);
+  }
+
   // ---- Sync support (cloud sync, architecture §6) -------------------------
 
   /** Local rows with unpushed changes (includes tombstones). */
@@ -141,6 +236,62 @@ function toCapture(r: Record<string, unknown>): Capture {
     hasPii: !!r.has_pii,
     createdAt: r.created_at as number,
   };
+}
+
+function toGuide(r: Record<string, unknown>): Omit<Guide, 'steps'> {
+  return {
+    id: r.id as string,
+    workspaceId: r.workspace_id as string,
+    title: r.title as string,
+    type: r.type as GuideType,
+    summary: (r.summary as string) ?? '',
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+  };
+}
+
+function toGuideListItem(r: Record<string, unknown>): GuideListItem {
+  return {
+    ...toGuide(r),
+    stepCount: Number(r.step_count ?? 0),
+  };
+}
+
+function toGuideStep(r: Record<string, unknown>): GuideStep {
+  return {
+    id: r.id as string,
+    captureId: r.capture_id as string,
+    order: r.step_order as number,
+    title: r.title as string,
+    description: (r.description as string) ?? '',
+    capture: toCapture(r),
+  };
+}
+
+function defaultGuideTitle(type: GuideType): string {
+  const labels: Record<GuideType, string> = {
+    sop: 'New SOP guide',
+    bug_report: 'New bug report',
+    training: 'New training guide',
+    validation: 'New validation walkthrough',
+    walkthrough: 'New walkthrough',
+  };
+  return labels[type];
+}
+
+function defaultGuideSummary(type: GuideType, count: number): string {
+  const plural = count === 1 ? 'capture' : 'captures';
+  return `${defaultGuideTitle(type)} created from ${count} ${plural}.`;
+}
+
+function stepTitle(capture: Capture, idx: number): string {
+  return `Step ${idx + 1}: ${capture.filename}`;
+}
+
+function stepDescription(capture: Capture): string {
+  const text = (capture.ocrText ?? '').replace(/\s+/g, ' ').trim();
+  if (!text) return 'Describe what the user should do or verify in this capture.';
+  return text.length > 180 ? `${text.slice(0, 177)}...` : text;
 }
 
 function toSyncRecord(r: Record<string, unknown>): SyncRecord {
