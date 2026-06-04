@@ -9,6 +9,9 @@
   "scripts": {
     "predev": "npm run rebuild:electron",
     "dev": "electron-vite dev",
+    "web:dev": "vite --host 0.0.0.0 src/renderer",
+    "web:build": "vite build src/renderer",
+    "web:preview": "vite preview --host 0.0.0.0 src/renderer",
     "build": "electron-vite build",
     "prepreview": "npm run rebuild:electron",
     "preview": "electron-vite preview",
