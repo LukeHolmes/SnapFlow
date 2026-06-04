@@ -71,6 +71,27 @@ CREATE TABLE IF NOT EXISTS capture_annotations (
   updated_at   INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_capture_annotations_ws ON capture_annotations(workspace_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS guides (
+  id           TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  title        TEXT NOT NULL,
+  type         TEXT NOT NULL,
+  summary      TEXT NOT NULL DEFAULT '',
+  created_at   INTEGER NOT NULL,
+  updated_at   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_guides_ws_time ON guides(workspace_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS guide_steps (
+  id          TEXT PRIMARY KEY,
+  guide_id    TEXT NOT NULL,
+  capture_id  TEXT NOT NULL,
+  step_order  INTEGER NOT NULL,
+  title       TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_guide_steps_guide_order ON guide_steps(guide_id, step_order);
 `;
 
 // Per-workspace sync cursor (the highest server sequence number we've pulled).

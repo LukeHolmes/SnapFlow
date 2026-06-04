@@ -3,6 +3,7 @@
 export type Tier = 'free' | 'pro' | 'team' | 'perpetual';
 export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web';
 export type DestinationId = 'clipboard' | 'slack' | 'jira' | 'notion' | 'email';
+export type GuideType = 'sop' | 'bug_report' | 'training' | 'validation' | 'walkthrough';
 export type AnnotationTool = 'arrow' | 'rect' | 'highlight' | 'text' | 'redact' | 'step' | 'callout' | 'blur';
 
 export interface AnnotationPoint {
@@ -105,6 +106,41 @@ export interface Entitlements {
 export interface DeliverResult {
   ok: boolean;
   detail: string;
+}
+
+export interface GuideStep {
+  id: string;
+  captureId: string;
+  order: number;
+  title: string;
+  description: string;
+  capture?: Capture;
+}
+
+export interface Guide {
+  id: string;
+  workspaceId: string;
+  title: string;
+  type: GuideType;
+  summary: string;
+  createdAt: number;
+  updatedAt: number;
+  steps: GuideStep[];
+}
+
+export interface GuideListItem {
+  id: string;
+  workspaceId: string;
+  title: string;
+  type: GuideType;
+  summary: string;
+  stepCount: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface GuideExportResult extends DeliverResult {
+  markdown?: string;
 }
 
 /** A capture's metadata as it travels over the sync wire (no image bytes — blobs sync lazily). */

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Camera, Bell, Search, History, Library, LayoutDashboard, EyeOff,
   User, Cable, Send, Monitor, AppWindow, X, RefreshCw, GitCompare,
-  Copy, Edit3, FileText, Timer, ScrollText, Pin, Shield,
+  Copy, Edit3, FileText, Timer, ScrollText, Pin, Shield, ClipboardList,
 } from 'lucide-react';
 import { api, isLive } from './api';
 import type { Capture, Entitlements, CaptureSource, ScrollCapturePreview } from '../../shared/types';
@@ -16,9 +16,10 @@ import Account      from './screens/Account';
 import Diff           from './screens/Diff';
 import Integrations from './screens/Integrations';
 import AnnotationEditor from './components/AnnotationEditor';
+import Guides from './screens/Guides';
 
 const NAV = [
-  { label: 'CAPTURE',  items: [['Dashboard','Dashboard',LayoutDashboard], ['History','History',History], ['Search Library','Search Library',Library], ['Diff Mode','Diff Mode',GitCompare]] },
+  { label: 'CAPTURE',  items: [['Dashboard','Dashboard',LayoutDashboard], ['History','History',History], ['Search Library','Search Library',Library], ['Diff Mode','Diff Mode',GitCompare], ['Guides','Guides',ClipboardList]] },
   { label: 'DELIVER',  items: [['Output Presets','Output Presets',Send], ['PII Redaction','PII Redaction',EyeOff]] },
   { label: 'SETTINGS', items: [['Account','Account',User], ['Integrations','Integrations',Cable]] },
 ] as const;
@@ -229,6 +230,7 @@ export default function App() {
       case 'Account':        return <Account flash={flash} />;
       case 'Integrations':   return <Integrations flash={flash} setActive={setActive} />;
       case 'Diff Mode':      return <Diff flash={flash} refreshKey={refreshKey} />;
+      case 'Guides':         return <Guides {...screenProps} />;
       default:               return <Dashboard {...screenProps} setActive={setActive} startRegion={startRegion} openPicker={openPicker} startScroll={openScrollCapture} startDelay={() => setDelayOpen(true)} />;
     }
   };

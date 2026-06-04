@@ -15,7 +15,7 @@ import { deliverClientFromEnv } from './deliver/client';
 import { canAddPreset } from './entitlements';
 import type { Engine } from './engine';
 import type { SyncAgent } from './sync/agent';
-import type { AnnotationDocument, Capture, DestinationId } from '../shared/types';
+import type { AnnotationDocument, Capture, DestinationId, Guide, GuideType } from '../shared/types';
 
 export function registerIpc(engine: Engine, sync: SyncAgent): void {
   const { history, presets, events, ent, workspace: WS } = engine;
@@ -130,6 +130,23 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     }
   });
 
+  ipcMain.handle(CH.guidesList, () => history.listGuides(WS));
+  ipcMain.handle(CH.guidesCreate, (_e, args: { title: string; type: GuideType; captureIds: string[] }) => {
+    return history.createGuide(WS, args);
+  });
+  ipcMain.handle(CH.guidesGet, (_e, id: string) => history.getGuide(WS, id) ?? null);
+  ipcMain.handle(CH.guidesUpdate, (_e, guide: Guide) => {
+    const updated = history.updateGuide(WS, guide);
+    return updated ? { ok: true, detail: 'Guide saved', guide: updated } : { ok: false, detail: 'Guide not found' };
+  });
+  ipcMain.handle(CH.guidesExportMarkdown, (_e, id: string) => {
+    const guide = history.getGuide(WS, id);
+    if (!guide) return { ok: false, detail: 'Guide not found' };
+    const markdown = renderGuideMarkdown(guide);
+    clipboard.writeText(markdown);
+    return { ok: true, detail: 'Guide Markdown copied to clipboard', markdown };
+  });
+
   ipcMain.handle(CH.entitlementsGet, () => ent());
   ipcMain.handle(CH.statsGet, () => history.stats(WS));
   ipcMain.handle(CH.eventsRecent, (_e, limit = 8) => events.recent(WS, limit));
@@ -218,4 +235,41 @@ function dedupeBoxes(boxes: RedactionBox[]): RedactionBox[] {
     seen.add(key);
     return true;
   });
+}
+
+function renderGuideMarkdown(guide: Guide): string {
+  const typeLabel = guide.type.replace(/_/g, ' ');
+  const lines = [
+    `# ${guide.title}`,
+    '',
+    `> ${typeLabel}`,
+    '',
+    '## Summary',
+    '',
+    guide.summary || 'Add a short summary of this guide.',
+    '',
+    '## Steps',
+    '',
+  ];
+
+  for (const step of guide.steps) {
+    const imagePath = step.capture?.imagePath ?? '';
+    lines.push(`### Step ${step.order}: ${step.title.replace(/^Step \d+:\s*/i, '')}`);
+    lines.push('');
+    if (imagePath) {
+      lines.push(`![${escapeMarkdown(step.title)}](${imagePath})`);
+      lines.push('');
+    }
+    lines.push(step.description || 'Add instructions for this step.');
+    lines.push('');
+  }
+
+  lines.push('---');
+  lines.push('');
+  lines.push('Generated with SnapFlow.');
+  return lines.join('\n');
+}
+
+function escapeMarkdown(value: string): string {
+  return value.replace(/[[\]()`]/g, '\\$&');
 }
