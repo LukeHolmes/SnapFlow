@@ -223,7 +223,7 @@ export default function App() {
   const renderScreen = () => {
     switch (active) {
       case 'Dashboard':      return <Dashboard {...screenProps} setActive={setActive} startRegion={startRegion} openPicker={openPicker} startScroll={openScrollCapture} startDelay={() => setDelayOpen(true)} />;
-      case 'History':        return <HistoryScreen {...screenProps} />;
+      case 'History':        return <HistoryScreen {...screenProps} onAnnotate={setEditorCapture} />;
       case 'Search Library': return <SearchLibrary {...screenProps} initialQuery={active === 'Search Library' ? topbarQuery : ''} />;
       case 'Output Presets': return <Presets {...screenProps} />;
       case 'PII Redaction':  return <PiiRedaction {...screenProps} />;

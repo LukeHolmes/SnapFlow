@@ -191,14 +191,18 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .tool-btn { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: .5px solid var(--color-border); border-radius: 8px; background: #fff; color: var(--color-text-body); font-family: inherit; font-size: 12px; cursor: pointer; }
 .tool-btn:hover:not(:disabled), .tool-btn-active { background: var(--color-brand-light); border-color: var(--color-indigo-200); color: var(--color-brand-dark); }
 .tool-btn:disabled { opacity: .5; cursor: default; }
+.tool-divider { width: .5px; height: 24px; background: var(--color-border); margin: 0 2px; }
 .color-pick { display: flex; align-items: center; gap: 7px; margin-left: auto; font-size: 12px; color: var(--color-text-body); }
 .color-pick input { width: 28px; height: 24px; border: none; background: none; cursor: pointer; }
+.mini-style { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--color-text-body); }
+.mini-style select { height: 26px; border: .5px solid var(--color-border); border-radius: 7px; background: #fff; color: var(--color-text-primary); font-family: inherit; font-size: 11px; padding: 0 6px; }
 .annotation-effects { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: -4px 0 12px; padding: 0 2px; font-size: 12px; color: var(--color-text-body); }
 .annotation-effects label { display: flex; align-items: center; gap: 6px; }
 .annotation-effects input[type="checkbox"] { accent-color: var(--color-brand); }
 .watermark-field { margin-left: auto; }
 .watermark-field input { width: 220px; background: var(--color-surface-2); border: .5px solid var(--color-border); border-radius: 7px; padding: 6px 9px; font-family: inherit; font-size: 12px; color: var(--color-text-primary); outline: none; }
 .watermark-field input:focus { border-color: var(--color-indigo-300); box-shadow: 0 0 0 3px var(--color-brand-light); }
+.annotation-selected-note { font-size: 11px; color: var(--color-brand-dark); background: var(--color-brand-light); border-radius: 99px; padding: 4px 9px; }
 .annotation-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: auto; background: #161616; border-radius: 12px; padding: 14px; }
 .annotation-canvas { max-width: 100%; max-height: 100%; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.3); cursor: crosshair; touch-action: none; }
 .annotation-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
@@ -228,6 +232,7 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .filter-search { flex: 1; min-width: 160px; background: var(--color-surface-2); border: .5px solid var(--color-border); border-radius: 8px; padding: 6px 10px; font-family: inherit; font-size: 12.5px; outline: none; color: var(--color-text-primary); }
 .filter-search:focus { border-color: var(--color-indigo-300); box-shadow: 0 0 0 3px var(--color-brand-light); }
 .capture-card-deletable { position: relative; }
+.annotation-badge { position: absolute; top: 7px; left: 7px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; color: var(--color-brand-dark); background: rgba(238,240,253,.95); border: .5px solid var(--color-indigo-200); border-radius: 6px; box-shadow: 0 2px 8px rgba(26,26,26,.12); }
 .delete-btn { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 6px; border: .5px solid var(--color-border); background: var(--color-surface-1); cursor: pointer; display: none; align-items: center; justify-content: center; color: #DC2626; transition: background-color 100ms; }
 .capture-card-deletable:hover .delete-btn { display: flex; }
 .delete-btn:hover { background: #FEE2E2; }

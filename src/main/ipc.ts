@@ -1,4 +1,4 @@
-import { clipboard, ipcMain, nativeImage } from 'electron';
+import { BrowserWindow, clipboard, ipcMain, nativeImage, type IpcMainInvokeEvent } from 'electron';
 import { unlink } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { CH } from '../shared/channels';
@@ -39,8 +39,8 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     return saveRawCapture(await captureScrollingSource(args));
   });
 
-  ipcMain.handle(CH.captureScrollPreview, async (_e, args?: { sourceId?: string; frames?: number; intervalMs?: number }) => {
-    return captureScrollingPreview(args);
+  ipcMain.handle(CH.captureScrollPreview, async (e, args?: { sourceId?: string; frames?: number; intervalMs?: number }) => {
+    return withHiddenSenderWindow(e, () => captureScrollingPreview(args));
   });
 
   ipcMain.handle(CH.captureScrollSave, async (_e, args: { dataUrl: string; filename: string }) => {
@@ -235,6 +235,23 @@ function dedupeBoxes(boxes: RedactionBox[]): RedactionBox[] {
     seen.add(key);
     return true;
   });
+}
+
+async function withHiddenSenderWindow<T>(event: IpcMainInvokeEvent, fn: () => Promise<T>): Promise<T> {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const shouldRestore = !!win && !win.isDestroyed() && win.isVisible();
+  if (shouldRestore) {
+    win!.hide();
+    await new Promise(resolve => setTimeout(resolve, 140));
+  }
+  try {
+    return await fn();
+  } finally {
+    if (shouldRestore && win && !win.isDestroyed()) {
+      win.show();
+      win.focus();
+    }
+  }
 }
 
 function renderGuideMarkdown(guide: Guide): string {

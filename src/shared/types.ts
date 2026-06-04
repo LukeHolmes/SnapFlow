@@ -4,7 +4,7 @@ export type Tier = 'free' | 'pro' | 'team' | 'perpetual';
 export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web';
 export type DestinationId = 'clipboard' | 'slack' | 'jira' | 'notion' | 'email';
 export type GuideType = 'sop' | 'bug_report' | 'training' | 'validation' | 'walkthrough';
-export type AnnotationTool = 'arrow' | 'rect' | 'highlight' | 'text' | 'redact' | 'step' | 'callout' | 'blur';
+export type AnnotationTool = 'arrow' | 'rect' | 'ellipse' | 'highlight' | 'text' | 'redact' | 'step' | 'callout' | 'blur';
 
 export interface AnnotationPoint {
   x: number;
@@ -19,6 +19,18 @@ export interface CaptureAnnotation {
   color: string;
   text?: string;
   order?: number;
+  zIndex?: number;
+  style?: {
+    strokeColor?: string;
+    fillColor?: string;
+    fillOpacity?: number;
+    strokeWidth?: number;
+    fontSize?: number;
+    textColor?: string;
+    highlightOpacity?: number;
+    blurIntensity?: 'low' | 'medium' | 'high';
+    arrowhead?: 'none' | 'single' | 'double' | 'open' | 'filled';
+  };
 }
 
 export interface AnnotationEffects {
@@ -50,6 +62,7 @@ export interface Capture {
   hasPii: boolean;
   createdAt: number;          // epoch ms
   snippet?: string;           // populated by search results only
+  hasAnnotations?: boolean;    // true when a non-destructive annotation layer exists
 }
 
 export interface CaptureSource {

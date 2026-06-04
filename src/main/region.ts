@@ -15,6 +15,7 @@ import type { Capture } from '../shared/types';
 
 let engineRef: Engine | null = null;
 let getMainWindow: () => BrowserWindow | null = () => null;
+let hiddenMainWindow: BrowserWindow | null = null;
 
 interface Session { win: BrowserWindow; frame: Frame; }
 const sessions = new Map<number, Session>();   // keyed by webContents.id
@@ -39,7 +40,23 @@ export function registerRegion(engine: Engine, mainWindowGetter: () => BrowserWi
 /** Public entry — called by the IPC handler and by the ⌘⇧4 global shortcut. */
 export async function startRegionCapture(): Promise<void> {
   if (sessions.size) return;                     // already selecting
-  const frames = await grabAllFrames();
+  const main = getMainWindow();
+  if (main && !main.isDestroyed() && main.isVisible()) {
+    hiddenMainWindow = main;
+    main.hide();
+    await sleep(120);
+  }
+  let frames: Frame[];
+  try {
+    frames = await grabAllFrames();
+  } catch (err) {
+    restoreMainWindow();
+    throw err;
+  }
+  if (!frames.length) {
+    restoreMainWindow();
+    return;
+  }
   const displays = screen.getAllDisplays();
 
   for (const frame of frames) {
@@ -66,6 +83,7 @@ export async function startRegionCapture(): Promise<void> {
 function closeAll(): void {
   for (const { win } of sessions.values()) if (!win.isDestroyed()) win.close();
   sessions.clear();
+  restoreMainWindow();
 }
 
 async function finish(frame: Frame, rect: { x: number; y: number; width: number; height: number } | null): Promise<void> {
@@ -86,3 +104,13 @@ async function finish(frame: Frame, rect: { x: number; y: number; width: number;
 }
 
 app.on('will-quit', () => closeAll());
+
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+function restoreMainWindow(): void {
+  if (hiddenMainWindow && !hiddenMainWindow.isDestroyed()) {
+    hiddenMainWindow.show();
+    hiddenMainWindow.focus();
+  }
+  hiddenMainWindow = null;
+}

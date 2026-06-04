@@ -1,5 +1,6 @@
 import type { Db } from '../db';
 import { randomUUID } from 'node:crypto';
+import { deserialiseAnnotationDocument, hasMeaningfulAnnotationLayer, normaliseAnnotationDocument, serialiseAnnotationDocument } from '../../annotation/model';
 import type { AnnotationDocument, Capture, ContentTag, Guide, GuideListItem, GuideStep, GuideType, Stats, SyncRecord } from '../../shared/types';
 
 export class HistoryStore {
@@ -22,13 +23,17 @@ export class HistoryStore {
   }
 
   get(workspaceId: string, id: string): Capture | undefined {
-    const r = this.db.prepare(`SELECT * FROM captures WHERE id = ? AND workspace_id = ? AND deleted = 0`).get(id, workspaceId);
+    const r = this.db.prepare(
+      `SELECT c.*, EXISTS(SELECT 1 FROM capture_annotations a WHERE a.capture_id = c.id) AS has_annotations
+       FROM captures c WHERE c.id = ? AND c.workspace_id = ? AND c.deleted = 0`
+    ).get(id, workspaceId);
     return r ? toCapture(r as Record<string, unknown>) : undefined;
   }
 
   list(workspaceId: string, opts: { limit?: number; sinceDays?: number | null } = {}): Capture[] {
     const params: unknown[] = [workspaceId];
-    let sql = `SELECT * FROM captures WHERE workspace_id = ? AND deleted = 0`;
+    let sql = `SELECT c.*, EXISTS(SELECT 1 FROM capture_annotations a WHERE a.capture_id = c.id) AS has_annotations
+      FROM captures c WHERE c.workspace_id = ? AND c.deleted = 0`;
     if (opts.sinceDays != null) { sql += ` AND created_at >= ?`; params.push(Date.now() - opts.sinceDays * 86_400_000); }
     sql += ` ORDER BY created_at DESC`;
     if (opts.limit) { sql += ` LIMIT ?`; params.push(opts.limit); }
@@ -41,6 +46,7 @@ export class HistoryStore {
     if (!match) return [];
     const rows = this.db.prepare(
       `SELECT c.*, snippet(captures_fts, 1, '[', ']', '…', 10) AS snippet
+       , EXISTS(SELECT 1 FROM capture_annotations a WHERE a.capture_id = c.id) AS has_annotations
        FROM captures_fts JOIN captures c ON c.rowid = captures_fts.rowid
        WHERE captures_fts MATCH ? AND c.workspace_id = ? AND c.deleted = 0
        ORDER BY bm25(captures_fts) LIMIT ?`
@@ -51,7 +57,12 @@ export class HistoryStore {
   /** Soft delete: tombstone the row (so the deletion can sync) and return the image path to unlink. */
   delete(workspaceId: string, id: string): string | undefined {
     const row = this.db.prepare(`SELECT image_path FROM captures WHERE id = ? AND workspace_id = ?`).get(id, workspaceId) as { image_path: string } | undefined;
-    this.db.prepare(`UPDATE captures SET deleted = 1, dirty = 1, updated_at = ? WHERE id = ? AND workspace_id = ?`).run(Date.now(), id, workspaceId);
+    const tx = this.db.transaction(() => {
+      this.db.prepare(`UPDATE captures SET deleted = 1, dirty = 1, updated_at = ? WHERE id = ? AND workspace_id = ?`).run(Date.now(), id, workspaceId);
+      this.db.prepare(`DELETE FROM capture_annotations WHERE capture_id = ? AND workspace_id = ?`).run(id, workspaceId);
+      this.db.prepare(`DELETE FROM guide_steps WHERE capture_id = ?`).run(id);
+    });
+    tx();
     return row?.image_path;
   }
 
@@ -60,7 +71,18 @@ export class HistoryStore {
     const cutoff = Date.now() - days * 86_400_000;
     const rows = this.db.prepare(`SELECT image_path FROM captures WHERE workspace_id = ? AND created_at < ?`)
       .all(workspaceId, cutoff) as { image_path: string }[];
-    this.db.prepare(`DELETE FROM captures WHERE workspace_id = ? AND created_at < ?`).run(workspaceId, cutoff);
+    const ids = this.db.prepare(`SELECT id FROM captures WHERE workspace_id = ? AND created_at < ?`)
+      .all(workspaceId, cutoff) as { id: string }[];
+    const tx = this.db.transaction(() => {
+      const deleteAnnotations = this.db.prepare(`DELETE FROM capture_annotations WHERE capture_id = ? AND workspace_id = ?`);
+      const deleteGuideSteps = this.db.prepare(`DELETE FROM guide_steps WHERE capture_id = ?`);
+      for (const { id } of ids) {
+        deleteAnnotations.run(id, workspaceId);
+        deleteGuideSteps.run(id);
+      }
+      this.db.prepare(`DELETE FROM captures WHERE workspace_id = ? AND created_at < ?`).run(workspaceId, cutoff);
+    });
+    tx();
     return rows.map(r => r.image_path);
   }
 
@@ -78,11 +100,16 @@ export class HistoryStore {
     const row = this.db.prepare(`SELECT data_json FROM capture_annotations WHERE capture_id = ? AND workspace_id = ?`)
       .get(captureId, workspaceId) as { data_json: string } | undefined;
     if (!row) return null;
-    try { return JSON.parse(row.data_json) as AnnotationDocument; }
+    try { return deserialiseAnnotationDocument(row.data_json); }
     catch { return null; }
   }
 
   saveAnnotationDocument(workspaceId: string, captureId: string, doc: AnnotationDocument): void {
+    const normalised = normaliseAnnotationDocument(doc);
+    if (!hasMeaningfulAnnotationLayer(normalised)) {
+      this.db.prepare(`DELETE FROM capture_annotations WHERE capture_id = ? AND workspace_id = ?`).run(captureId, workspaceId);
+      return;
+    }
     this.db.prepare(
       `INSERT INTO capture_annotations (capture_id, workspace_id, data_json, updated_at)
        VALUES (?, ?, ?, ?)
@@ -90,7 +117,7 @@ export class HistoryStore {
          workspace_id = excluded.workspace_id,
          data_json = excluded.data_json,
          updated_at = excluded.updated_at`
-    ).run(captureId, workspaceId, JSON.stringify(doc), Date.now());
+    ).run(captureId, workspaceId, serialiseAnnotationDocument(normalised), Date.now());
   }
 
   createGuide(workspaceId: string, input: { title: string; type: GuideType; captureIds: string[] }): Guide {
@@ -124,8 +151,10 @@ export class HistoryStore {
 
   listGuides(workspaceId: string): GuideListItem[] {
     const rows = this.db.prepare(
-      `SELECT g.*, COUNT(s.id) AS step_count
-       FROM guides g LEFT JOIN guide_steps s ON s.guide_id = g.id
+      `SELECT g.*, COUNT(c.id) AS step_count
+       FROM guides g
+       LEFT JOIN guide_steps s ON s.guide_id = g.id
+       LEFT JOIN captures c ON c.id = s.capture_id AND c.workspace_id = g.workspace_id AND c.deleted = 0
        WHERE g.workspace_id = ?
        GROUP BY g.id
        ORDER BY g.updated_at DESC`
@@ -157,10 +186,11 @@ export class HistoryStore {
       `INSERT INTO guide_steps (id, guide_id, capture_id, step_order, title, description)
        VALUES (?, ?, ?, ?, ?, ?)`
     );
+    const validSteps = guide.steps.filter(step => this.get(workspaceId, step.captureId));
     const tx = this.db.transaction(() => {
       updateGuide.run(guide.title, guide.type, guide.summary, now, guide.id, workspaceId);
       deleteSteps.run(guide.id);
-      guide.steps.forEach((step, idx) => {
+      validSteps.forEach((step, idx) => {
         insertStep.run(step.id || randomUUID(), guide.id, step.captureId, idx + 1, step.title, step.description);
       });
     });
@@ -235,6 +265,7 @@ function toCapture(r: Record<string, unknown>): Capture {
     ocrText: (r.ocr_text as string) ?? '',
     hasPii: !!r.has_pii,
     createdAt: r.created_at as number,
+    hasAnnotations: !!r.has_annotations,
   };
 }
 
@@ -310,6 +341,6 @@ function toSyncRecord(r: Record<string, unknown>): SyncRecord {
 
 /** Turn free text into a safe FTS5 prefix query: "err log" -> "err* log*". */
 function toFtsQuery(q: string): string {
-  const terms = q.trim().replace(/["*]/g, ' ').split(/\s+/).filter(Boolean);
+  const terms = q.toLowerCase().match(/[a-z0-9_]+/g) ?? [];
   return terms.map(t => `${t}*`).join(' ');
 }

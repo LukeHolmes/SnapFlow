@@ -29,7 +29,7 @@ function snippet(text: string, query: string, window = 120): string {
   return (start > 0 ? '…' : '') + text.slice(start, end) + (end < text.length ? '…' : '');
 }
 
-export default function SearchLibrary({ initialQuery = '', refreshKey }: Props) {
+export default function SearchLibrary({ flash, initialQuery = '', refreshKey }: Props) {
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<Capture[]>([]);
   const [searching, setSearching] = useState(false);
@@ -37,16 +37,30 @@ export default function SearchLibrary({ initialQuery = '', refreshKey }: Props) 
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => { setQuery(initialQuery); }, [initialQuery]);
 
   useEffect(() => {
     if (!query.trim()) { setResults([]); setSearched(false); return; }
+    let cancelled = false;
     setSearching(true);
     const timer = setTimeout(async () => {
-      const r = await api.history.search(query);
-      setResults(r); setSearched(true); setSearching(false);
+      try {
+        const r = await api.history.search(query);
+        if (!cancelled) setResults(r);
+      } catch (err) {
+        if (!cancelled) {
+          setResults([]);
+          flash(err instanceof Error ? err.message : 'Search failed', false);
+        }
+      } finally {
+        if (!cancelled) {
+          setSearched(true);
+          setSearching(false);
+        }
+      }
     }, 300);
-    return () => clearTimeout(timer);
-  }, [query, refreshKey]);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [query, refreshKey, flash]);
 
   return (
     <div className="screen">
