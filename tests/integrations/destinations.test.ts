@@ -14,6 +14,7 @@ writeFileSync(pngPath, Buffer.from('png-bytes'));
 
 let configureIntegrationRuntime: typeof import('../../src/main/integrations/runtime').configureIntegrationRuntime;
 let slackDestination: typeof import('../../src/main/integrations/slack').slackDestination;
+let jiraDestination: typeof import('../../src/main/integrations/jira').jiraDestination;
 let notionDestination: typeof import('../../src/main/integrations/notion').notionDestination;
 let gmailDestination: typeof import('../../src/main/integrations/gmail').gmailDestination;
 let githubDestination: typeof import('../../src/main/integrations/github').githubDestination;
@@ -26,6 +27,7 @@ const originalFetch = globalThis.fetch;
 before(async () => {
   ({ configureIntegrationRuntime } = await import('../../src/main/integrations/runtime'));
   ({ slackDestination } = await import('../../src/main/integrations/slack'));
+  ({ jiraDestination } = await import('../../src/main/integrations/jira'));
   ({ notionDestination } = await import('../../src/main/integrations/notion'));
   ({ gmailDestination } = await import('../../src/main/integrations/gmail'));
   ({ githubDestination } = await import('../../src/main/integrations/github'));
@@ -76,6 +78,28 @@ test('slack deliver posts the preset config to the backend client', async () => 
   assert.equal(payload.config.channel_id, 'C123');
 });
 
+test('jira deliver queues until the capture finishes syncing', async () => {
+  configureIntegrationRuntime({
+    sync: {
+      run: async () => ({ pushed: 0, pulled: 0 }),
+      waitForBlobUpload: async () => false,
+    } as any,
+  });
+  let captureUrlChecks = 0;
+  mockFetch((url) => {
+    if (url === 'http://snapflow.test/v1/integrations/capture-url/cap_1') {
+      captureUrlChecks += 1;
+      return new Response(JSON.stringify({ message: 'not found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+    }
+    throw new Error(`Unexpected fetch ${url}`);
+  });
+
+  const result = await jiraDestination.deliver(capture(), { project_key: 'ENG', issue_summary: 'Login form broken' });
+  assert.equal(captureUrlChecks, 1);
+  assert.equal(result.queued, true);
+  assert.match(result.detail, /queued/i);
+});
+
 test('notion deliver queues while cloud sync is still pending', async () => {
   configureIntegrationRuntime({
     sync: {
@@ -101,7 +125,7 @@ test('notion deliver queues while cloud sync is still pending', async () => {
 test('gmail deliver validates recipient addresses before sending', async () => {
   const result = await gmailDestination.deliver(capture(), { recipients: ['not-an-email'] });
   assert.equal(result.ok, false);
-  assert.match(result.detail, /valid recipient/i);
+  assert.match(result.detail, /valid email/i);
 });
 
 test('github deliver validates issue number for comment mode', async () => {

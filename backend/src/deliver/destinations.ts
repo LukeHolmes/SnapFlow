@@ -176,11 +176,30 @@ const github: ServerDestination = {
   },
 };
 
+const jira: ServerDestination = {
+  id: 'jira',
+  async deliver(_accountId, payload) {
+    const issueKey = optionalString(payload.config.issue_key);
+    const projectKey = optionalString(payload.config.project_key);
+    if (!issueKey && !projectKey) throw new Error('Add an issue key or project key for Jira delivery');
+    const target = issueKey ?? projectKey;
+    const summary = optionalString(payload.config.issue_summary);
+    const description = optionalString(payload.config.issue_description);
+    const summaryNote = summary ? `; summary: ${summary}` : '';
+    const descriptionNote = description ? '; description provided' : '';
+    return {
+      ok: false,
+      detail: `Jira delivery for ${target} is not yet implemented server-side${summaryNote}${descriptionNote}`,
+    };
+  },
+};
+
 const REGISTRY: Record<string, ServerDestination> = {
   slack,
   notion,
   gmail,
   github,
+  jira,
 };
 
 export const getServerDestination = (id: string): ServerDestination | undefined => REGISTRY[id];
@@ -289,6 +308,10 @@ function wordCount(text: string): number {
 function requiredString(value: unknown, label: string): string {
   if (typeof value !== 'string' || !value.trim()) throw new Error(`${label} is required`);
   return value.trim();
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
 function escapeCell(value: string): string {

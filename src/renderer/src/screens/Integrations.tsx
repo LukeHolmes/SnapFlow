@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { MessageSquare, FileText, Mail, Clipboard, Check, ExternalLink, Github, Webhook } from 'lucide-react';
+import { MessageSquare, FileText, Mail, Clipboard, Check, ExternalLink, Github, Webhook, Layers } from 'lucide-react';
 import { api } from '../api';
 import type { IntegrationStatus } from '../../../shared/types';
 
@@ -9,6 +9,10 @@ const INTEGRATIONS = [
   {
     id: 'slack',     name: 'Slack',     Icon: MessageSquare, bg: '#4A154B',
     desc: 'Post captures directly to a Slack channel. Tokens stay encrypted server-side.',
+  },
+  {
+    id: 'jira',      name: 'Jira',      Icon: Layers,        bg: '#0052CC',
+    desc: 'Attach captures to existing issues or create new ones with context.',
   },
   {
     id: 'notion',    name: 'Notion',    Icon: FileText,      bg: '#191919',

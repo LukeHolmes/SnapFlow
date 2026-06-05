@@ -166,6 +166,7 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
       ? await integrations.getStatuses()
       : [
           { destination: 'slack', connected: false, state: 'disconnected', message: 'SnapFlow backend is not configured' },
+          { destination: 'jira', connected: false, state: 'disconnected', message: 'SnapFlow backend is not configured' },
           { destination: 'notion', connected: false, state: 'disconnected', message: 'SnapFlow backend is not configured' },
           { destination: 'gmail', connected: false, state: 'disconnected', message: 'SnapFlow backend is not configured' },
           { destination: 'github', connected: false, state: 'disconnected', message: 'SnapFlow backend is not configured' },

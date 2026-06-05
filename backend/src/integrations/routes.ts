@@ -9,7 +9,7 @@ import { withDestinationAccessToken, readDestinationToken } from '../oauth/desti
 import { oauthState } from '../oauth/state';
 import { sync } from '../sync/store';
 
-const DESTINATIONS = ['slack', 'notion', 'gmail', 'github'] as const;
+const DESTINATIONS = ['slack', 'notion', 'gmail', 'github', 'jira'] as const;
 
 export const integrationsRouter = Router();
 

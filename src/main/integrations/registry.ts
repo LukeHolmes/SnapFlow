@@ -7,11 +7,12 @@ import { notionDestination } from './notion';
 import { gmailDestination } from './gmail';
 import { githubDestination } from './github';
 import { zapierDestination } from './zapier';
+import { jiraDestination } from './jira';
 
 const registry = new Map<string, OutputDestination>();
 
 export function registerBuiltins(): void {
-  for (const d of [clipboardDestination, slackDestination, notionDestination, gmailDestination, githubDestination, zapierDestination]) {
+  for (const d of [clipboardDestination, slackDestination, notionDestination, gmailDestination, githubDestination, zapierDestination, jiraDestination]) {
     registry.set(d.id, d);
   }
 }
