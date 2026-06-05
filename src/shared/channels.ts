@@ -43,6 +43,8 @@ export const CH = {
   overlayCancel:      'overlay:cancel',    // overlay  -> main: aborted
   captureAdded:       'capture:added',     // main -> dashboard: a capture finished, refresh
   captureError:       'capture:error',      // main -> dashboard: capture failed outside direct IPC
+  integrationConnected:'integration:connected', // main -> dashboard: OAuth deep-link success
+  integrationError:   'integration:error',      // main -> dashboard: OAuth deep-link failure
   openWindowPicker:   'window:openPicker',  // main -> dashboard: open the window picker (⌘⇧5)
   syncNow:            'sync:now',
   diffCompute:        'diff:compute',    // before+after capture IDs → pixel diff result + path

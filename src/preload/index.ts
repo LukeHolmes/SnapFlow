@@ -65,6 +65,16 @@ const api = {
     ipcRenderer.on(CH.captureError, handler);
     return () => ipcRenderer.removeListener(CH.captureError, handler);
   },
+  onIntegrationConnected: (cb: (destination: DestinationId) => void): (() => void) => {
+    const handler = (_e: unknown, destination: DestinationId) => cb(destination);
+    ipcRenderer.on(CH.integrationConnected, handler);
+    return () => ipcRenderer.removeListener(CH.integrationConnected, handler);
+  },
+  onIntegrationError: (cb: (destination: DestinationId, message: string) => void): (() => void) => {
+    const handler = (_e: unknown, destination: DestinationId, message: string) => cb(destination, message);
+    ipcRenderer.on(CH.integrationError, handler);
+    return () => ipcRenderer.removeListener(CH.integrationError, handler);
+  },
 
   diff: {
     compute:    (beforeId: string, afterId: string) => ipcRenderer.invoke(CH.diffCompute,   { beforeId, afterId }),

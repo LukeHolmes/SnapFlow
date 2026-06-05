@@ -11,8 +11,58 @@ import { registerBuiltins } from './integrations/registry';
 import { configureIntegrationRuntime } from './integrations/runtime';
 import { disposeOcr } from './ocr';
 import { closePinnedCaptures } from './pin';
+import { parseDeepLinkUrl } from './deep-link';
 
 let win: BrowserWindow | null = null;
+
+// Register snapflow:// as the custom protocol for OAuth deep-link callbacks.
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('snapflow', process.execPath, [process.argv[1]]);
+  }
+} else {
+  app.setAsDefaultProtocolClient('snapflow');
+}
+
+function handleDeepLink(url: string): void {
+  const result = parseDeepLinkUrl(url);
+  if (!result) return;
+
+  if (win && !win.isDestroyed()) {
+    win.show();
+    win.focus();
+  }
+
+  if (result.kind === 'connected' && result.destination) {
+    win?.webContents.send(CH.integrationConnected, result.destination);
+  } else if (result.kind === 'error') {
+    const message = result.message || 'OAuth connection failed';
+    win?.webContents.send(CH.integrationError, result.destination ?? 'unknown', message);
+  }
+}
+
+// macOS: the app receives deep links via the 'open-url' event.
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  handleDeepLink(url);
+});
+
+// Windows/Linux single-instance lock: deep links arrive as command-line args
+// in the second-instance event.
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (_event, argv) => {
+    // The deep-link URL is the last argument on Windows/Linux.
+    const url = argv.find(arg => arg.startsWith('snapflow://'));
+    if (url) handleDeepLink(url);
+    if (win && !win.isDestroyed()) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+    }
+  });
+}
 
 function createWindow(): void {
   win = new BrowserWindow({
@@ -35,6 +85,13 @@ app.whenReady().then(() => {
   registerIpc(engine, sync);
   registerRegion(engine, () => win);
   createWindow();
+
+  // Handle deep-link URL passed via command line on first launch (Windows/Linux).
+  const deepLinkArg = process.argv.find(arg => arg.startsWith('snapflow://'));
+  if (deepLinkArg) {
+    // Delay until the window is ready to receive IPC messages.
+    win?.webContents.once('did-finish-load', () => handleDeepLink(deepLinkArg));
+  }
 
   // Cloud sync: a first pass shortly after launch, then periodically. No-op on
   // tiers without cloud sync, or when no backend is configured.

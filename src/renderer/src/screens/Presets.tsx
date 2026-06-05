@@ -84,6 +84,19 @@ export default function Presets({ flash, refreshKey }: Props) {
   useEffect(() => { load(); }, [load, refreshKey]);
 
   useEffect(() => {
+    return api.onIntegrationConnected((destination) => {
+      load();
+      flash(`${destination.charAt(0).toUpperCase() + destination.slice(1)} connected ✓`, true);
+    });
+  }, [load, flash]);
+
+  useEffect(() => {
+    return api.onIntegrationError((_destination, message) => {
+      flash(message, false);
+    });
+  }, [flash]);
+
+  useEffect(() => {
     if (statuses.slack?.connected) {
       api.integrations.slackChannels().then(setChannels).catch(() => setChannels([]));
     }
