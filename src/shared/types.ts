@@ -2,7 +2,7 @@
 
 export type Tier = 'free' | 'pro' | 'team' | 'perpetual';
 export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web';
-export type DestinationId = 'clipboard' | 'slack' | 'notion' | 'gmail' | 'github' | 'zapier';
+export type DestinationId = 'clipboard' | 'slack' | 'notion' | 'gmail' | 'github' | 'zapier' | 'jira';
 export type GuideType = 'sop' | 'bug_report' | 'training' | 'validation' | 'walkthrough';
 export type AnnotationTool = 'arrow' | 'rect' | 'ellipse' | 'highlight' | 'text' | 'redact' | 'step' | 'callout' | 'blur';
 

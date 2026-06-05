@@ -1,6 +1,6 @@
 import { config } from '../config';
 
-export type DestinationOAuthId = 'slack' | 'notion' | 'gmail' | 'github';
+export type DestinationOAuthId = 'slack' | 'notion' | 'gmail' | 'github' | 'jira';
 
 export interface StoredDestinationToken {
   accessToken: string;
@@ -18,7 +18,7 @@ export interface DestinationConnectionProfile {
 
 export interface DestinationOAuthProvider {
   destination: DestinationOAuthId;
-  providerId: 'slack' | 'notion' | 'google' | 'github';
+  providerId: 'slack' | 'notion' | 'google' | 'github' | 'jira';
   authorizeUrl: string;
   tokenUrl: string;
   clientId: string;
@@ -241,6 +241,55 @@ function providers(): Record<DestinationOAuthId, DestinationOAuthProvider> {
         return { label: login, secondary: optionalString(json.name), meta: { login } };
       },
     },
+    jira: {
+      destination: 'jira',
+      providerId: 'jira',
+      authorizeUrl: `${config.jiraAuthBase}/authorize`,
+      tokenUrl: `${config.jiraAuthBase}/oauth/token`,
+      clientId: config.jiraClientId,
+      clientSecret: config.jiraClientSecret,
+      buildAuthorizeParams(state, redirectUri) {
+        return new URLSearchParams({
+          audience: 'api.atlassian.com',
+          client_id: this.clientId,
+          scope: 'read:jira-user read:jira-work write:jira-work offline_access',
+          redirect_uri: redirectUri,
+          response_type: 'code',
+          prompt: 'consent',
+          state,
+        });
+      },
+      async exchangeCode(code, redirectUri) {
+        const json = await atlToken(this.tokenUrl, this.clientId, this.clientSecret, {
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirectUri,
+        });
+        return toStoredToken(json);
+      },
+      async refresh(token) {
+        if (!token.refreshToken) throw new Error('Jira token cannot be refreshed');
+        const json = await atlToken(this.tokenUrl, this.clientId, this.clientSecret, {
+          grant_type: 'refresh_token',
+          refresh_token: token.refreshToken,
+        });
+        return {
+          ...toStoredToken(json),
+          refreshToken: token.refreshToken,
+          meta: token.meta,
+        };
+      },
+      async describe(token) {
+        const sites = await accessibleResources(token.accessToken);
+        const site = sites[0];
+        if (!site) throw new Error('No Jira sites available for this account');
+        return {
+          label: site.name ?? 'Jira',
+          secondary: site.url ?? site.id,
+          meta: { cloudId: site.id, url: site.url },
+        };
+      },
+    },
   };
 }
 
@@ -277,6 +326,30 @@ async function getJson<T>(url: string, headers: Record<string, string>): Promise
   const json = (await res.json().catch(() => ({}))) as T & { error?: string; message?: string };
   if (!res.ok) throw new Error(String((json as { message?: string; error?: string }).message ?? (json as { error?: string }).error ?? `API request failed (${res.status})`));
   return json;
+}
+
+async function atlToken(url: string, clientId: string, clientSecret: string, body: Record<string, string>): Promise<Record<string, unknown>> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      ...body,
+      client_id: clientId,
+      client_secret: clientSecret,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) throw new Error(String(json.error_description ?? json.error ?? `Jira OAuth request failed (${res.status})`));
+  return json;
+}
+
+async function accessibleResources(accessToken: string): Promise<Array<{ id: string; name?: string; url?: string }>> {
+  return getJson(`${config.jiraApiBase}/oauth/token/accessible-resources`, {
+    authorization: `Bearer ${accessToken}`,
+    accept: 'application/json',
+  });
 }
 
 function toStoredToken(json: Record<string, unknown>): StoredDestinationToken {

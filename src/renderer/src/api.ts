@@ -13,6 +13,7 @@ let mockCaptures: Capture[] = [
 ];
 let mockPresets: Preset[] = [
   { id: 'p1', workspaceId: 'ws_local', destination: 'slack', name: 'Slack', target: '#qa-bugs', config: {}, createdAt: now },
+  { id: 'p2', workspaceId: 'ws_local', destination: 'jira', name: 'Jira', target: 'ENG', config: {}, createdAt: now },
   { id: 'p3', workspaceId: 'ws_local', destination: 'notion', name: 'Notion', target: 'Release Notes', config: {}, createdAt: now },
   { id: 'p4', workspaceId: 'ws_local', destination: 'gmail', name: 'Gmail', target: 'client@agency.com', config: {}, createdAt: now },
   { id: 'p5', workspaceId: 'ws_local', destination: 'github', name: 'GitHub', target: 'acme/snapflow', config: {}, createdAt: now },
@@ -106,6 +107,7 @@ const mock: SnapFlowApi = {
   integrations: {
     statuses: async (): Promise<IntegrationStatus[]> => ([
       { destination: 'slack', connected: true, state: 'connected', label: 'SnapFlow HQ', secondary: '#qa-bugs' },
+      { destination: 'jira', connected: true, state: 'connected', label: 'ENG', secondary: 'Project' },
       { destination: 'notion', connected: true, state: 'connected', label: 'Release Notes', secondary: 'Share pages with SnapFlow' },
       { destination: 'gmail', connected: true, state: 'connected', label: 'luke@snapflow.app', secondary: 'Gmail' },
       { destination: 'github', connected: true, state: 'connected', label: 'acme/snapflow', secondary: 'repo' },

@@ -10,6 +10,7 @@ interface Props { flash: (text: string, ok?: boolean) => void; refreshKey: numbe
 const DESTINATIONS: { id: DestinationId; label: string; sub: string }[] = [
   { id: 'clipboard', label: 'Clipboard', sub: 'Always available locally' },
   { id: 'slack', label: 'Slack', sub: 'Upload to a Slack channel' },
+  { id: 'jira', label: 'Jira', sub: 'Create or attach to Jira issues' },
   { id: 'notion', label: 'Notion', sub: 'Append to a Notion page' },
   { id: 'gmail', label: 'Gmail', sub: 'Send as an email attachment' },
   { id: 'github', label: 'GitHub Issues', sub: 'Create an issue or comment with the capture' },
@@ -26,6 +27,7 @@ export default function Presets({ flash, refreshKey }: Props) {
   const [notionPages, setNotionPages] = useState<IntegrationOption[]>([]);
   const [repos, setRepos] = useState<IntegrationOption[]>([]);
   const [slack, setSlack] = useState({ channel_id: '', channel_name: '', workspace_name: '' });
+  const [jira, setJira] = useState({ issue_key: '', project_key: '', issue_summary: '', issue_description: '' });
   const [notion, setNotion] = useState({ page_id: '', page_title: '', query: '' });
   const [gmail, setGmail] = useState({ recipients: '', account_email: '' });
   const [github, setGithub] = useState({ owner: '', repo: '', mode: 'create' as 'create' | 'comment', issue_number: '', scope: 'repo' });
@@ -38,6 +40,7 @@ export default function Presets({ flash, refreshKey }: Props) {
     setStatuses(Object.fromEntries(s.map(status => [status.destination, status])));
 
     const slackPreset = p.find(item => item.destination === 'slack');
+    const jiraPreset = p.find(item => item.destination === 'jira');
     const notionPreset = p.find(item => item.destination === 'notion');
     const gmailPreset = p.find(item => item.destination === 'gmail');
     const githubPreset = p.find(item => item.destination === 'github');
@@ -47,6 +50,12 @@ export default function Presets({ flash, refreshKey }: Props) {
       channel_id: String(slackPreset?.config.channel_id ?? ''),
       channel_name: String(slackPreset?.config.channel_name ?? ''),
       workspace_name: String(slackPreset?.config.workspace_name ?? s.find(item => item.destination === 'slack')?.label ?? ''),
+    });
+    setJira({
+      issue_key: String(jiraPreset?.config.issue_key ?? ''),
+      project_key: String(jiraPreset?.config.project_key ?? ''),
+      issue_summary: String(jiraPreset?.config.issue_summary ?? ''),
+      issue_description: String(jiraPreset?.config.issue_description ?? ''),
     });
     setNotion({
       page_id: String(notionPreset?.config.page_id ?? ''),
@@ -200,6 +209,47 @@ export default function Presets({ flash, refreshKey }: Props) {
                     <button className="btn-primary" onClick={() => {
                       if (!slack.channel_id) { flash('Select a Slack channel', false); return; }
                       savePreset('slack', 'Slack', slack.channel_name || slack.channel_id, slack);
+                    }}>Save preset</button>
+                  </div>
+                </div>
+              )}
+
+              {destination.id === 'jira' && (
+                <div className="preset-config-body">
+                  <div className="form-row">
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">Attach to existing issue</label>
+                      <input className="form-input" placeholder="ENG-123" value={jira.issue_key} onChange={e => setJira(prev => ({ ...prev, issue_key: e.target.value }))} />
+                      <p className="integration-hint">Provide an issue key to attach screenshots to an existing Jira issue.</p>
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">Create new in project</label>
+                      <input className="form-input" placeholder="ENG" value={jira.project_key} onChange={e => setJira(prev => ({ ...prev, project_key: e.target.value }))} />
+                      <p className="integration-hint">Leave blank if using an existing issue key.</p>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Issue summary</label>
+                    <input className="form-input" placeholder="Summarise the capture" value={jira.issue_summary} onChange={e => setJira(prev => ({ ...prev, issue_summary: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Description (optional)</label>
+                    <textarea className="form-input" placeholder="Context for this capture" value={jira.issue_description} onChange={e => setJira(prev => ({ ...prev, issue_description: e.target.value }))} />
+                  </div>
+                  <div className="form-actions">
+                    <button className="btn-ghost" onClick={() => connect('jira')}>Connect Jira</button>
+                    <button className="btn-primary" onClick={() => {
+                      const trimmedIssueKey = jira.issue_key.trim();
+                      const trimmedProjectKey = jira.project_key.trim();
+                      if (!trimmedIssueKey && !trimmedProjectKey) { flash('Add an issue key or project key', false); return; }
+                      if (trimmedProjectKey && !jira.issue_summary.trim()) { flash('Add an issue summary to create a new Jira issue', false); return; }
+                      const target = trimmedIssueKey || trimmedProjectKey;
+                      savePreset('jira', 'Jira', target, {
+                        issue_key: trimmedIssueKey,
+                        project_key: trimmedProjectKey,
+                        issue_summary: jira.issue_summary.trim(),
+                        issue_description: jira.issue_description.trim(),
+                      });
                     }}>Save preset</button>
                   </div>
                 </div>

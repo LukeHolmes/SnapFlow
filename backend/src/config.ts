@@ -23,6 +23,10 @@ export const config = {
   notionApiBase: process.env.NOTION_API_BASE ?? 'https://api.notion.com',
   gmailApiBase: process.env.GMAIL_API_BASE ?? 'https://gmail.googleapis.com',
   githubApiBase: process.env.GITHUB_API_BASE ?? 'https://api.github.com',
+  jiraAuthBase: process.env.JIRA_AUTH_BASE ?? 'https://auth.atlassian.com',
+  jiraApiBase: process.env.JIRA_API_BASE ?? 'https://api.atlassian.com',
+  jiraClientId: process.env.JIRA_CLIENT_ID ?? '',
+  jiraClientSecret: process.env.JIRA_CLIENT_SECRET ?? '',
   // OAuth login
   oauthRedirectBase: process.env.OAUTH_REDIRECT_BASE ?? 'http://localhost:3001',
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? process.env.OAUTH_REDIRECT_BASE ?? 'http://localhost:3001',

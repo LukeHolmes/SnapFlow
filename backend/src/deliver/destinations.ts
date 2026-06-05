@@ -176,11 +176,44 @@ const github: ServerDestination = {
   },
 };
 
+const jira: ServerDestination = {
+  id: 'jira',
+  async deliver(accountId, payload) {
+    const issueKey = optionalString(payload.config.issue_key);
+    const projectKey = optionalString(payload.config.project_key);
+    if (!issueKey && !projectKey) throw new Error('Add an issue key or project key for Jira delivery');
+
+    return withDestinationAccessToken(accountId, 'jira', async token => {
+      const site = await resolveJiraSite(token.accessToken, token.profile?.meta);
+      const apiBase = jiraApiBase(site.cloudId);
+      const captureLink = captureUrl(accountId, payload.captureId);
+      const commentText = jiraComment(payload, captureLink);
+
+      const upload = async (targetKey: string) => {
+        await uploadAttachment(apiBase, token.accessToken, targetKey, payload.filename, payload.imageBase64);
+        await addComment(apiBase, token.accessToken, targetKey, commentText);
+      };
+
+      if (issueKey) {
+        await upload(issueKey);
+        return { ok: true, detail: `Attached to ${issueKey}`, url: captureLink };
+      }
+
+      const summary = requiredString(payload.config.issue_summary, 'Jira issue summary');
+      const description = optionalString(payload.config.issue_description) ?? commentText;
+      const created = await createIssue(apiBase, token.accessToken, projectKey!, summary, description);
+      await upload(created.key);
+      return { ok: true, detail: `Created ${created.key}`, url: captureLink };
+    });
+  },
+};
+
 const REGISTRY: Record<string, ServerDestination> = {
   slack,
   notion,
   gmail,
   github,
+  jira,
 };
 
 export const getServerDestination = (id: string): ServerDestination | undefined => REGISTRY[id];
@@ -291,10 +324,113 @@ function requiredString(value: unknown, label: string): string {
   return value.trim();
 }
 
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
 function escapeCell(value: string): string {
   return value.replace(/\|/g, '\\|').replace(/\n/g, ' ');
 }
 
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function resolveJiraSite(accessToken: string, meta?: Record<string, unknown>): Promise<{ cloudId: string; url?: string }> {
+  const fromMeta = meta?.cloudId && typeof meta.cloudId === 'string' ? { cloudId: meta.cloudId, url: typeof meta.url === 'string' ? meta.url : undefined } : null;
+  if (fromMeta) return fromMeta;
+  const resources = await fetch(`${config.jiraApiBase}/oauth/token/accessible-resources`, {
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      accept: 'application/json',
+    },
+  });
+  const json = (await resources.json().catch(() => [])) as Array<{ id?: string; url?: string }>;
+  const site = json.find(item => typeof item.id === 'string');
+  if (!resources.ok || !site) throw new Error('No accessible Jira site found for this account');
+  return { cloudId: site.id!, url: site.url };
+}
+
+function jiraApiBase(cloudId: string): string {
+  return `${config.jiraApiBase}/ex/jira/${encodeURIComponent(cloudId)}`;
+}
+
+async function uploadAttachment(apiBase: string, accessToken: string, issueKey: string, filename: string, imageBase64: string): Promise<void> {
+  const bytes = Buffer.from(imageBase64, 'base64');
+  const form = new FormData();
+  form.append('file', new Blob([bytes]), `${filename}.png`);
+  const res = await fetch(`${apiBase}/rest/api/3/issue/${encodeURIComponent(issueKey)}/attachments`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'X-Atlassian-Token': 'no-check',
+    },
+    body: form,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Jira attachment failed (${res.status}) ${text}`);
+  }
+}
+
+async function addComment(apiBase: string, accessToken: string, issueKey: string, body: string): Promise<void> {
+  const res = await fetch(`${apiBase}/rest/api/3/issue/${encodeURIComponent(issueKey)}/comment`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ body: jiraDoc(body) }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Jira comment failed (${res.status}) ${text}`);
+  }
+}
+
+async function createIssue(apiBase: string, accessToken: string, projectKey: string, summary: string, description: string): Promise<{ key: string }> {
+  const res = await fetch(`${apiBase}/rest/api/3/issue`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      fields: {
+        project: { key: projectKey },
+        summary,
+        description: jiraDoc(description),
+        issuetype: { name: 'Task' },
+      },
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as { key?: string; errorMessages?: string[] };
+  if (!res.ok || !json.key) throw new Error(String(json.errorMessages?.[0] ?? `Jira issue create failed (${res.status})`));
+  return { key: json.key };
+}
+
+function jiraDoc(text: string): Record<string, unknown> {
+  return {
+    version: 1,
+    type: 'doc',
+    content: [
+      {
+        type: 'paragraph',
+        content: [{ type: 'text', text }],
+      },
+    ],
+  };
+}
+
+function jiraComment(payload: DeliverPayload, captureLink: string): string {
+  const tag = payload.metadata.tag ?? 'untagged';
+  const timestamp = new Date(payload.metadata.createdAt).toISOString();
+  return [
+    `Capture: ${payload.filename}`,
+    `Tag: ${tag}`,
+    `Timestamp: ${timestamp}`,
+    `PII redaction: ${payload.metadata.hasPii ? 'redacted' : 'clear'}`,
+    `OCR words: ${wordCount(payload.metadata.ocrText)}`,
+    `Capture link: ${captureLink}`,
+  ].join(' | ');
 }
