@@ -105,5 +105,6 @@ function providerLabel(destination: DestinationOAuthId): string {
     case 'github': return 'GitHub';
     case 'notion': return 'Notion';
     case 'slack': return 'Slack';
+    case 'jira': return 'Jira';
   }
 }
