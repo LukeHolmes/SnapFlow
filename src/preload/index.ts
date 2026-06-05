@@ -60,6 +60,11 @@ const api = {
     ipcRenderer.on(CH.captureAdded, handler);
     return () => ipcRenderer.removeListener(CH.captureAdded, handler);
   },
+  onCaptureError: (cb: (message: string) => void): (() => void) => {
+    const handler = (_e: unknown, message: string) => cb(message);
+    ipcRenderer.on(CH.captureError, handler);
+    return () => ipcRenderer.removeListener(CH.captureError, handler);
+  },
 
   diff: {
     compute:    (beforeId: string, afterId: string) => ipcRenderer.invoke(CH.diffCompute,   { beforeId, afterId }),

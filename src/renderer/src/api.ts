@@ -172,6 +172,7 @@ const mock: SnapFlowApi = {
   },
   sync: { now: async () => ({ pushed: 0, pulled: 0 }) },
   onCaptureAdded: (cb) => { addedListener = cb; return () => { addedListener = null; }; },
+  onCaptureError: () => () => {},
   onOpenWindowPicker: () => () => {},
 };
 

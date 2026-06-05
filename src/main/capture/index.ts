@@ -48,8 +48,10 @@ async function sourceImage(sourceId?: string): Promise<{ image: Electron.NativeI
   const maxW = Math.max(...displays.map(d => deviceBox(d).w));
   const maxH = Math.max(...displays.map(d => deviceBox(d).h));
   const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: maxW, height: maxH } });
-  const src = (sourceId && sources.find(s => s.id === sourceId)) || sources[0];
+  const src = sourceId ? sources.find(s => s.id === sourceId) : sources[0];
+  if (sourceId && !src) throw new Error('Capture source is no longer available. Reopen the picker and try again.');
   if (!src) throw new Error('No capture source available (check screen-recording permission)');
+  if (src.thumbnail.isEmpty()) throw new Error('Capture source returned an empty frame (check screen-recording permission)');
   return { image: src.thumbnail, name: src.name || 'Capture' };
 }
 

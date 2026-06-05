@@ -39,6 +39,10 @@ export function registerRegion(engine: Engine, mainWindowGetter: () => BrowserWi
   });
   ipcMain.on(CH.overlayConfirm, (e, rect) => {
     const s = sessions.get(e.sender.id);
+    if (!isUsableRect(rect)) {
+      emitCaptureError('Select a larger region to capture.');
+      return;
+    }
     closeAll();
     if (s) void finish(s.frame, rect);
   });
@@ -47,7 +51,8 @@ export function registerRegion(engine: Engine, mainWindowGetter: () => BrowserWi
 
 /** Public entry — called by the IPC handler and by the ⌘⇧4 global shortcut. */
 export async function startRegionCapture(): Promise<void> {
-  if (sessions.size) return;                     // already selecting
+  if (sessions.size) closeAll();                 // recover stale selectors before starting again
+  registerSelectionShortcuts();
   const main = getMainWindow();
   if (main && !main.isDestroyed() && main.isVisible()) {
     hiddenMainWindow = main;
@@ -58,16 +63,14 @@ export async function startRegionCapture(): Promise<void> {
   try {
     frames = await grabAllFrames();
   } catch (err) {
-    restoreMainWindow();
+    closeAll();
     throw err;
   }
   const displays = screen.getAllDisplays();
   if (!frames.length) {
-    restoreMainWindow();
+    closeAll();
     throw new Error('No screen source available. Check screen-recording permission and try again.');
   }
-
-  registerSelectionShortcuts();
 
   for (const frame of frames) {
     const d = displays.find(x => x.id === frame.displayId);
@@ -83,13 +86,29 @@ export async function startRegionCapture(): Promise<void> {
     win.setAlwaysOnTop(true, 'screen-saver');
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     const id = win.webContents.id;
+    let loadTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      if (sessions.has(id)) {
+        emitCaptureError('Capture overlay did not load. Please try again.');
+        closeAll();
+      }
+    }, 5000);
     sessions.set(id, { win, frame, rect: null });
-    win.on('closed', () => sessions.delete(id));
+    win.on('closed', () => {
+      if (loadTimer) clearTimeout(loadTimer);
+      loadTimer = null;
+      sessions.delete(id);
+    });
     win.webContents.once('did-finish-load', () => {
+      if (loadTimer) clearTimeout(loadTimer);
+      loadTimer = null;
       if (win.isDestroyed()) return;
       win.show();
       win.focus();
       win.webContents.focus();
+    });
+    win.webContents.once('did-fail-load', () => {
+      emitCaptureError('Capture overlay failed to load. Please try again.');
+      closeAll();
     });
     win.webContents.on('before-input-event', (event, input) => {
       if (input.key === 'Escape') {
@@ -103,8 +122,7 @@ export async function startRegionCapture(): Promise<void> {
   }
 
   if (!sessions.size) {
-    unregisterSelectionShortcuts();
-    restoreMainWindow();
+    closeAll();
     throw new Error('No matching display was available for region capture.');
   }
 }
@@ -171,8 +189,20 @@ function unregisterSelectionShortcuts(): void {
 function confirmLatestSelection(): void {
   const preferred = latestSelectionSender ? sessions.get(latestSelectionSender) : null;
   const session = preferred ?? [...sessions.values()].find(s => s.rect && s.rect.width >= 8 && s.rect.height >= 8);
-  if (!session?.rect) return;
+  if (!session || !isUsableRect(session.rect)) {
+    emitCaptureError('Select a region before confirming capture.');
+    return;
+  }
   const { frame, rect } = session;
   closeAll();
   void finish(frame, rect);
+}
+
+function emitCaptureError(message: string): void {
+  const dash = getMainWindow();
+  if (dash && !dash.isDestroyed()) dash.webContents.send(CH.captureError, message);
+}
+
+function isUsableRect(rect: SelectionRect | null | undefined): rect is SelectionRect {
+  return !!rect && rect.width >= 8 && rect.height >= 8;
 }

@@ -59,22 +59,40 @@ export default function App() {
     setQuickCapture(capture);
     flash('Capture saved & indexed');
   }), [flash]);
+  useEffect(() => api.onCaptureError((message) => {
+    flash(message || 'Capture failed', false);
+  }), [flash]);
 
   // ⌘⇧5 global shortcut → open window picker from anywhere
   const openPicker = useCallback(async () => {
     setPicker({ open: true, loading: true, sources: [] });
-    const sources = await api.capture.listSources();
-    setPicker({ open: true, loading: false, sources });
-  }, []);
+    try {
+      const sources = await api.capture.listSources();
+      setPicker({ open: true, loading: false, sources });
+    } catch (e) {
+      setPicker({ open: false, loading: false, sources: [] });
+      flash(e instanceof Error ? e.message : 'Could not load capture sources', false);
+    }
+  }, [flash]);
   useEffect(() => api.onOpenWindowPicker(openPicker), [openPicker]);
 
-  // Escape closes the picker
+  // Escape closes whichever capture modal is active.
   useEffect(() => {
-    if (!picker.open) return;
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setPicker(p => ({ ...p, open: false })); };
+    if (!picker.open && !delayOpen && !scrollOpen) return;
+    const h = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (picker.open) setPicker(p => ({ ...p, open: false }));
+      if (delayOpen) setDelayOpen(false);
+      if (scrollOpen) {
+        setScrollOpen(false);
+        setScrollPreview(null);
+        setScrollStatus('idle');
+        setScrollCountdown(3);
+      }
+    };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [picker.open]);
+  }, [picker.open, delayOpen, scrollOpen]);
 
   const startRegion = useCallback(async () => {
     try {

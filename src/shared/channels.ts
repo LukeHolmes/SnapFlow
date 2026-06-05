@@ -42,6 +42,7 @@ export const CH = {
   overlayConfirm:     'overlay:confirm',   // overlay  -> main: selection rect (CSS px)
   overlayCancel:      'overlay:cancel',    // overlay  -> main: aborted
   captureAdded:       'capture:added',     // main -> dashboard: a capture finished, refresh
+  captureError:       'capture:error',      // main -> dashboard: capture failed outside direct IPC
   openWindowPicker:   'window:openPicker',  // main -> dashboard: open the window picker (⌘⇧5)
   syncNow:            'sync:now',
   diffCompute:        'diff:compute',    // before+after capture IDs → pixel diff result + path

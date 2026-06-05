@@ -42,7 +42,15 @@ app.whenReady().then(() => {
   setInterval(() => void sync.run(), 45_000);
 
   // Global region-capture shortcut (design guide: ⌘⇧4).
-  try { globalShortcut.register('CommandOrControl+Shift+4', () => void startRegionCapture()); } catch { /* non-fatal */ }
+  try {
+    globalShortcut.register('CommandOrControl+Shift+4', () => {
+      void startRegionCapture().catch(err => {
+        win?.show();
+        win?.focus();
+        win?.webContents.send(CH.captureError, err instanceof Error ? err.message : 'Capture failed');
+      });
+    });
+  } catch { /* non-fatal */ }
   // Global window-picker shortcut (design guide: ⌘⇧5).
   try {
     globalShortcut.register('CommandOrControl+Shift+5', () => { win?.show(); win?.focus(); win?.webContents.send(CH.openWindowPicker); });
