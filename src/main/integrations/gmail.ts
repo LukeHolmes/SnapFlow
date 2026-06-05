@@ -8,8 +8,8 @@ const EMAIL_RE = /^(?:[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+)
 export interface GmailPresetConfig {
   recipients: string[];
   account_email?: string;
-  cc?: string[];
-  bcc?: string[];
+  cc: string[];
+  bcc: string[];
   subject?: string;
   body?: string;
 }

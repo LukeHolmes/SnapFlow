@@ -18,7 +18,7 @@ export interface DestinationConnectionProfile {
 
 export interface DestinationOAuthProvider {
   destination: DestinationOAuthId;
-  providerId: 'slack' | 'notion' | 'google' | 'github';
+  providerId: 'slack' | 'notion' | 'google' | 'github' | 'jira';
   authorizeUrl: string;
   tokenUrl: string;
   clientId: string;
