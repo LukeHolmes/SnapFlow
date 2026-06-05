@@ -38,6 +38,7 @@ export const CH = {
   // Region-select overlay
   regionStart:        'region:start',     // dashboard -> main: open the selector
   overlayFrame:       'overlay:frame',     // overlay  -> main: fetch the frozen frame
+  overlayUpdate:      'overlay:update',    // overlay  -> main: latest selection rect
   overlayConfirm:     'overlay:confirm',   // overlay  -> main: selection rect (CSS px)
   overlayCancel:      'overlay:cancel',    // overlay  -> main: aborted
   captureAdded:       'capture:added',     // main -> dashboard: a capture finished, refresh

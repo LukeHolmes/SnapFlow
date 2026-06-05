@@ -5,7 +5,7 @@
 // overlay's webContents id, so a confirm/cancel from any monitor is matched back
 // to the right frame. Confirming on one display closes them all.
 
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, screen } from 'electron';
 import { join } from 'node:path';
 import { CH } from '../shared/channels';
 import { grabAllFrames, cropFrame, type Frame } from './capture';
@@ -17,8 +17,10 @@ let engineRef: Engine | null = null;
 let getMainWindow: () => BrowserWindow | null = () => null;
 let hiddenMainWindow: BrowserWindow | null = null;
 
-interface Session { win: BrowserWindow; frame: Frame; }
+interface SelectionRect { x: number; y: number; width: number; height: number; }
+interface Session { win: BrowserWindow; frame: Frame; rect: SelectionRect | null; }
 const sessions = new Map<number, Session>();   // keyed by webContents.id
+let latestSelectionSender: number | null = null;
 
 export function registerRegion(engine: Engine, mainWindowGetter: () => BrowserWindow | null): void {
   engineRef = engine;
@@ -28,6 +30,12 @@ export function registerRegion(engine: Engine, mainWindowGetter: () => BrowserWi
   ipcMain.handle(CH.overlayFrame, (e) => {
     const s = sessions.get(e.sender.id);
     return s ? { dataURL: s.frame.dataURL, width: s.frame.cssWidth, height: s.frame.cssHeight } : null;
+  });
+  ipcMain.on(CH.overlayUpdate, (e, rect: SelectionRect | null) => {
+    const s = sessions.get(e.sender.id);
+    if (!s) return;
+    s.rect = rect;
+    latestSelectionSender = rect ? e.sender.id : latestSelectionSender;
   });
   ipcMain.on(CH.overlayConfirm, (e, rect) => {
     const s = sessions.get(e.sender.id);
@@ -53,17 +61,20 @@ export async function startRegionCapture(): Promise<void> {
     restoreMainWindow();
     throw err;
   }
+  const displays = screen.getAllDisplays();
   if (!frames.length) {
     restoreMainWindow();
-    return;
+    throw new Error('No screen source available. Check screen-recording permission and try again.');
   }
-  const displays = screen.getAllDisplays();
+
+  registerSelectionShortcuts();
 
   for (const frame of frames) {
     const d = displays.find(x => x.id === frame.displayId);
     if (!d) continue;
     const win = new BrowserWindow({
       x: d.bounds.x, y: d.bounds.y, width: d.bounds.width, height: d.bounds.height,
+      show: false,
       transparent: true, frame: false, resizable: false, movable: false,
       alwaysOnTop: true, skipTaskbar: true, hasShadow: false, fullscreenable: false,
       enableLargerThanScreen: true,
@@ -72,17 +83,37 @@ export async function startRegionCapture(): Promise<void> {
     win.setAlwaysOnTop(true, 'screen-saver');
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     const id = win.webContents.id;
-    sessions.set(id, { win, frame });
+    sessions.set(id, { win, frame, rect: null });
     win.on('closed', () => sessions.delete(id));
+    win.webContents.once('did-finish-load', () => {
+      if (win.isDestroyed()) return;
+      win.show();
+      win.focus();
+      win.webContents.focus();
+    });
+    win.webContents.on('before-input-event', (event, input) => {
+      if (input.key === 'Escape') {
+        event.preventDefault();
+        closeAll();
+      }
+    });
 
     if (process.env.ELECTRON_RENDERER_URL) win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/overlay.html`);
     else win.loadFile(join(__dirname, '../renderer/overlay.html'));
+  }
+
+  if (!sessions.size) {
+    unregisterSelectionShortcuts();
+    restoreMainWindow();
+    throw new Error('No matching display was available for region capture.');
   }
 }
 
 function closeAll(): void {
   for (const { win } of sessions.values()) if (!win.isDestroyed()) win.close();
   sessions.clear();
+  latestSelectionSender = null;
+  unregisterSelectionShortcuts();
   restoreMainWindow();
 }
 
@@ -113,4 +144,35 @@ function restoreMainWindow(): void {
     hiddenMainWindow.focus();
   }
   hiddenMainWindow = null;
+}
+
+function registerSelectionShortcuts(): void {
+  try {
+    if (!globalShortcut.isRegistered('Esc')) {
+      globalShortcut.register('Esc', () => closeAll());
+    }
+    if (!globalShortcut.isRegistered('Enter')) {
+      globalShortcut.register('Enter', () => confirmLatestSelection());
+    }
+  } catch {
+    // Overlay window focus still handles shortcuts where global registration is unavailable.
+  }
+}
+
+function unregisterSelectionShortcuts(): void {
+  try {
+    if (globalShortcut.isRegistered('Esc')) globalShortcut.unregister('Esc');
+    if (globalShortcut.isRegistered('Enter')) globalShortcut.unregister('Enter');
+  } catch {
+    // Non-fatal during shutdown.
+  }
+}
+
+function confirmLatestSelection(): void {
+  const preferred = latestSelectionSender ? sessions.get(latestSelectionSender) : null;
+  const session = preferred ?? [...sessions.values()].find(s => s.rect && s.rect.width >= 8 && s.rect.height >= 8);
+  if (!session?.rect) return;
+  const { frame, rect } = session;
+  closeAll();
+  void finish(frame, rect);
 }

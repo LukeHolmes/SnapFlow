@@ -6,8 +6,8 @@
     <style>
       :root { --indigo: #818CF8; --scrim: rgba(17,17,20,0.45); }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 100vw; height: 100vh; overflow: hidden; cursor: crosshair; user-select: none; background: transparent; }
-      #frame { position: absolute; inset: 0; width: 100vw; height: 100vh; display: block; }
+      html, body { width: 100vw; height: 100vh; overflow: hidden; cursor: crosshair; user-select: none; touch-action: none; background: transparent; }
+      #frame { position: absolute; inset: 0; width: 100vw; height: 100vh; display: block; pointer-events: none; -webkit-user-drag: none; }
       #scrim { position: absolute; inset: 0; background: var(--scrim); }
       .cross { position: fixed; background: rgba(129,140,248,0.7); pointer-events: none; }
       #cv { top: 0; bottom: 0; width: 1px; }
@@ -16,6 +16,12 @@
              box-shadow: 0 0 0 100vmax var(--scrim); border-radius: 2px; pointer-events: none; }
       #pill { position: fixed; font-family: 'DM Mono','SF Mono',monospace; font-size: 12px; color: #fff;
               background: #1a1a1a; border-radius: 6px; padding: 3px 8px; pointer-events: none; white-space: nowrap; }
+      #actions { position: fixed; z-index: 5; left: 50%; bottom: 28px; transform: translateX(-50%); display: none; gap: 10px;
+                 padding: 8px; border-radius: 12px; background: rgba(26,26,26,0.9); border: 0.5px solid rgba(255,255,255,0.14);
+                 box-shadow: 0 16px 50px rgba(0,0,0,0.4); font-family: -apple-system, 'Segoe UI', sans-serif; }
+      #actions button { height: 32px; border: none; border-radius: 8px; padding: 0 14px; font: inherit; font-size: 13px; cursor: pointer; }
+      #capture { background: var(--indigo); color: #fff; font-weight: 600; }
+      #cancel { background: rgba(255,255,255,0.12); color: #fff; }
       #hint { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
               background: rgba(26,26,26,0.92); border: 0.5px solid rgba(255,255,255,0.12); border-radius: 12px;
               padding: 16px 22px; color: #fff; text-align: center; box-shadow: 0 16px 50px rgba(0,0,0,0.4);
@@ -25,14 +31,18 @@
       #hint kbd { font-family: 'DM Mono', monospace; background: rgba(255,255,255,0.12); border-radius: 4px; padding: 1px 5px; }
     </style>
   </head>
-  <body>
-    <img id="frame" alt="" />
+  <body tabindex="-1">
+    <img id="frame" alt="" draggable="false" />
     <div id="scrim"></div>
     <div class="cross" id="cv"></div>
     <div class="cross" id="ch"></div>
     <div id="sel"></div>
     <div id="pill">0 × 0 px</div>
-    <div id="hint"><b>Select a region</b><small>Drag to capture · <kbd>Esc</kbd> to cancel</small></div>
+    <div id="actions">
+      <button id="capture" type="button">Capture selection</button>
+      <button id="cancel" type="button">Cancel</button>
+    </div>
+    <div id="hint"><b>Select a region</b><small>Drag, then press <kbd>Enter</kbd> or click capture · <kbd>Esc</kbd> to cancel</small></div>
     <script type="module" src="/src/overlay.ts"></script>
   </body>
 </html>

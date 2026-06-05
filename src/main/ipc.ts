@@ -205,14 +205,14 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   ipcMain.handle(CH.syncNow, () => sync.run());
 
   // ── Diff mode (v1.1) ────────────────────────────────────────────────────────
-  ipcMain.handle(CH.diffCompute, (_e, args: { beforeId: string; afterId: string }) => {
+  ipcMain.handle(CH.diffCompute, async (_e, args: { beforeId: string; afterId: string }) => {
     const before = history.get(WS, args.beforeId);
     const after  = history.get(WS, args.afterId);
     if (!before?.imagePath || !after?.imagePath) return { ok: false, error: 'Capture not found or has no image' };
     try {
       const { join } = require('node:path') as typeof import('node:path');
       const outputPath = join(diffsDir(), `diff-${Date.now()}.png`);
-      const result = computeDiff(before.imagePath, after.imagePath, outputPath);
+      const result = await computeDiff(before.imagePath, after.imagePath, outputPath);
       return { ok: true, ...result };
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : 'Diff computation failed' };

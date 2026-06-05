@@ -4,7 +4,6 @@
 // spot changes at a glance. The AI summary (separate IPC call) provides the semantic
 // analysis (what was added/removed/modified).
 import { PNG } from 'pngjs';
-import pixelmatch from 'pixelmatch';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -27,7 +26,15 @@ function crop(src: PNG, w: number, h: number): Buffer {
   return out;
 }
 
-export function computeDiff(beforePath: string, afterPath: string, outputPath: string): DiffResult {
+type Pixelmatch = typeof import('pixelmatch').default;
+let pixelmatchPromise: Promise<Pixelmatch> | null = null;
+
+function loadPixelmatch(): Promise<Pixelmatch> {
+  pixelmatchPromise ??= import('pixelmatch').then(mod => mod.default);
+  return pixelmatchPromise;
+}
+
+export async function computeDiff(beforePath: string, afterPath: string, outputPath: string): Promise<DiffResult> {
   const before = PNG.sync.read(readFileSync(beforePath));
   const after  = PNG.sync.read(readFileSync(afterPath));
 
@@ -38,6 +45,7 @@ export function computeDiff(beforePath: string, afterPath: string, outputPath: s
   const pixB = (after.width  === width && after.height  === height) ? after.data  : crop(after,  width, height);
 
   const diffData = Buffer.alloc(width * height * 4);
+  const pixelmatch = await loadPixelmatch();
 
   const changed = pixelmatch(pixA, pixB, diffData, width, height, {
     threshold: 0.1,    // tolerance — filters out sub-pixel anti-aliasing differences

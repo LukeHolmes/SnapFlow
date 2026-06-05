@@ -76,7 +76,13 @@ export default function App() {
     return () => window.removeEventListener('keydown', h);
   }, [picker.open]);
 
-  const startRegion = useCallback(() => { void api.region.start(); }, []);
+  const startRegion = useCallback(async () => {
+    try {
+      await api.region.start();
+    } catch (e) {
+      flash(e instanceof Error ? e.message : 'Could not start screen capture', false);
+    }
+  }, [flash]);
 
   const rememberCapture = (capture: Capture) => {
     setQuickCapture(capture);

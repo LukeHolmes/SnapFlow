@@ -42,25 +42,25 @@ function splitPng(file: string): string {
   return path;
 }
 
-test('identical images → 0 changed pixels', () => {
+test('identical images → 0 changed pixels', async () => {
   const img = solidPng(200, 200, 200, 'grey.png');
   const out = join(dir, 'same-diff.png');
-  const res = computeDiff(img, img, out);
+  const res = await computeDiff(img, img, out);
   assert.equal(res.changedPixels, 0);
   assert.equal(res.changePercent, 0);
   assert.equal(res.width, W);
   assert.equal(res.height, H);
 });
 
-test('fully different images → many changed pixels', () => {
+test('fully different images → many changed pixels', async () => {
   const red   = solidPng(255, 0, 0, 'red.png');
   const blue  = solidPng(0, 0, 255, 'blue.png');
   const out   = join(dir, 'rb-diff.png');
-  const res   = computeDiff(red, blue, out);
+  const res   = await computeDiff(red, blue, out);
   assert.ok(res.changedPixels > W * H * 0.9, `Expected > 90% of pixels changed, got ${res.changePercent}%`);
 });
 
-test('partial change — right half of image changed', () => {
+test('partial change — right half of image changed', async () => {
   // Left half: same grey in both. Right half: grey vs white → should detect right half as changed.
   const mkHalf = (leftR: number, rightR: number, file: string) => {
     const png = new PNG({ width: W, height: H });
@@ -75,12 +75,12 @@ test('partial change — right half of image changed', () => {
   };
   const a = mkHalf(128, 128, 'half-a.png'); // all grey
   const b = mkHalf(128, 255, 'half-b.png'); // left grey, right white
-  const res = computeDiff(a, b, join(dir, 'partial-diff.png'));
+  const res = await computeDiff(a, b, join(dir, 'partial-diff.png'));
   assert.ok(res.changedPixels > 0, 'should detect some changed pixels');
   assert.ok(res.changePercent < 80, `right-half change should be < 80%, got ${res.changePercent}%`);
 });
 
-test('different-sized images → crops to intersection without throwing', () => {
+test('different-sized images → crops to intersection without throwing', async () => {
   // 64×64 vs 32×32 — crops to 32×32
   const big   = solidPng(255, 0, 0, 'big.png');
   const small = join(dir, 'small.png');
@@ -88,15 +88,15 @@ test('different-sized images → crops to intersection without throwing', () => 
   for (let i = 0; i < 32 * 32; i++) { smallPng.data[i*4]=0; smallPng.data[i*4+1]=255; smallPng.data[i*4+2]=0; smallPng.data[i*4+3]=255; }
   writeFileSync(small, PNG.sync.write(smallPng));
   const out = join(dir, 'size-diff.png');
-  const res = computeDiff(big, small, out);
+  const res = await computeDiff(big, small, out);
   assert.equal(res.width, 32);
   assert.equal(res.height, 32);
   assert.ok(res.changedPixels > 0);
 });
 
-test('changePercent is correctly bounded 0–100', () => {
+test('changePercent is correctly bounded 0–100', async () => {
   const a = solidPng(100, 100, 100, 'aa.png');
   const b = solidPng(200, 200, 200, 'bb.png');
-  const res = computeDiff(a, b, join(dir, 'bound-diff.png'));
+  const res = await computeDiff(a, b, join(dir, 'bound-diff.png'));
   assert.ok(res.changePercent >= 0 && res.changePercent <= 100);
 });

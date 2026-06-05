@@ -7,6 +7,7 @@ export type Rect = { x: number; y: number; width: number; height: number };
 
 const overlay = {
   getFrame: (): Promise<OverlayFrame | null> => ipcRenderer.invoke(CH.overlayFrame),
+  update: (rect: Rect | null): void => ipcRenderer.send(CH.overlayUpdate, rect),
   confirm: (rect: Rect): void => ipcRenderer.send(CH.overlayConfirm, rect),
   cancel: (): void => ipcRenderer.send(CH.overlayCancel),
 };

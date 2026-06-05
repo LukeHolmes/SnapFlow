@@ -102,6 +102,7 @@ export async function grabDisplayFrame(display: Electron.Display): Promise<Frame
   const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: w, height: h } });
   const src = sources.find(s => s.display_id === String(display.id)) ?? sources[0];
   if (!src) throw new Error('No screen source available (check screen-recording permission)');
+  if (src.thumbnail.isEmpty()) throw new Error('Screen source returned an empty frame (check screen-recording permission)');
   return { image: src.thumbnail, dataURL: src.thumbnail.toDataURL(), cssWidth: display.size.width, cssHeight: display.size.height, scaleFactor: sf, displayId: display.id };
 }
 
