@@ -1,5 +1,7 @@
 # SnapFlow
 
+[![CI](https://github.com/LukeHolmes/SnapFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/LukeHolmes/SnapFlow/actions/workflows/ci.yml)
+
 **Capture → Context → Deliver.** A local-first, cross-platform screen-capture utility.
 This repository is a real, runnable Electron desktop app plus a thin Node backend.
 The codebase is on the **v0.6.1 unreleased** track (`package.json` and `CHANGELOG.md`
@@ -19,13 +21,16 @@ Legend: **Done** ships in `main` and is usable locally with default/dev setup.
 |---|---|---|
 | Region capture (freeze-frame overlay, ⌘⇧4) | **Done** | `src/main/region.ts`, multi-display overlays |
 | Window / screen picker (⌘⇧5) | **Done** | `desktopCapturer` thumbnails in the dashboard modal |
-| Scrolling capture | **Partial** | Guided scroll-stitch MVP: sample frames while the user scrolls, vertical stitch with overlap de-dupe (`src/main/capture/index.ts`, ⌘⇧6 UI). No native auto-scroll or sidecar yet. |
+| Scrolling capture | **Partial** | Guided scroll-stitch MVP: sample frames while the user scrolls, vertical stitch with overlap de-dupe (`src/main/capture/stitch.ts`, ⌘⇧6 UI). Preview before save; hides the dashboard during sampling. No native auto-scroll or sidecar yet. |
+| Pinned captures | **Done** | Always-on-top floating reference window from post-capture quick actions or History (`src/main/pin.ts`). |
+| Guide builder | **Done** | Walkthrough / SOP / training guides from ordered captures, Markdown export (`src/renderer/src/screens/Guides.tsx`). |
+| Post-capture quick actions | **Done** | Copy, annotate, pin, OCR, redacted copy, and send preset from the bottom bar after each capture (`App.tsx`). |
 | OCR + FTS5 history search | **Done** | Tesseract via `tesseract.js` (WASM); SQLite FTS5 in `src/main/history/` |
 | Auto-tagging | **Done** | Metered `/v1/ai/tag` when configured; local heuristic fallback |
 | Output presets (clipboard, Slack, Jira, Notion, Gmail, GitHub, Zapier) | **Done** (config required) | Desktop plugins call `POST /v1/deliver`; server handlers in `backend/src/deliver/destinations.ts`. OAuth connect/disconnect, vault storage, refresh, and `snapflow://` callbacks are wired. You still need provider apps + `backend/.env` (see `docs/DESTINATION_SETUP.md`). Clipboard stays fully local. |
 | PII handling | **Partial** | On-device detect for email, phone, names (dictionary/heuristic), Luhn cards, IBAN, and IPv4; OCR word boxes drive a toggleable redact modal before pixel blur. Pipeline flags hits but does **not** auto-burn pixels on capture. |
 | Delay timer (2s / 5s) | **Done** | Full-screen delayed capture from the dashboard |
-| Colour picker | **Partial** | Annotation stroke colour via `<input type="color">` in the editor (`AnnotationEditor.tsx`). No screen eyedropper / system colour sampler. |
+| Colour picker (⌘⇧7) | **Done** | Screen eyedropper with magnified loupe, HEX/RGB/HSL clipboard formats, recent-colour history (`src/main/colour-picker.ts`). Annotation editor still has a local stroke colour input. |
 
 Core architecture rules still hold: capture/OCR/history never import concrete integrations;
 integrations only implement `deliver(capture, config)`; AI is tier-gated and proxy-metered.

@@ -1,7 +1,7 @@
 // Typed access to the preload bridge. Falls back to an in-memory mock when opened
 // in a plain browser (vite without Electron) so the UI still renders for design work.
 import type { SnapFlowApi } from '../../preload';
-import type { AnnotationDocument, Capture, Preset, ActivityEvent, Stats, Entitlements, CaptureSource, DeliverResult, ScrollCapturePreview, Guide, GuideExportResult, GuideListItem, GuideType, IntegrationStatus } from '../../shared/types';
+import type { AnnotationDocument, Capture, Preset, ActivityEvent, Stats, Entitlements, CaptureSource, DeliverResult, ScrollCapturePreview, Guide, GuideExportResult, GuideListItem, GuideType, IntegrationStatus, ColorFormat, PickedColor } from '../../shared/types';
 
 declare global { interface Window { snapflow?: SnapFlowApi } }
 
@@ -85,6 +85,12 @@ const mock: SnapFlowApi = {
   },
   region: {
     start: async () => { const c = mockNewCapture(); setTimeout(() => addedListener?.(c), 350); return { started: true }; },
+  },
+  colour: {
+    start: async () => ({ started: true }),
+    recent: async (): Promise<PickedColor[]> => [],
+    getFormat: async (): Promise<ColorFormat> => 'hex',
+    setFormat: async (format: ColorFormat) => format,
   },
   history: {
     list: async (limit = 50) => mockCaptures.slice(0, limit),
@@ -182,6 +188,7 @@ const mock: SnapFlowApi = {
   onCaptureAdded: (cb) => { addedListener = cb; return () => { addedListener = null; }; },
   onCaptureError: () => () => {},
   onOpenWindowPicker: () => () => {},
+  onColourPicked: () => () => {},
   onIntegrationConnected: () => () => {},
   onIntegrationError: () => () => {},
 };

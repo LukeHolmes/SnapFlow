@@ -105,6 +105,19 @@ export default function App() {
     }
   }, [flash]);
 
+  const startColour = useCallback(async () => {
+    try {
+      await api.colour.start();
+    } catch (e) {
+      flash(e instanceof Error ? e.message : 'Could not start colour picker', false);
+    }
+  }, [flash]);
+
+  useEffect(() => api.onColourPicked((payload) => {
+    setRefreshKey(k => k + 1);
+    flash(`Copied ${payload.formatted}`);
+  }), [flash]);
+
   const rememberCapture = (capture: Capture) => {
     setQuickCapture(capture);
     setRefreshKey(k => k + 1);
@@ -263,7 +276,7 @@ export default function App() {
 
   const renderScreen = () => {
     switch (active) {
-      case 'Dashboard':      return <Dashboard {...screenProps} setActive={setActive} startRegion={startRegion} openPicker={openPicker} startScroll={openScrollCapture} startDelay={() => setDelayOpen(true)} />;
+      case 'Dashboard':      return <Dashboard {...screenProps} setActive={setActive} startRegion={startRegion} openPicker={openPicker} startScroll={openScrollCapture} startDelay={() => setDelayOpen(true)} startColour={startColour} />;
       case 'History':        return <HistoryScreen {...screenProps} onAnnotate={setEditorCapture} />;
       case 'Search Library': return <SearchLibrary {...screenProps} initialQuery={active === 'Search Library' ? topbarQuery : ''} />;
       case 'Output Presets': return <Presets {...screenProps} />;
@@ -272,7 +285,7 @@ export default function App() {
       case 'Integrations':   return <Integrations flash={flash} setActive={setActive} />;
       case 'Diff Mode':      return <Diff flash={flash} refreshKey={refreshKey} />;
       case 'Guides':         return <Guides {...screenProps} />;
-      default:               return <Dashboard {...screenProps} setActive={setActive} startRegion={startRegion} openPicker={openPicker} startScroll={openScrollCapture} startDelay={() => setDelayOpen(true)} />;
+      default:               return <Dashboard {...screenProps} setActive={setActive} startRegion={startRegion} openPicker={openPicker} startScroll={openScrollCapture} startDelay={() => setDelayOpen(true)} startColour={startColour} />;
     }
   };
 

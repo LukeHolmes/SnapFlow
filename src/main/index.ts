@@ -6,6 +6,8 @@ import { dbPath } from './paths';
 import { createEngine } from './engine';
 import { registerIpc } from './ipc';
 import { registerRegion, startRegionCapture } from './region';
+import { registerColourPicker, startColourPicker } from './colour-picker';
+import { installTray, disposeTray } from './tray';
 import { createSyncAgent } from './sync/agent';
 import { registerBuiltins } from './integrations/registry';
 import { configureIntegrationRuntime } from './integrations/runtime';
@@ -79,7 +81,9 @@ app.whenReady().then(() => {
   configureIntegrationRuntime({ sync });
   registerIpc(engine, sync);
   registerRegion(engine, () => win);
+  registerColourPicker(engine, () => win);
   createWindow();
+  installTray(() => win);
 
   const deepLinkArg = process.argv.find(arg => arg.startsWith('snapflow://'));
   if (deepLinkArg) {
@@ -105,6 +109,16 @@ app.whenReady().then(() => {
   try {
     globalShortcut.register('CommandOrControl+Shift+5', () => { win?.show(); win?.focus(); win?.webContents.send(CH.openWindowPicker); });
   } catch { /* non-fatal */ }
+  // Global colour picker (design guide: ⌘⇧7).
+  try {
+    globalShortcut.register('CommandOrControl+Shift+7', () => {
+      void startColourPicker().catch(err => {
+        win?.show();
+        win?.focus();
+        win?.webContents.send(CH.captureError, err instanceof Error ? err.message : 'Colour picker failed');
+      });
+    });
+  } catch { /* non-fatal */ }
 
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
@@ -115,5 +129,6 @@ app.on('window-all-closed', async () => {
 });
 app.on('will-quit', () => {
   closePinnedCaptures();
+  disposeTray();
   globalShortcut.unregisterAll();
 });

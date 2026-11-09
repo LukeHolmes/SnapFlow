@@ -33,7 +33,7 @@ Main process (Node)           Renderer process (React)
 ## Data flow: Capture → Context → Deliver
 
 ```
-[trigger: button / ⌘⇧4 / ⌘⇧5 / ⌘⇧6 / delay]
+[trigger: button / ⌘⇧4 / ⌘⇧5 / ⌘⇧6 / ⌘⇧7 / delay]
        ↓
   capture path (region / source / scroll-stitch / delayed full-screen)
        ↓
@@ -75,6 +75,7 @@ src/
     engine.ts      Shared context
     pipeline.ts    Contextualise stage
     region.ts      Freeze-frame overlay controller
+    colour-picker.ts  Screen eyedropper overlay (local clipboard + colour history)
     ipc.ts         IPC channel registration
     index.ts       App bootstrap
   preload/
@@ -89,11 +90,20 @@ tests/             Headless unit tests (no Electron dependency)
 docs/              Architecture notes
 ```
 
+## Screen colour picker (v1.0)
+
+⌘⇧7 (dashboard **Colour**, tray **Pick colour**) freezes one frame per display (same
+`grabAllFrames` path as region capture), opens a transparent overlay per monitor, and
+samples pixels from the frozen bitmap in device pixels (HiDPI via `scaleFactor`). Click
+copies the formatted value to the clipboard; picks are stored in local `picked_colors`
+(no cloud sync). H/R/L switch format while picking; the dashboard **Copy as** control
+persists the default format in `app_prefs`.
+
 ## Guided scrolling capture (MVP)
 
 ⌘⇧6 (and the dashboard **Scroll** card) runs a **guided** capture: the app samples the same
 `desktopCapturer` source several times while the user scrolls, then stitches frames vertically
-with simple overlap de-dupe (`src/main/capture/index.ts`). A native/browser sidecar can replace
+with simple overlap de-dupe (`src/main/capture/stitch.ts`). A native/browser sidecar can replace
 this implementation later without changing IPC (`capture:scroll`, `capture:scrollPreview`).
 
 ## Server-side delivery

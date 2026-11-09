@@ -5,6 +5,10 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 ## [0.6.1] — Unreleased — Project health
 ### Added
 - **PII name detection** — on-device dictionary/heuristic name matching alongside email/phone; optional card (Luhn), IBAN, and IPv4 checks; OCR bounding boxes with a toggleable redact review modal before saving a blurred copy.
+- **Screen colour picker (v1.0 MVP)** — ⌘⇧7 / dashboard **Colour** / tray menu: multi-display overlay, magnified loupe, click-to-copy (HEX default, RGB/HSL via picker keys or dashboard setting), local recent-colour history in SQLite, Esc to cancel.
+- **Snipping suite (consolidated)** — Documents and tests for features that landed via PR #6/#7: guided scroll-stitch preview (⌘⇧6), pinned captures, guide builder, and post-capture quick actions (copy / annotate / pin / OCR / redact / send). Scroll overlap logic extracted to `src/main/capture/stitch.ts` with headless unit tests.
+- Callout annotations default to a readable white fill (92% opacity) unless the user sets transparency.
+- **CI** — GitHub Actions workflow (`.github/workflows/ci.yml`): desktop + backend typecheck and tests.
 - **Destination integrations (v1.0)** — OAuth connect/disconnect for Slack, Jira, Notion, Gmail, and GitHub; `snapflow://` deep-link callbacks in the desktop app; clearer delivery/auth error messages; `docs/DESTINATION_SETUP.md` and expanded `backend/.env.example`.
 - README **v1.0 MVP status** table (done / partial / not started) aligned with the code on `main`.
 - Shared TypeScript contract file (`src/shared/types.ts`) restored so IPC, stores, tests,
@@ -18,8 +22,8 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 - Native `better-sqlite3` rebuild workflow is explicit:
   `npm test` rebuilds for Node, while `npm run dev`/`preview`/`dist` rebuild for Electron.
 - README, `AGENTS.md`, and `docs/CONTRIBUTING.md` now describe the real branching model
-  (`main` + feature PRs), guided scroll-capture MVP, server-side destinations, **85** unit
-  tests (45 desktop + 40 backend), and honest integration gaps (OAuth/vault wiring).
+  (`main` + feature PRs), guided scroll-capture MVP, server-side destinations, **115** unit
+  tests (70 desktop + 45 backend), and honest integration gaps (OAuth/vault wiring).
 
 ## [0.6.0] — Unreleased — Production-grade backend
 ### Added
