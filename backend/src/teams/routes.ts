@@ -98,6 +98,8 @@ teamsRouter.post('/v1/teams/invites/accept', requireAuth, asyncHandler(async (re
 
 teamsRouter.delete('/v1/teams/:teamId/members/me', requireAuth, asyncHandler(async (req, res) => {
   const teamId = req.params.teamId;
+  const membership = await teams.getMembership(teamId, req.account!.id);
+  if (!membership) throw new AppError(403, 'forbidden', 'Not a member of this team');
   try {
     await teams.leave(teamId, req.account!.id);
     res.json({ ok: true });

@@ -10,6 +10,23 @@ It is built directly to the project's *Technical Architecture* and *Developer In
 
 ---
 
+## v1.1.0 status (code-checked)
+
+| Capability | Free | Pro | Team | Perpetual |
+|------------|------|-----|------|-----------|
+| Focus Blur regions | 1 | Unlimited | Unlimited | Unlimited |
+| Focus Blur preset automation | — | ✓ | ✓ | ✓ |
+| Diff advanced (sensitivity + regions) | — | ✓ | ✓ | ✓ |
+| Screen recording max length | 5 min | 60 min | 120 min | 60 min |
+| Recording mic / system audio / GIF | — | ✓ | ✓ | ✓ |
+| Cloud sync | — | ✓ | ✓ | — |
+| Team shared library + member capture URLs | — | — | ✓ | — |
+| AI auto-tag (metered) | — | ✓ | ✓ | ✓ |
+
+Canonical matrix: `shared/entitlements-matrix.ts` (enforced by unit tests). On-device sign-off: `docs/RELEASE_CHECKLIST_1.1.md`.
+
+---
+
 ## v1.0 MVP status (honest, code-checked)
 
 Legend: **Done** ships in `main` and is usable locally with default/dev setup.

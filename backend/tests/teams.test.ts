@@ -170,3 +170,53 @@ test('team library signed URL: member allowed, outsider 403', async () => {
 
   assert.ok(buildTeamLibraryCaptureUrl(teamId, owner.accountId, captureId));
 });
+
+test('removed member cannot list library or fetch shared capture', async () => {
+  const owner = await bearer('rm-owner@team.test', 'team');
+  const teamRes = await request(app).post('/v1/teams').set('Authorization', `Bearer ${owner.token}`).send({ name: 'Remove' });
+  const teamId = teamRes.body.team.id as string;
+  const captureId = 'cap_after_remove';
+  const ownerId = (await accounts.getOrCreate('rm-owner@team.test', 'team')).id;
+
+  const member = await bearer('rm-member@team.test', 'pro');
+  const inv = await teams.createInvite(teamId, 'rm-member@team.test', 'member', ownerId);
+  await teams.acceptInvite(inv.token, member.accountId);
+
+  await sync.putBlob(owner.accountId, captureId, Buffer.from('png-after-remove').toString('base64'));
+  await request(app)
+    .post(`/v1/teams/${teamId}/library`)
+    .set('Authorization', `Bearer ${owner.token}`)
+    .send({ captureId, filename: 'f', ocrText: '', hasPii: false });
+
+  const memberList = await request(app)
+    .get(`/v1/teams/${teamId}/library`)
+    .set('Authorization', `Bearer ${member.token}`);
+  assert.equal(memberList.status, 200);
+
+  await request(app)
+    .delete(`/v1/teams/${teamId}/members/${member.accountId}`)
+    .set('Authorization', `Bearer ${owner.token}`);
+
+  const deniedList = await request(app)
+    .get(`/v1/teams/${teamId}/library`)
+    .set('Authorization', `Bearer ${member.token}`);
+  assert.equal(deniedList.status, 403);
+
+  const mint = await request(app)
+    .get(`/v1/teams/${teamId}/library/${captureId}/signed-url`)
+    .set('Authorization', `Bearer ${owner.token}`);
+  const url = new URL(mint.body.url);
+  const deniedFetch = await request(app)
+    .get(url.pathname + url.search)
+    .set('Authorization', `Bearer ${member.token}`);
+  assert.equal(deniedFetch.status, 403);
+});
+
+test('non-member cannot list team library', async () => {
+  const owner = await bearer('stranger-owner@team.test', 'team');
+  const teamRes = await request(app).post('/v1/teams').set('Authorization', `Bearer ${owner.token}`).send({ name: 'Strangers' });
+  const teamId = teamRes.body.team.id as string;
+  const stranger = await bearer('stranger-outsider@team.test', 'pro');
+  const res = await request(app).get(`/v1/teams/${teamId}/library`).set('Authorization', `Bearer ${stranger.token}`);
+  assert.equal(res.status, 403);
+});
