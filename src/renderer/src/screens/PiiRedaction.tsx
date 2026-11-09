@@ -41,8 +41,8 @@ export default function PiiRedaction({ refreshKey }: Props) {
         <Shield size={16} color="#4338CA" strokeWidth={1.9} style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
           <strong>Automatic, local-only protection.</strong>{' '}
-          SnapFlow scans every capture for email addresses and phone numbers before it is saved or shared.
-          Detected regions are blurred on-device — no raw capture data is sent externally during this step.
+          SnapFlow scans every capture for emails, phones, names, payment identifiers, and IP addresses before it is saved or shared.
+          Use <strong>Redact</strong> on a capture to review detections with toggles; chosen regions are blurred on-device — nothing is sent to the cloud for PII scanning.
         </div>
       </div>
 

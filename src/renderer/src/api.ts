@@ -60,7 +60,14 @@ const mock: SnapFlowApi = {
       c.filename = `${c.filename} annotated`;
       return c;
     },
-    saveRedacted: async (_id: string): Promise<Capture> => {
+    piiScan: async (_id: string) => ({
+      imageDataUrl: '',
+      detections: [
+        { id: 'mock-email', type: 'email' as const, value: 'demo@snapflow.app', bbox: { x0: 10, y0: 20, x1: 120, y1: 40 } },
+        { id: 'mock-name', type: 'name' as const, value: 'Luke Holmes', bbox: { x0: 10, y0: 60, x1: 140, y1: 80 } },
+      ],
+    }),
+    saveRedacted: async (_id: string, _selectedIds?: string[]): Promise<Capture> => {
       const c = mockNewCapture();
       c.filename = `${c.filename} redacted`;
       c.hasPii = false;

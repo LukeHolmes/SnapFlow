@@ -28,7 +28,7 @@ Legend: **Done** ships in `main` and is usable locally with default/dev setup.
 | OCR + FTS5 history search | **Done** | Tesseract via `tesseract.js` (WASM); SQLite FTS5 in `src/main/history/` |
 | Auto-tagging | **Done** | Metered `/v1/ai/tag` when configured; local heuristic fallback |
 | Output presets (clipboard, Slack, Jira, Notion, Gmail, GitHub, Zapier) | **Done** (config required) | Desktop plugins call `POST /v1/deliver`; server handlers in `backend/src/deliver/destinations.ts`. OAuth connect/disconnect, vault storage, refresh, and `snapflow://` callbacks are wired. You still need provider apps + `backend/.env` (see `docs/DESTINATION_SETUP.md`). Clipboard stays fully local. |
-| PII handling | **Partial** | On-device regex detect (email/phone) flags captures and feeds events; manual redacted copy + annotation redact/blur tools. Pipeline does **not** auto-burn pixels on detect. |
+| PII handling | **Partial** | On-device detect for email, phone, names (dictionary/heuristic), Luhn cards, IBAN, and IPv4; OCR word boxes drive a toggleable redact modal before pixel blur. Pipeline flags hits but does **not** auto-burn pixels on capture. |
 | Delay timer (2s / 5s) | **Done** | Full-screen delayed capture from the dashboard |
 | Colour picker (⌘⇧7) | **Done** | Screen eyedropper with magnified loupe, HEX/RGB/HSL clipboard formats, recent-colour history (`src/main/colour-picker.ts`). Annotation editor still has a local stroke colour input. |
 
@@ -43,7 +43,7 @@ integrations only implement `deliver(capture, config)`; AI is tier-gated and pro
 |---|---|
 | **Electron app shell** (main / preload / renderer, typed IPC) | ✅ working |
 | **Screen capture** via `desktopCapturer`, saved to disk | ✅ working |
-| **Local PII detection** (email + phone) | ✅ working & unit-tested |
+| **Local PII detection** (email, phone, names, card/IBAN/IP) | ✅ working & unit-tested |
 | **Backend** — auth, entitlements, metered AI proxy, OAuth vault, billing, sync | ✅ working (`backend/`) |
 | **Cloud sync** — metadata-first, LWW, tombstones, lazy blobs (Pro/Team) | ✅ working |
 | **Diff mode** — pixel diff + AI summary path | ✅ working & unit-tested |

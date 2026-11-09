@@ -6,6 +6,19 @@ export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web';
 export type DestinationId = 'clipboard' | 'slack' | 'notion' | 'gmail' | 'github' | 'zapier' | 'jira';
 export type GuideType = 'sop' | 'bug_report' | 'training' | 'validation' | 'walkthrough';
 export type AnnotationTool = 'arrow' | 'rect' | 'ellipse' | 'highlight' | 'text' | 'redact' | 'step' | 'callout' | 'blur';
+export type PiiType = 'email' | 'phone' | 'name' | 'credit_card' | 'iban' | 'ip';
+
+export interface PiiDetection {
+  id: string;
+  type: PiiType;
+  value: string;
+  bbox: { x0: number; y0: number; x1: number; y1: number };
+}
+
+export interface PiiScanResult {
+  imageDataUrl: string;
+  detections: PiiDetection[];
+}
 
 export interface AnnotationPoint {
   x: number;

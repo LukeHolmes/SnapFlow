@@ -47,7 +47,7 @@ Main process (Node)           Renderer process (React)
        ↓
   runOcr()                    ← Tesseract, background thread
        ↓
-  detectPii()                 ← local regex (email / phone)
+  detectPii()                 ← local regex + name dictionaries (email / phone / names / card / IBAN / IP)
        ↓
   AI proxy tag or heuristicTag() ← backend when configured; offline fallback otherwise
        ↓
