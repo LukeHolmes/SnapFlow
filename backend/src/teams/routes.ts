@@ -11,6 +11,7 @@ import { sync } from '../sync/store';
 import { buildTeamLibraryCaptureUrl, verifyTeamLibrarySignature } from '../storage/team-signed-url';
 import { defaultCaptureExpiry } from '../storage/signed-url';
 import { config } from '../config';
+import { routeParam } from '../params';
 
 export const teamsRouter = Router();
 
@@ -54,7 +55,7 @@ teamsRouter.get('/v1/teams/me', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 teamsRouter.patch('/v1/teams/:teamId', requireAuth, asyncHandler(async (req, res) => {
-  const teamId = req.params.teamId;
+  const teamId = routeParam(req.params.teamId);
   await requireTeamMember(req, teamId, ['owner', 'admin']);
   const name = String(req.body?.name ?? '');
   if (!name.trim()) throw new AppError(400, 'bad_request', 'name is required');
@@ -63,7 +64,7 @@ teamsRouter.patch('/v1/teams/:teamId', requireAuth, asyncHandler(async (req, res
 }));
 
 teamsRouter.post('/v1/teams/:teamId/invites', requireAuth, asyncHandler(async (req, res) => {
-  const teamId = req.params.teamId;
+  const teamId = routeParam(req.params.teamId);
   await requireTeamMember(req, teamId, ['owner', 'admin']);
   const email = String(req.body?.email ?? '').trim().toLowerCase();
   const role = (String(req.body?.role ?? 'member') as TeamRole);
@@ -100,7 +101,7 @@ teamsRouter.post('/v1/teams/invites/accept', requireAuth, asyncHandler(async (re
 }));
 
 teamsRouter.delete('/v1/teams/:teamId/members/me', requireAuth, asyncHandler(async (req, res) => {
-  const teamId = req.params.teamId;
+  const teamId = routeParam(req.params.teamId);
   const membership = await teams.getMembership(teamId, req.account!.id);
   if (!membership) throw new AppError(403, 'forbidden', 'Not a member of this team');
   try {
@@ -115,9 +116,9 @@ teamsRouter.delete('/v1/teams/:teamId/members/me', requireAuth, asyncHandler(asy
 }));
 
 teamsRouter.delete('/v1/teams/:teamId/members/:accountId', requireAuth, asyncHandler(async (req, res) => {
-  const teamId = req.params.teamId;
+  const teamId = routeParam(req.params.teamId);
   await requireTeamMember(req, teamId, ['owner', 'admin']);
-  const targetId = req.params.accountId;
+  const targetId = routeParam(req.params.accountId);
   if (targetId === req.account!.id) throw new AppError(400, 'bad_request', 'Use leave endpoint for yourself');
   try {
     await teams.removeMember(teamId, targetId);
@@ -131,14 +132,14 @@ teamsRouter.delete('/v1/teams/:teamId/members/:accountId', requireAuth, asyncHan
 }));
 
 teamsRouter.get('/v1/teams/:teamId/library', requireAuth, asyncHandler(async (req, res) => {
-  const teamId = req.params.teamId;
+  const teamId = routeParam(req.params.teamId);
   await requireTeamMember(req, teamId);
   await requireTeamTier(req);
   res.json({ items: await teams.listLibrary(teamId) });
 }));
 
 teamsRouter.post('/v1/teams/:teamId/library', requireAuth, asyncHandler(async (req, res) => {
-  const teamId = req.params.teamId;
+  const teamId = routeParam(req.params.teamId);
   await requireTeamMember(req, teamId);
   await requireTeamTier(req);
   const tier = await effectiveTierForAccount(req.account!.id);
@@ -171,8 +172,8 @@ teamsRouter.post('/v1/teams/:teamId/library', requireAuth, asyncHandler(async (r
 }));
 
 teamsRouter.get('/v1/teams/:teamId/library/:captureId/signed-url', requireAuth, asyncHandler(async (req, res) => {
-  const teamId = req.params.teamId;
-  const captureId = req.params.captureId;
+  const teamId = routeParam(req.params.teamId);
+  const captureId = routeParam(req.params.captureId);
   await requireTeamMember(req, teamId);
   await requireTeamTier(req);
 
@@ -189,9 +190,9 @@ teamsRouter.get('/v1/teams/:teamId/library/:captureId/signed-url', requireAuth, 
 
 /** Team-scoped capture fetch: valid HMAC plus authenticated team membership (non-members → 403). */
 teamsRouter.get('/v1/teams/:teamId/captures/:ownerAccountId/:captureId.png', requireAuth, asyncHandler(async (req, res) => {
-  const teamId = req.params.teamId;
-  const captureId = req.params.captureId;
-  const ownerAccountId = req.params.ownerAccountId;
+  const teamId = routeParam(req.params.teamId);
+  const captureId = routeParam(req.params.captureId);
+  const ownerAccountId = routeParam(req.params.ownerAccountId);
   const sig = String(req.query.sig ?? '');
   const exp = Number(req.query.exp);
   if (!sig || !Number.isFinite(exp)) throw new AppError(403, 'forbidden', 'Invalid signature');
