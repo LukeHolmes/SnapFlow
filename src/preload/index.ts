@@ -86,6 +86,8 @@ const api = {
   },
   sync: {
     now: (): Promise<import('../shared/types').SyncResult> => ipcRenderer.invoke(CH.syncNow),
+    getEnabled: (): Promise<{ enabled: boolean }> => ipcRenderer.invoke(CH.syncPrefGet),
+    setEnabled: (enabled: boolean): Promise<{ enabled: boolean }> => ipcRenderer.invoke(CH.syncPrefSet, enabled),
   },
 
   /** Subscribe to the ⌘⇧5 global shortcut opening the window picker. Returns an unsubscribe fn. */

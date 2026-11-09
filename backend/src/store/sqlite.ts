@@ -38,6 +38,16 @@ export class SqliteDb implements Db {
       const cols = (this.db.prepare(`PRAGMA table_info(oauth_state)`).all() as { name: string }[]).map(col => col.name);
       if (!cols.includes('data_json')) this.db.exec(`ALTER TABLE oauth_state ADD COLUMN data_json TEXT NOT NULL DEFAULT '{}'`);
     }
+    const blobsTable = this.db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'blobs'`).get();
+    if (blobsTable) {
+      const cols = (this.db.prepare(`PRAGMA table_info(blobs)`).all() as { name: string }[]).map(col => col.name);
+      if (cols.includes('path') && !cols.includes('storage_key')) {
+        this.db.exec(`ALTER TABLE blobs RENAME COLUMN path TO storage_key`);
+      }
+      if (!cols.includes('revoked_at')) {
+        this.db.exec(`ALTER TABLE blobs ADD COLUMN revoked_at INTEGER`);
+      }
+    }
   }
   async close(): Promise<void> {
     this.db.close();

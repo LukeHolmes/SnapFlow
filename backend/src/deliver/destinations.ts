@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { config } from '../config';
-import { captureUrl } from '../integrations/routes';
+import { captureUrl as resolveCaptureUrl } from '../integrations/routes';
 import { withDestinationAccessToken } from '../oauth/destination-tokens';
 
 export interface DeliverPayload {
@@ -68,42 +68,37 @@ const notion: ServerDestination = {
   id: 'notion',
   async deliver(accountId, payload) {
     const pageId = requiredString(payload.config.page_id, 'Notion page');
-    const externalUrl = captureUrl(accountId, payload.captureId);
+    const externalUrl = await resolveCaptureUrl(accountId, payload.captureId);
     return withDestinationAccessToken(accountId, 'notion', async token => {
-      const body = {
-        children: [
-          {
-            object: 'block',
-            type: 'image',
-            image: {
-              type: 'external',
-              external: { url: externalUrl },
-            },
-          },
-          {
-            object: 'block',
-            type: 'callout',
-            callout: {
-              icon: { emoji: '📸' },
-              rich_text: [
-                {
-                  type: 'text',
-                  text: {
-                    content: [
-                      `Captured ${new Date(payload.metadata.createdAt).toISOString()}`,
-                      `Tag: ${payload.metadata.tag ?? 'untagged'}`,
-                      `OCR words: ${wordCount(payload.metadata.ocrText)}`,
-                      `PII redaction: ${payload.metadata.hasPii ? 'redacted' : 'clear'}`,
-                    ].join(' | '),
-                  },
-                },
-              ],
-            },
-          },
-        ],
+      const metaLine = [
+        `Captured ${new Date(payload.metadata.createdAt).toISOString()}`,
+        `Tag: ${payload.metadata.tag ?? 'untagged'}`,
+        `OCR words: ${wordCount(payload.metadata.ocrText)}`,
+        `PII redaction: ${payload.metadata.hasPii ? 'redacted' : 'clear'}`,
+        externalUrl ? undefined : 'Image not embedded — enable cloud sync and upload for a public URL',
+      ].filter(Boolean).join(' | ');
+      const children: Record<string, unknown>[] = [];
+      if (externalUrl) {
+        children.push({
+          object: 'block',
+          type: 'image',
+          image: { type: 'external', external: { url: externalUrl } },
+        });
+      }
+      children.push({
+        object: 'block',
+        type: 'callout',
+        callout: {
+          icon: { emoji: '📸' },
+          rich_text: [{ type: 'text', text: { content: metaLine } }],
+        },
+      });
+      await notionApi(`/v1/blocks/${encodeURIComponent(pageId)}/children`, token.accessToken, { children });
+      return {
+        ok: true,
+        detail: externalUrl ? 'Delivered to Notion' : 'Delivered to Notion (metadata only — no signed image URL)',
+        url: externalUrl ?? undefined,
       };
-      await notionApi(`/v1/blocks/${encodeURIComponent(pageId)}/children`, token.accessToken, body);
-      return { ok: true, detail: 'Delivered to Notion', url: externalUrl };
     });
   },
 };
@@ -148,9 +143,9 @@ const github: ServerDestination = {
     const mode = payload.config.mode === 'comment' ? 'comment' : 'create';
     const tag = payload.metadata.tag ?? 'untagged';
     const timestamp = new Date(payload.metadata.createdAt).toISOString();
-    const imageUrl = captureUrl(accountId, payload.captureId);
+    const imageUrl = await resolveCaptureUrl(accountId, payload.captureId);
     const body = [
-      `![SnapFlow capture](${imageUrl})`,
+      imageUrl ? `![SnapFlow capture](${imageUrl})` : '_Image not embedded — cloud sync is off or the capture blob was not uploaded._',
       '',
       '| Field | Value |',
       '| --- | --- |',
@@ -164,14 +159,14 @@ const github: ServerDestination = {
         const issueNumber = Number(payload.config.issue_number);
         if (!Number.isInteger(issueNumber) || issueNumber <= 0) throw new Error('Issue number not found');
         await githubApi(`/repos/${owner}/${repo}/issues/${issueNumber}/comments`, token.accessToken, { body });
-        return { ok: true, detail: `Commented on ${owner}/${repo}#${issueNumber}`, url: imageUrl };
+        return { ok: true, detail: `Commented on ${owner}/${repo}#${issueNumber}`, url: imageUrl ?? undefined };
       }
       const title = `[SnapFlow] ${tag} — ${timestamp}`;
       const json = await githubApi<{ html_url?: string }>(`/repos/${owner}/${repo}/issues`, token.accessToken, {
         title,
         body,
       });
-      return { ok: true, detail: `Created issue in ${owner}/${repo}`, url: json.html_url ?? imageUrl };
+      return { ok: true, detail: `Created issue in ${owner}/${repo}`, url: json.html_url ?? imageUrl ?? undefined };
     });
   },
 };
@@ -186,7 +181,7 @@ const jira: ServerDestination = {
     return withDestinationAccessToken(accountId, 'jira', async token => {
       const site = await resolveJiraSite(token.accessToken, token.profile?.meta);
       const apiBase = jiraApiBase(site.cloudId);
-      const captureLink = captureUrl(accountId, payload.captureId);
+      const captureLink = await resolveCaptureUrl(accountId, payload.captureId);
       const commentText = jiraComment(payload, captureLink);
 
       const upload = async (targetKey: string) => {
@@ -196,14 +191,14 @@ const jira: ServerDestination = {
 
       if (issueKey) {
         await upload(issueKey);
-        return { ok: true, detail: `Attached to ${issueKey}`, url: captureLink };
+        return { ok: true, detail: `Attached to ${issueKey}`, url: captureLink ?? undefined };
       }
 
       const summary = requiredString(payload.config.issue_summary, 'Jira issue summary');
       const description = optionalString(payload.config.issue_description) ?? commentText;
       const created = await createIssue(apiBase, token.accessToken, projectKey!, summary, description);
       await upload(created.key);
-      return { ok: true, detail: `Created ${created.key}`, url: captureLink };
+      return { ok: true, detail: `Created ${created.key}`, url: captureLink ?? undefined };
     });
   },
 };
@@ -422,7 +417,7 @@ function jiraDoc(text: string): Record<string, unknown> {
   };
 }
 
-function jiraComment(payload: DeliverPayload, captureLink: string): string {
+function jiraComment(payload: DeliverPayload, captureLink: string | null): string {
   const tag = payload.metadata.tag ?? 'untagged';
   const timestamp = new Date(payload.metadata.createdAt).toISOString();
   return [
@@ -431,6 +426,6 @@ function jiraComment(payload: DeliverPayload, captureLink: string): string {
     `Timestamp: ${timestamp}`,
     `PII redaction: ${payload.metadata.hasPii ? 'redacted' : 'clear'}`,
     `OCR words: ${wordCount(payload.metadata.ocrText)}`,
-    `Capture link: ${captureLink}`,
+    captureLink ? `Capture link: ${captureLink}` : 'Capture link: unavailable (cloud sync disabled or blob missing)',
   ].join(' | ');
 }

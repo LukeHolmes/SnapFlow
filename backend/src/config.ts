@@ -4,7 +4,20 @@ export const config = {
   dbPath: process.env.DB_PATH ?? './snapflow-backend.db',
   // When set, the backend uses Postgres instead of SQLite (production).
   databaseUrl: process.env.DATABASE_URL ?? '',
-  dataDir: process.env.DATA_DIR ?? '.',   // image blobs live under <dataDir>/blobs (object storage in prod)
+  dataDir: process.env.DATA_DIR ?? '.',   // local blob driver root is <dataDir>/blobs
+
+  // Short-lived HMAC capture URLs (Notion / GitHub / Jira). Default 7 days.
+  signedUrlTtlMs: Number(process.env.SIGNED_URL_TTL_MS ?? 7 * 24 * 60 * 60 * 1000),
+
+  // Blob storage: `local` (disk under DATA_DIR) or `s3` (R2, MinIO, Supabase S3 API, etc.)
+  blobStorageDriver: (process.env.BLOB_STORAGE_DRIVER ?? 'local') as 'local' | 's3',
+  s3Endpoint: process.env.S3_ENDPOINT ?? '',
+  s3Region: process.env.S3_REGION ?? 'auto',
+  s3Bucket: process.env.S3_BUCKET ?? '',
+  s3AccessKeyId: process.env.S3_ACCESS_KEY_ID ?? '',
+  s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? '',
+  // Path-style URLs (required for many S3-compatible providers).
+  s3ForcePathStyle: (process.env.S3_FORCE_PATH_STYLE ?? 'true') !== 'false',
 
   // HMAC secret for bearer tokens. MUST be overridden in production.
   authSecret: process.env.AUTH_SECRET ?? 'dev-insecure-secret-change-me',

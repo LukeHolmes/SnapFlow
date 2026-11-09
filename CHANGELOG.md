@@ -4,6 +4,10 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 
 ## [0.6.1] — Unreleased — Project health
 ### Added
+- **Cloud sync signed URLs** — pluggable blob storage (`local` + S3-compatible/R2/Supabase),
+  expiring HMAC capture links (`exp` + `sig`), verify/revoke APIs, and destination fallbacks
+  when no public URL exists. Desktop cloud sync is **opt-in** (Account); blobs upload on
+  delivery to URL-based destinations or manual Sync now; PII-tagged captures skip upload.
 - **Diff mode UI (v1.1)** — History-driven before/after workflow, compare-with-previous-same-window, side-by-side / overlay (opacity) / highlight / change-box views, percent-changed summary, sensitivity threshold (Pro+), export diff to History (`diff` tag) and Deliver via presets; pixel engine tests for bboxes and threshold.
 - **Windows CI installer** — CI job on `windows-latest` builds an unsigned NSIS `.exe`
   (`npm run dist -- --publish never`) and uploads **`snapflow-windows-installer`** as a
@@ -27,6 +31,8 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
   language data on first use; the file was not referenced anywhere in the tree.
 
 ### Changed
+- **Capture public URLs** — `GET /v1/public/captures/...` requires a non-expired `exp` and `sig`;
+  legacy non-expiring signatures are rejected with HTTP 403.
 - Root `package.json` **version set to 0.6.1** to match this changelog track (was stuck at 0.5.0).
 - Native `better-sqlite3` rebuild workflow is explicit:
   `npm test` rebuilds for Node, while `npm run dev`/`preview`/`dist` rebuild for Electron.

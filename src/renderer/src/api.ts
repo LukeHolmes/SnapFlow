@@ -197,7 +197,11 @@ const mock: SnapFlowApi = {
       return { ok: true, captureId: mockCaptures[idx + 1].id };
     },
   },
-  sync: { now: async () => ({ pushed: 0, pulled: 0 }) },
+  sync: {
+    now: async () => ({ pushed: 0, pulled: 0 }),
+    getEnabled: async () => ({ enabled: false }),
+    setEnabled: async (enabled: boolean) => ({ enabled }),
+  },
   onCaptureAdded: (cb) => { addedListener = cb; return () => { addedListener = null; }; },
   onCaptureError: () => () => {},
   onOpenWindowPicker: () => () => {},

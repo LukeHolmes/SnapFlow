@@ -43,7 +43,21 @@ Delivery uploads the PNG via Slack’s external upload API and posts to the sele
 4. In Notion, open the target page → **⋯** → **Connect to** → select your integration (required for delivery).
 5. Connect in SnapFlow, search/select the page, save preset.
 
-Notion delivery appends an image block (signed capture URL) and a callout with metadata. **Pro/Team cloud sync** must upload the capture blob so the public signed URL works.
+Notion delivery appends an image block when a signed capture URL is available, plus a callout with metadata. If cloud sync is off, the blob was not uploaded, or PII blocked upload, delivery continues **text-only** with a note in the callout.
+
+## Cloud sync and signed image URLs (free storage)
+
+1. Enable **Account → Cloud sync** in the desktop app (Pro/Team; off by default).
+2. Configure backend blob storage (local disk is fine for dev):
+   - **Local:** `BLOB_STORAGE_DRIVER=local` and `DATA_DIR=.` (default).
+   - **Cloudflare R2 (free tier):** create a bucket, S3 API token, then set  
+     `BLOB_STORAGE_DRIVER=s3`, `S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com`,  
+     `S3_BUCKET=…`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION=auto`.
+   - **Supabase Storage:** enable S3 protocol on the project bucket and use its endpoint/keys the same way.
+3. Set `PUBLIC_BASE_URL` to the HTTPS origin Notion/GitHub can reach (your API host or reverse proxy).
+4. Optional: `SIGNED_URL_TTL_MS` (default 7 days).
+
+When you send to **Notion** or **GitHub**, the desktop uploads the PNG (if sync is on and PII is clear), then the backend returns an HMAC URL. **Jira** still attaches the file directly; the signed URL appears in the comment when available.
 
 ## Google Drive — desktop upload (free manual send)
 

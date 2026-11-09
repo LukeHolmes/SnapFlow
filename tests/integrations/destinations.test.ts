@@ -52,6 +52,17 @@ function capture(id = 'cap_1'): Capture {
   };
 }
 
+function mockEngine() {
+  return {
+    db: {
+      prepare: () => ({
+        get: () => ({ value: '1' }),
+        run: () => undefined,
+      }),
+    },
+  };
+}
+
 function mockFetch(handler: (url: string, init?: RequestInit) => Promise<Response> | Response): void {
   globalThis.fetch = (async (input: URL | RequestInfo, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
@@ -78,48 +89,62 @@ test('slack deliver posts the preset config to the backend client', async () => 
   assert.equal(payload.config.channel_id, 'C123');
 });
 
-test('jira deliver queues until the capture finishes syncing', async () => {
+test('jira deliver still posts to backend when no signed URL is available', async () => {
   configureIntegrationRuntime({
+    engine: mockEngine() as any,
     sync: {
       run: async () => ({ pushed: 0, pulled: 0 }),
       waitForBlobUpload: async () => false,
     } as any,
   });
-  let captureUrlChecks = 0;
+  let deliverCalls = 0;
   mockFetch((url) => {
     if (url === 'http://snapflow.test/v1/integrations/capture-url/cap_1') {
-      captureUrlChecks += 1;
       return new Response(JSON.stringify({ message: 'not found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+    }
+    if (url === 'http://snapflow.test/v1/deliver') {
+      deliverCalls += 1;
+      return new Response(JSON.stringify({ ok: true, detail: 'Attached (no public URL)' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
     }
     throw new Error(`Unexpected fetch ${url}`);
   });
 
   const result = await jiraDestination.deliver(capture(), { project_key: 'ENG', issue_summary: 'Login form broken' });
-  assert.equal(captureUrlChecks, 1);
-  assert.equal(result.queued, true);
-  assert.match(result.detail, /queued/i);
+  assert.equal(deliverCalls, 1);
+  assert.equal(result.ok, true);
+  assert.match(result.detail, /no public url/i);
 });
 
-test('notion deliver queues while cloud sync is still pending', async () => {
+test('notion deliver falls back to text-only backend delivery without a signed URL', async () => {
   configureIntegrationRuntime({
+    engine: mockEngine() as any,
     sync: {
       run: async () => ({ pushed: 0, pulled: 0 }),
       waitForBlobUpload: async () => false,
     } as any,
   });
-  let captureUrlChecks = 0;
+  let deliverCalls = 0;
   mockFetch((url) => {
     if (url === 'http://snapflow.test/v1/integrations/capture-url/cap_1') {
-      captureUrlChecks += 1;
       return new Response(JSON.stringify({ message: 'not found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+    }
+    if (url === 'http://snapflow.test/v1/deliver') {
+      deliverCalls += 1;
+      return new Response(JSON.stringify({ ok: true, detail: 'Delivered to Notion (metadata only — no signed image URL)' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
     }
     throw new Error(`Unexpected fetch ${url}`);
   });
 
   const result = await notionDestination.deliver(capture(), { page_id: 'page_123', page_title: 'Release Notes' });
-  assert.equal(captureUrlChecks, 1);
-  assert.equal(result.queued, true);
-  assert.match(result.detail, /queued/i);
+  assert.equal(deliverCalls, 1);
+  assert.equal(result.ok, true);
+  assert.match(result.detail, /metadata only/i);
 });
 
 test('gmail deliver validates recipient addresses before sending', async () => {
@@ -136,6 +161,7 @@ test('github deliver validates issue number for comment mode', async () => {
 
 test('github deliver uses the backend after a cloud URL is available', async () => {
   configureIntegrationRuntime({
+    engine: mockEngine() as any,
     sync: {
       run: async () => ({ pushed: 1, pulled: 0 }),
       waitForBlobUpload: async () => true,

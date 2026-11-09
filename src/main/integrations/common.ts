@@ -1,6 +1,7 @@
 import type { Capture, DeliverResult } from '../../shared/types';
 import { integrationBackendClientFromEnv } from './backend-client';
 import { getIntegrationRuntime } from './runtime';
+import { isCloudSyncOptIn } from '../sync/prefs';
 
 const backend = integrationBackendClientFromEnv();
 
@@ -31,14 +32,17 @@ export function queuedResult(detail = 'Capture still syncing, delivery queued'):
 
 export async function ensureCaptureUrl(capture: Capture, timeoutMs = 30_000): Promise<string | null> {
   if (!backend.configured) return null;
-  const existing = await backend.getCaptureUrl(capture.id);
+  const sync = getIntegrationRuntime().sync;
+  const engine = getIntegrationRuntime().engine;
+  if (!sync || !engine?.db) return null;
+  if (!isCloudSyncOptIn(engine.db)) return null;
+  if (capture.hasPii) return null;
+
+  const existing = await backend.getCaptureUrl(capture.id).catch(() => null);
   if (existing) return existing;
 
-  const sync = getIntegrationRuntime().sync;
-  if (!sync) return null;
-
-  void sync.run();
+  await sync.run({ blobIds: [capture.id], uploadBlobs: true });
   const uploaded = await sync.waitForBlobUpload(capture.id, timeoutMs);
   if (!uploaded) return null;
-  return backend.getCaptureUrl(capture.id);
+  return backend.getCaptureUrl(capture.id).catch(() => null);
 }

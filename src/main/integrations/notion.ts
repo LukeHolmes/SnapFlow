@@ -1,6 +1,6 @@
 import type { OutputDestination } from './types';
 import { NotConfiguredError } from './types';
-import { backendClient, ensureCaptureUrl, queuedResult } from './common';
+import { backendClient, ensureCaptureUrl } from './common';
 
 export interface NotionPresetConfig {
   page_id: string;
@@ -17,8 +17,7 @@ export const notionDestination: OutputDestination = {
     if (!cfg.page_id) throw new NotConfiguredError('Notion');
     const backend = backendClient();
     if (!backend.configured) throw new NotConfiguredError('Notion');
-    const uploaded = await ensureCaptureUrl(capture);
-    if (!uploaded) return queuedResult('Capture still syncing — Notion delivery queued');
+    await ensureCaptureUrl(capture);
     return backend.deliver('notion', capture, { ...cfg });
   },
 };
@@ -48,7 +47,6 @@ function extractPageId(config: Record<string, unknown>): string {
 function toNotionId(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
-  // Accept raw IDs, UUIDs with hyphens, or full page URLs.
   const match = trimmed.match(/[0-9a-f]{32}/i);
   if (match) return match[0];
   return trimmed;

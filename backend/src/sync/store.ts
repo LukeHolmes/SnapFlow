@@ -1,18 +1,10 @@
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { db } from '../store';
 import type { Db } from '../store';
-import { config } from '../config';
+import { blobKey, blobStorage } from '../storage';
 
 export interface SyncRecord {
   id: string; workspaceId: string; filename: string; tag: string | null;
   ocrText: string; hasPii: boolean; createdAt: number; updatedAt: number; deleted: boolean;
-}
-
-function blobDir(accountId: string): string {
-  const dir = join(config.dataDir, 'blobs', accountId);
-  mkdirSync(dir, { recursive: true });
-  return dir;
 }
 
 async function nextSeq(t: Db, accountId: string): Promise<number> {
@@ -33,14 +25,22 @@ function toRecord(r: Record<string, unknown>): SyncRecord {
   };
 }
 
+type BlobRow = { storage_key: string; revoked_at: number | null };
+
+async function blobRow(accountId: string, captureId: string): Promise<BlobRow | undefined> {
+  return db().get<BlobRow>(
+    `SELECT storage_key, revoked_at FROM blobs WHERE account_id = ? AND capture_id = ?`,
+    [accountId, captureId],
+  );
+}
+
 export const sync = {
-  // Upsert with last-write-wins on the client clock; each applied change gets a fresh server seq.
   async push(accountId: string, records: SyncRecord[]): Promise<{ applied: number; cursor: number }> {
     let applied = 0;
     await db().tx(async t => {
       for (const r of records) {
         const existing = await t.get<{ updated_at: number }>(`SELECT updated_at FROM synced_captures WHERE account_id = ? AND id = ?`, [accountId, r.id]);
-        if (existing && r.updatedAt <= Number(existing.updated_at)) continue; // older/equal → ignore
+        if (existing && r.updatedAt <= Number(existing.updated_at)) continue;
         const seq = await nextSeq(t, accountId);
         await t.run(
           `INSERT INTO synced_captures (account_id, workspace_id, id, filename, tag, ocr_text, has_pii, created_at, updated_at, deleted, seq)
@@ -68,9 +68,6 @@ export const sync = {
     return { records, cursor };
   },
 
-  // Server-side full-text-ish search across a workspace's shared library (Team tier).
-  // Portable lower(...) LIKE works on both engines; an index on (workspace_id, deleted)
-  // narrows the scan. Postgres can later swap this for a tsvector GIN index.
   async searchWorkspace(workspaceId: string, query: string, limit = 50): Promise<SyncRecord[]> {
     const term = `%${query.trim().toLowerCase()}%`;
     if (!query.trim()) return [];
@@ -85,24 +82,51 @@ export const sync = {
   },
 
   async putBlob(accountId: string, captureId: string, base64: string): Promise<void> {
-    const path = join(blobDir(accountId), `${captureId}.png`);
-    writeFileSync(path, Buffer.from(base64, 'base64'));
+    const key = blobKey(accountId, captureId);
+    const bytes = Buffer.from(base64, 'base64');
+    await blobStorage().put(key, bytes);
     await db().run(
-      `INSERT INTO blobs (account_id, capture_id, path, updated_at) VALUES (?,?,?,?)
-       ON CONFLICT(account_id, capture_id) DO UPDATE SET path=excluded.path, updated_at=excluded.updated_at`,
-      [accountId, captureId, path, Date.now()],
+      `INSERT INTO blobs (account_id, capture_id, storage_key, updated_at, revoked_at) VALUES (?,?,?,?,NULL)
+       ON CONFLICT(account_id, capture_id) DO UPDATE SET
+         storage_key=excluded.storage_key, updated_at=excluded.updated_at, revoked_at=NULL`,
+      [accountId, captureId, key, Date.now()],
     );
   },
 
   async getBlob(accountId: string, captureId: string): Promise<string | null> {
-    const row = await db().get<{ path: string }>(`SELECT path FROM blobs WHERE account_id = ? AND capture_id = ?`, [accountId, captureId]);
-    if (!row || !existsSync(row.path)) return null;
-    return readFileSync(row.path).toString('base64');
+    const row = await blobRow(accountId, captureId);
+    if (!row || row.revoked_at) return null;
+    const data = await blobStorage().get(row.storage_key);
+    return data ? data.toString('base64') : null;
   },
 
+  async revokeBlob(accountId: string, captureId: string): Promise<boolean> {
+    const row = await blobRow(accountId, captureId);
+    if (!row || row.revoked_at) return false;
+    await blobStorage().delete(row.storage_key);
+    await db().run(
+      `UPDATE blobs SET revoked_at = ?, updated_at = ? WHERE account_id = ? AND capture_id = ?`,
+      [Date.now(), Date.now(), accountId, captureId],
+    );
+    return true;
+  },
+
+  async blobAvailable(accountId: string, captureId: string): Promise<boolean> {
+    const row = await blobRow(accountId, captureId);
+    if (!row || row.revoked_at) return false;
+    return blobStorage().exists(row.storage_key);
+  },
+
+  /** @deprecated Prefer blobAvailable + storage get for streaming. */
   async getBlobPath(accountId: string, captureId: string): Promise<string | null> {
-    const row = await db().get<{ path: string }>(`SELECT path FROM blobs WHERE account_id = ? AND capture_id = ?`, [accountId, captureId]);
-    if (!row || !existsSync(row.path)) return null;
-    return row.path;
+    const row = await blobRow(accountId, captureId);
+    if (!row || row.revoked_at) return null;
+    return blobStorage().localPath(row.storage_key);
+  },
+
+  async readBlobBytes(accountId: string, captureId: string): Promise<Buffer | null> {
+    const row = await blobRow(accountId, captureId);
+    if (!row || row.revoked_at) return null;
+    return blobStorage().get(row.storage_key);
   },
 };
