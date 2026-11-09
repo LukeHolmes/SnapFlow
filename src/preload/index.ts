@@ -11,6 +11,8 @@ const api = {
     scrollPreview: (options?: { sourceId?: string; frames?: number; intervalMs?: number }): Promise<ScrollCapturePreview> => ipcRenderer.invoke(CH.captureScrollPreview, options),
     saveScrollPreview: (preview: { dataUrl: string; filename: string }): Promise<Capture> => ipcRenderer.invoke(CH.captureScrollSave, preview),
     saveAnnotated: (captureId: string, dataUrl: string): Promise<Capture> => ipcRenderer.invoke(CH.captureSaveAnnotated, { captureId, dataUrl }),
+    saveFocusBlur: (captureId: string, dataUrl: string): Promise<Capture> =>
+      ipcRenderer.invoke(CH.captureSaveFocusBlur, { captureId, dataUrl }),
     piiScan: (id: string): Promise<PiiScanResult> => ipcRenderer.invoke(CH.capturePiiScan, id),
     saveRedacted: (id: string, selectedIds?: string[]): Promise<Capture> =>
       ipcRenderer.invoke(CH.captureSaveRedacted, selectedIds?.length ? { id, selectedIds } : id),
@@ -108,6 +110,11 @@ const api = {
     const handler = () => cb();
     ipcRenderer.on(CH.openRecordingPicker, handler);
     return () => ipcRenderer.removeListener(CH.openRecordingPicker, handler);
+  },
+  onOpenRecordWindowPicker: (cb: () => void): (() => void) => {
+    const handler = () => cb();
+    ipcRenderer.on(CH.openRecordWindowPicker, handler);
+    return () => ipcRenderer.removeListener(CH.openRecordWindowPicker, handler);
   },
   onRecordingStatus: (cb: (status: import('../shared/types').RecordingStatus) => void): (() => void) => {
     const handler = (_e: unknown, status: import('../shared/types').RecordingStatus) => cb(status);

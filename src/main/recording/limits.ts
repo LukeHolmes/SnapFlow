@@ -16,3 +16,8 @@ export function validateRecordingStart(ent: Entitlements, opts: RecordingStartOp
 export function maxDurationMs(ent: Entitlements): number {
   return ent.maxRecordingDurationSec * 1000;
 }
+
+/** After the user picks a window in the dashboard picker, attach the desktopCapturer id. */
+export function withWindowSource(opts: RecordingStartOptions, sourceId: string): RecordingStartOptions {
+  return { ...opts, mode: 'window', sourceId };
+}

@@ -11,21 +11,25 @@ import type { DestinationId, Entitlements, Tier } from '../../shared/types';
 const TABLE: Record<Tier, Omit<Entitlements, 'tier'>> = {
   free: {
     historyWindowDays: 30, maxPresets: 1, aiEnabled: false, cloudSync: false, diffAdvanced: false,
+    focusBlurMaxRegions: 1, focusBlurPresetAutomation: false,
     maxRecordingDurationSec: 5 * 60,
     recordingSystemAudio: false, recordingMicrophone: false, recordingGifExport: false,
   },
   pro: {
     historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: true, diffAdvanced: true,
+    focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
     maxRecordingDurationSec: 60 * 60,
     recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
   },
   team: {
     historyWindowDays: null, maxPresets: null, aiEnabled: true, cloudSync: true, diffAdvanced: true,
+    focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
     maxRecordingDurationSec: 2 * 60 * 60,
     recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
   },
   perpetual: {
     historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: false, diffAdvanced: true,
+    focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
     maxRecordingDurationSec: 60 * 60,
     recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
   },
@@ -58,4 +62,12 @@ export function canRecordWithAudio(ent: Entitlements, opts: { mic?: boolean; sys
 
 export function canExportRecordingGif(ent: Entitlements): boolean {
   return ent.recordingGifExport;
+}
+
+export function canAddFocusBlurRegion(ent: Entitlements, currentCount: number): boolean {
+  return ent.focusBlurMaxRegions == null || currentCount < ent.focusBlurMaxRegions;
+}
+
+export function canUseFocusBlurPresetAutomation(ent: Entitlements): boolean {
+  return !!ent.focusBlurPresetAutomation;
 }

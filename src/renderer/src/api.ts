@@ -61,6 +61,11 @@ const mock: SnapFlowApi = {
       c.filename = `${c.filename} annotated`;
       return c;
     },
+    saveFocusBlur: async (_id: string, _dataUrl: string): Promise<Capture> => {
+      const c = mockNewCapture();
+      c.filename = `${c.filename} focus`;
+      return c;
+    },
     piiScan: async (_id: string) => ({
       imageDataUrl: '',
       detections: [
@@ -181,6 +186,7 @@ const mock: SnapFlowApi = {
   },
   entitlements: { get: async (): Promise<Entitlements> => ({
     tier: 'pro', historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: true, diffAdvanced: true,
+    focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
     maxRecordingDurationSec: 3600, recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
   }) },
   stats: { get: async (): Promise<Stats> => ({ total: mockCaptures.length, ocrIndexed: mockCaptures.length, sent: 1, piiRedacted: mockCaptures.filter(c => c.hasPii).length }) },
@@ -218,6 +224,7 @@ const mock: SnapFlowApi = {
   onCaptureError: () => () => {},
   onOpenWindowPicker: () => () => {},
   onOpenRecordingPicker: () => () => {},
+  onOpenRecordWindowPicker: () => () => {},
   onRecordingStatus: () => () => {},
   onColourPicked: () => () => {},
   onIntegrationConnected: () => () => {},

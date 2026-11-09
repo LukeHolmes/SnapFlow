@@ -4,8 +4,7 @@
 
 **Capture → Context → Deliver.** A local-first, cross-platform screen-capture utility.
 This repository is a real, runnable Electron desktop app plus a thin Node backend.
-The codebase is on the **v0.6.1 unreleased** track (`package.json` and `CHANGELOG.md`
-aligned); nothing is tagged for release yet.
+The desktop app targets **v1.1.0** (Focus Blur + Screen Recording); see `CHANGELOG.md` for the full release notes.
 
 It is built directly to the project's *Technical Architecture* and *Developer Instructions*.
 
@@ -24,7 +23,8 @@ Legend: **Done** ships in `main` and is usable locally with default/dev setup.
 | Scrolling capture | **Partial** | Guided scroll-stitch MVP: sample frames while the user scrolls, vertical stitch with overlap de-dupe (`src/main/capture/stitch.ts`, ⌘⇧6 UI). Preview before save; hides the dashboard during sampling. No native auto-scroll or sidecar yet. |
 | Pinned captures | **Done** | Always-on-top floating reference window from post-capture quick actions or History (`src/main/pin.ts`). |
 | Guide builder | **Done** | Walkthrough / SOP / training guides from ordered captures, Markdown export (`src/renderer/src/screens/Guides.tsx`). |
-| Post-capture quick actions | **Done** | Copy, annotate, pin, OCR, redacted copy, and send preset from the bottom bar after each capture (`App.tsx`). |
+| Post-capture quick actions | **Done** | Copy, annotate, pin, OCR, Focus window/region, redacted copy, and send preset from the bottom bar after each capture (`App.tsx`). |
+| Focus Blur | **Done** | Non-destructive focus regions, editor with live preview, Free=1 region / Pro=preset automation (`docs/FOCUS_BLUR.md`). |
 | OCR + FTS5 history search | **Done** | Tesseract via `tesseract.js` (WASM); SQLite FTS5 in `src/main/history/` |
 | Auto-tagging | **Done** | Metered `/v1/ai/tag` when configured; local heuristic fallback |
 | Output presets (clipboard, Slack, Jira, Notion, Gmail, GitHub, Zapier) | **Done** (config required) | Desktop plugins call `POST /v1/deliver`; server handlers in `backend/src/deliver/destinations.ts`. OAuth connect/disconnect, vault storage, refresh, and `snapflow://` callbacks are wired. You still need provider apps + `backend/.env` (see `docs/DESTINATION_SETUP.md`). Clipboard stays fully local. |

@@ -10,7 +10,7 @@ import {
   recordingTransition,
   shouldMediaRecorderRun,
 } from '../src/main/recording/state-machine';
-import { validateRecordingStart, maxDurationMs } from '../src/main/recording/limits';
+import { validateRecordingStart, maxDurationMs, withWindowSource } from '../src/main/recording/limits';
 import { entitlementsFor, canExportRecordingGif, canRecordWithAudio } from '../src/main/entitlements';
 import type { Capture } from '../src/shared/types';
 
@@ -30,6 +30,13 @@ test('recording state machine: arm → record → pause → resume → stop → 
   assert.equal(s.phase, 'stopping');
   s = recordingTransition(s, { type: 'SAVE_DONE' });
   assert.equal(s.phase, 'idle');
+});
+
+test('withWindowSource: validation passes after user picks a window', () => {
+  const opts = withWindowSource({ mode: 'window', countdownSec: 2 }, 'window:42');
+  assert.equal(opts.sourceId, 'window:42');
+  assert.equal(validateRecordingStart(entitlementsFor('pro'), opts), null);
+  assert.equal(validateRecordingStart(entitlementsFor('pro'), { mode: 'window' }), 'Pick a window to record');
 });
 
 test('tier limits: free audio and gif gated', () => {

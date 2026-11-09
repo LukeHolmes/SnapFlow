@@ -7,7 +7,7 @@ SnapFlow screen recordings use **Electron `desktopCapturer` + `MediaRecorder`** 
 | Mode | Flow |
 |------|------|
 | **Full screen** | Primary display `desktopCapturer` source |
-| **Window** | `sourceId` from the source list (dashboard picks first window if none selected) |
+| **Window** | Same thumbnail picker as **⌘⇧5** capture (windows only): dashboard recording modal, tray **Record window…**, or after choosing Window in the modal |
 | **Region** | Existing region overlay → crop rect applied in the worker via canvas `captureStream` |
 
 ## Controls

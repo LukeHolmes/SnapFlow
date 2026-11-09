@@ -8,11 +8,11 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { PNG } from 'pngjs';
 import { imagesDir } from '../paths';
-import type { CaptureSource, ScrollCapturePreview } from '../../shared/types';
+import type { CaptureSource, RedactionBox, ScrollCapturePreview } from '../../shared/types';
 import { stitchScrollFrames } from './stitch';
 
 export interface RawCapture { id: string; imagePath: string; filename: string; }
-export interface RedactionBox { x0: number; y0: number; x1: number; y1: number; }
+export type { RedactionBox };
 
 export interface Frame {
   image: Electron.NativeImage;  // full-resolution screenshot (device pixels)

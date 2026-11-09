@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Camera, Bell, Search, History, Library, LayoutDashboard, EyeOff,
   User, Cable, Send, Monitor, AppWindow, X, RefreshCw, GitCompare,
-  Copy, Edit3, FileText, Timer, ScrollText, Pin, Shield, ClipboardList, Video,
+  Copy, Edit3, FileText, Timer, ScrollText, Pin, Shield, ClipboardList, Video, Focus, Scan,
 } from 'lucide-react';
 import type { RecordingStartOptions } from '../../shared/types';
 import { api, isLive } from './api';
@@ -17,6 +17,7 @@ import Account      from './screens/Account';
 import Diff           from './screens/Diff';
 import Integrations from './screens/Integrations';
 import AnnotationEditor from './components/AnnotationEditor';
+import FocusBlurEditor from './components/FocusBlurEditor';
 import PiiRedactModal from './components/PiiRedactModal';
 import Guides from './screens/Guides';
 import type { PiiScanResult } from '../../shared/types';
@@ -39,7 +40,11 @@ export default function App() {
   const [searchFocus, setSearchFocus] = useState(false);
   const [topbarQuery, setTopbarQuery] = useState('');
   const [refreshKey, setRefreshKey]   = useState(0);
-  const [picker, setPicker]     = useState<{ open: boolean; loading: boolean; sources: CaptureSource[] }>({ open: false, loading: false, sources: [] });
+  type PickerPurpose = 'capture' | 'record';
+  const [picker, setPicker] = useState<{ open: boolean; loading: boolean; sources: CaptureSource[]; purpose: PickerPurpose }>({
+    open: false, loading: false, sources: [], purpose: 'capture',
+  });
+  const pendingRecordingOpts = useRef<RecordingStartOptions | null>(null);
   const [delayOpen, setDelayOpen] = useState(false);
   const [recordingOpen, setRecordingOpen] = useState(false);
   const [recordingOpts, setRecordingOpts] = useState<RecordingStartOptions>({ mode: 'screen', countdownSec: 2 });
@@ -49,6 +54,7 @@ export default function App() {
   const [scrollPreview, setScrollPreview] = useState<ScrollCapturePreview | null>(null);
   const [quickCapture, setQuickCapture] = useState<Capture | null>(null);
   const [editorCapture, setEditorCapture] = useState<Capture | null>(null);
+  const [focusBlurCapture, setFocusBlurCapture] = useState<{ capture: Capture; seedWindowFocus?: boolean } | null>(null);
   const [piiRedact, setPiiRedact] = useState<{ capture: Capture; scan: PiiScanResult } | null>(null);
   const [diffAfterId, setDiffAfterId] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,20 +78,42 @@ export default function App() {
 
   // ⌘⇧5 global shortcut → open window picker from anywhere
   const openPicker = useCallback(async () => {
-    setPicker({ open: true, loading: true, sources: [] });
+    setPicker({ open: true, loading: true, sources: [], purpose: 'capture' });
     try {
       const sources = await api.capture.listSources();
-      setPicker({ open: true, loading: false, sources });
+      setPicker({ open: true, loading: false, sources, purpose: 'capture' });
     } catch (e) {
-      setPicker({ open: false, loading: false, sources: [] });
+      setPicker({ open: false, loading: false, sources: [], purpose: 'capture' });
       flash(e instanceof Error ? e.message : 'Could not load capture sources', false);
     }
   }, [flash]);
+
+  const openRecordWindowPicker = useCallback(async (opts?: RecordingStartOptions) => {
+    if (opts) pendingRecordingOpts.current = opts;
+    setPicker({ open: true, loading: true, sources: [], purpose: 'record' });
+    try {
+      const sources = (await api.capture.listSources()).filter(s => s.kind === 'window');
+      if (!sources.length) {
+        setPicker({ open: false, loading: false, sources: [], purpose: 'record' });
+        flash('No windows available to record', false);
+        return;
+      }
+      setPicker({ open: true, loading: false, sources, purpose: 'record' });
+    } catch (e) {
+      setPicker({ open: false, loading: false, sources: [], purpose: 'record' });
+      flash(e instanceof Error ? e.message : 'Could not load capture sources', false);
+    }
+  }, [flash]);
+
   useEffect(() => api.onOpenWindowPicker(openPicker), [openPicker]);
   useEffect(() => {
     const open = () => setRecordingOpen(true);
     return api.onOpenRecordingPicker(open);
   }, []);
+  useEffect(() => {
+    const open = () => { void openRecordWindowPicker({ mode: 'window', countdownSec: 2 }); };
+    return api.onOpenRecordWindowPicker(open);
+  }, [openRecordWindowPicker]);
 
   // Escape closes whichever capture modal is active.
   useEffect(() => {
@@ -132,21 +160,11 @@ export default function App() {
   };
 
   const startScreenRecording = async () => {
+    const opts = { ...recordingOpts };
     setRecordingOpen(false);
-    let opts = { ...recordingOpts };
     if (opts.mode === 'window') {
-      try {
-        const sources = await api.capture.listSources();
-        const windows = sources.filter(s => s.kind === 'window');
-        if (!windows.length) {
-          flash('No windows available to record', false);
-          return;
-        }
-        opts = { ...opts, sourceId: windows[0].id };
-      } catch (e) {
-        flash(e instanceof Error ? e.message : 'Could not list sources', false);
-        return;
-      }
+      await openRecordWindowPicker(opts);
+      return;
     }
     const res = await api.recording.start(opts);
     flash(res.detail, res.ok);
@@ -168,7 +186,16 @@ export default function App() {
   };
 
   const pickSource = async (sourceId: string) => {
+    const purpose = picker.purpose;
     setPicker(p => ({ ...p, open: false }));
+    if (purpose === 'record') {
+      const base = pendingRecordingOpts.current ?? recordingOpts;
+      pendingRecordingOpts.current = null;
+      const res = await api.recording.start({ ...base, mode: 'window', sourceId });
+      flash(res.detail, res.ok);
+      if (res.ok) flash('Recording in progress — floating control, ⌘⇧8, or tray to manage', true);
+      return;
+    }
     setCapturing(true);
     try { const capture = await api.capture.screen(sourceId); rememberCapture(capture); flash('Capture saved & indexed'); }
     catch (e) { flash(e instanceof Error ? e.message : 'Capture failed', false); }
@@ -340,7 +367,7 @@ export default function App() {
         <div className="brand">
           <span className="logo-mark"><Camera size={15} color="#fff" strokeWidth={2.2} /></span>
           <span className="wordmark">SnapFlow</span>
-          <span className="version-badge">v0.6</span>
+          <span className="version-badge">v1.1</span>
         </div>
         <nav className="nav">
           {NAV.map(sec => (
@@ -407,7 +434,7 @@ export default function App() {
         <div className="modal-scrim" onClick={() => setPicker(p => ({ ...p, open: false }))}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-head">
-              <h2 className="section-title">Capture a window or screen</h2>
+              <h2 className="section-title">{picker.purpose === 'record' ? 'Record a window' : 'Capture a window or screen'}</h2>
               <button className="icon-btn" onClick={() => setPicker(p => ({ ...p, open: false }))} aria-label="Close"><X size={16} /></button>
             </div>
             {picker.loading ? <div className="empty">Loading sources…</div>
@@ -464,7 +491,7 @@ export default function App() {
             <div className="mode-actions">
               {([
                 ['screen', 'Full screen', 'Primary display'],
-                ['window', 'Window', 'Pick from source list next'],
+                ['window', 'Window', 'Choose from the window picker on start'],
                 ['region', 'Region', 'Drag a crop after countdown'],
               ] as const).map(([mode, label, sub]) => (
                 <button
@@ -588,6 +615,8 @@ export default function App() {
           <button className="quick-action-btn" onClick={() => setEditorCapture(quickCapture)}><Edit3 size={14} />Annotate</button>
           <button className="quick-action-btn" onClick={() => pinCapture(quickCapture)}><Pin size={14} />Pin</button>
           <button className="quick-action-btn" onClick={() => copyCaptureOcr(quickCapture)}><FileText size={14} />OCR</button>
+          <button className="quick-action-btn" onClick={() => setFocusBlurCapture({ capture: quickCapture, seedWindowFocus: true })} title="Inset window focus region"><Focus size={14} />Focus window</button>
+          <button className="quick-action-btn" onClick={() => setFocusBlurCapture({ capture: quickCapture })} title="Draw your own focus regions"><Scan size={14} />Focus region</button>
           <button className="quick-action-btn" onClick={() => redactCapture(quickCapture)}><Shield size={14} />Redact</button>
           <button className="quick-action-btn" onClick={() => sendCapture(quickCapture)}><Send size={14} />Send</button>
           <button className="quick-action-close" onClick={() => setQuickCapture(null)} aria-label="Dismiss"><X size={14} /></button>
@@ -599,6 +628,16 @@ export default function App() {
           capture={editorCapture}
           flash={flash}
           onClose={() => setEditorCapture(null)}
+          onSaved={(capture) => rememberCapture(capture)}
+        />
+      )}
+
+      {focusBlurCapture && (
+        <FocusBlurEditor
+          capture={focusBlurCapture.capture}
+          seedWindowFocus={focusBlurCapture.seedWindowFocus}
+          flash={flash}
+          onClose={() => setFocusBlurCapture(null)}
           onSaved={(capture) => rememberCapture(capture)}
         />
       )}

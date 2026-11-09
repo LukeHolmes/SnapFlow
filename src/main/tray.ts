@@ -75,6 +75,13 @@ export function installTray(getMainWindow: () => BrowserWindow | null): void {
         void startRecording({ mode: 'screen', countdownSec: 2 }).catch(sendError);
       },
     },
+    {
+      label: 'Record window…',
+      click: () => {
+        showMain();
+        getMainWindow()?.webContents.send(CH.openRecordWindowPicker);
+      },
+    },
     { type: 'separator' },
     {
       label: 'Stop recording',
