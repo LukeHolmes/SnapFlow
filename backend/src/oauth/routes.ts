@@ -11,6 +11,7 @@ import { accounts } from '../accounts/store';
 import { issueToken } from '../auth/tokens';
 import { config } from '../config';
 import { AppError, asyncHandler } from '../errors';
+import { routeParam } from '../params';
 
 export const oauthRouter = Router();
 
@@ -19,8 +20,9 @@ function callbackUri(providerId: string): string {
 }
 
 oauthRouter.get('/auth/oauth/:provider/start', asyncHandler(async (req, res) => {
-  const provider = getProvider(req.params.provider);
-  if (!provider) throw new AppError(404, 'unknown_provider', `No OAuth provider '${req.params.provider}'`);
+  const providerId = routeParam(req.params.provider);
+  const provider = getProvider(providerId);
+  if (!provider) throw new AppError(404, 'unknown_provider', `No OAuth provider '${providerId}'`);
   const state = await oauthState.create(provider.id);
   res.redirect(buildAuthorizeUrl(provider, state, callbackUri(provider.id)));
 }));
@@ -33,7 +35,7 @@ oauthRouter.get('/auth/oauth/:provider/callback', asyncHandler(async (req, res) 
   // Single-use CSRF state; must match the provider in the path.
   const oauth = await oauthState.consumeContext(state);
   const provdierForState = oauth?.provider;
-  if (!provdierForState || provdierForState !== req.params.provider) {
+  if (!provdierForState || provdierForState !== routeParam(req.params.provider)) {
     throw new AppError(400, 'invalid_state', 'OAuth state is missing, expired, or mismatched');
   }
   const flow = String(oauth?.data.flow ?? 'account');

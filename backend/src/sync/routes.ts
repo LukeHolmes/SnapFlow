@@ -7,6 +7,7 @@ import { entitlementsFor } from '../entitlements/index';
 import { effectiveTierForAccount } from '../entitlements/resolve';
 import { sync, type SyncRecord } from './store';
 import { AppError, asyncHandler } from '../errors';
+import { routeParam } from '../params';
 import { config } from '../config';
 import { buildCaptureUrl, verifyCaptureSignature, defaultCaptureExpiry } from '../storage/signed-url';
 
@@ -46,25 +47,26 @@ syncRouter.get('/v1/search', requireAuth, requireSharedLibrary, asyncHandler(asy
 syncRouter.put('/v1/sync/blob/:captureId', requireAuth, requireCloudSync, asyncHandler(async (req, res) => {
   const base64 = req.body?.base64 as string | undefined;
   if (!base64) throw new AppError(400, 'bad_request', 'base64 is required');
-  await sync.putBlob(req.account!.id, req.params.captureId, base64);
+  await sync.putBlob(req.account!.id, routeParam(req.params.captureId), base64);
   res.json({ ok: true });
 }));
 
 syncRouter.post('/v1/sync/blob/:captureId/upload', requireAuth, requireCloudSync, asyncHandler(async (req, res) => {
   const base64 = req.body?.base64 as string | undefined;
   if (!base64) throw new AppError(400, 'bad_request', 'base64 is required');
-  await sync.putBlob(req.account!.id, req.params.captureId, base64);
-  res.json({ ok: true, url: buildCaptureUrl(req.account!.id, req.params.captureId) });
+  const captureId = routeParam(req.params.captureId);
+  await sync.putBlob(req.account!.id, captureId, base64);
+  res.json({ ok: true, url: buildCaptureUrl(req.account!.id, captureId) });
 }));
 
 syncRouter.get('/v1/sync/blob/:captureId', requireAuth, requireCloudSync, asyncHandler(async (req, res) => {
-  const base64 = await sync.getBlob(req.account!.id, req.params.captureId);
+  const base64 = await sync.getBlob(req.account!.id, routeParam(req.params.captureId));
   if (base64 === null) throw new AppError(404, 'not_found', 'Blob not found');
   res.json({ base64 });
 }));
 
 syncRouter.get('/v1/sync/blob/:captureId/signed-url', requireAuth, requireCloudSync, asyncHandler(async (req, res) => {
-  const captureId = req.params.captureId;
+  const captureId = routeParam(req.params.captureId);
   if (!(await sync.blobAvailable(req.account!.id, captureId))) {
     throw new AppError(404, 'not_found', 'Blob not found');
   }
@@ -90,7 +92,7 @@ syncRouter.post('/v1/sync/signed-url/verify', asyncHandler(async (req, res) => {
 }));
 
 syncRouter.delete('/v1/sync/blob/:captureId', requireAuth, requireCloudSync, asyncHandler(async (req, res) => {
-  const revoked = await sync.revokeBlob(req.account!.id, req.params.captureId);
+  const revoked = await sync.revokeBlob(req.account!.id, routeParam(req.params.captureId));
   if (!revoked) throw new AppError(404, 'not_found', 'Blob not found');
   res.json({ ok: true });
 }));

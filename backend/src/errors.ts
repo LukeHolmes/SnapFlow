@@ -4,7 +4,7 @@ export class AppError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
 }
 
-/** Wrap async route handlers so thrown/rejected errors reach errorMiddleware (Express 4 doesn't do this automatically). */
+/** Wrap async route handlers so thrown/rejected errors reach errorMiddleware (kept for consistent behavior across Express 4/5). */
 export const asyncHandler =
   (fn: RequestHandler): RequestHandler =>
   (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);

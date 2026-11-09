@@ -10,6 +10,7 @@ import { oauthState } from '../oauth/state';
 import { sync } from '../sync/store';
 import { vault } from '../vault/store';
 import { buildCaptureUrl, verifyCaptureSignature } from '../storage/signed-url';
+import { routeParam } from '../params';
 
 const DESTINATIONS = ['slack', 'notion', 'gmail', 'github', 'jira'] as const;
 
@@ -36,7 +37,7 @@ integrationsRouter.get('/v1/integrations/statuses', requireAuth, asyncHandler(as
 }));
 
 integrationsRouter.delete('/v1/integrations/:destination', requireAuth, asyncHandler(async (req, res) => {
-  const destination = req.params.destination;
+  const destination = routeParam(req.params.destination);
   if (!DESTINATIONS.includes(destination as typeof DESTINATIONS[number])) {
     throw new AppError(404, 'unknown_destination', `No integration '${destination}'`);
   }
@@ -45,7 +46,7 @@ integrationsRouter.delete('/v1/integrations/:destination', requireAuth, asyncHan
 }));
 
 integrationsRouter.post('/v1/integrations/:destination/oauth-url', requireAuth, asyncHandler(async (req, res) => {
-  const destination = req.params.destination;
+  const destination = routeParam(req.params.destination);
   const provider = getDestinationProvider(destination);
   if (!provider) throw new AppError(404, 'unknown_destination', `No OAuth provider for '${destination}'`);
   const options = typeof req.body === 'object' && req.body ? req.body as Record<string, string> : {};
@@ -129,10 +130,11 @@ integrationsRouter.get('/v1/integrations/capture-url/:captureId', requireAuth, a
   if (!entitlementsFor(tier).cloudSync) {
     throw new AppError(402, 'sync_not_entitled', 'Cloud sync requires a Pro or Team plan');
   }
-  if (!(await sync.blobAvailable(req.account!.id, req.params.captureId))) {
+  const captureId = routeParam(req.params.captureId);
+  if (!(await sync.blobAvailable(req.account!.id, captureId))) {
     throw new AppError(404, 'not_found', 'Capture blob not found');
   }
-  res.json({ url: buildCaptureUrl(req.account!.id, req.params.captureId) });
+  res.json({ url: buildCaptureUrl(req.account!.id, captureId) });
 }));
 
 integrationsRouter.get('/v1/public/captures/:accountId/:captureId.png', asyncHandler(async (req, res) => {
@@ -141,12 +143,14 @@ integrationsRouter.get('/v1/public/captures/:accountId/:captureId.png', asyncHan
   if (expRaw === undefined || String(expRaw).length === 0 || !sig) {
     throw new AppError(403, 'forbidden', 'Invalid capture signature (exp and sig required)');
   }
-  const verdict = verifyCaptureSignature(req.params.accountId, req.params.captureId, Number(expRaw), sig);
+  const accountId = routeParam(req.params.accountId);
+  const captureId = routeParam(req.params.captureId);
+  const verdict = verifyCaptureSignature(accountId, captureId, Number(expRaw), sig);
   if (!verdict.ok) throw new AppError(403, 'forbidden', `Invalid capture signature (${verdict.reason})`);
 
-  const bytes = await sync.readBlobBytes(req.params.accountId, req.params.captureId);
+  const bytes = await sync.readBlobBytes(accountId, captureId);
   if (!bytes) throw new AppError(404, 'not_found', 'Capture blob not found');
-  const path = await sync.getBlobPath(req.params.accountId, req.params.captureId);
+  const path = await sync.getBlobPath(accountId, captureId);
   if (path) {
     res.type('png').sendFile(path);
     return;
