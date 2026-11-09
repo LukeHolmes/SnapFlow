@@ -76,8 +76,13 @@ const api = {
   },
 
   diff: {
-    compute:    (beforeId: string, afterId: string) => ipcRenderer.invoke(CH.diffCompute,   { beforeId, afterId }),
-    summarise:  (beforeId: string, afterId: string) => ipcRenderer.invoke(CH.diffSummarise, { beforeId, afterId }),
+    compute: (beforeId: string, afterId: string, options?: { threshold?: number; diffAlpha?: number; includeAA?: boolean }) =>
+      ipcRenderer.invoke(CH.diffCompute, { beforeId, afterId, options }),
+    summarise: (beforeId: string, afterId: string) => ipcRenderer.invoke(CH.diffSummarise, { beforeId, afterId }),
+    getImage: (diffImagePath: string): Promise<string | null> => ipcRenderer.invoke(CH.diffGetImage, diffImagePath),
+    save: (diffImagePath: string, beforeId: string, afterId: string) =>
+      ipcRenderer.invoke(CH.diffSave, { diffImagePath, beforeId, afterId }),
+    findPrevious: (captureId: string) => ipcRenderer.invoke(CH.diffFindPrevious, captureId),
   },
   sync: {
     now: (): Promise<import('../shared/types').SyncResult> => ipcRenderer.invoke(CH.syncNow),

@@ -9,11 +9,11 @@
 import type { DestinationId, Entitlements, Tier } from '../../shared/types';
 
 const TABLE: Record<Tier, Omit<Entitlements, 'tier'>> = {
-  free:      { historyWindowDays: 30,   maxPresets: 1,    aiEnabled: false, cloudSync: false },
-  pro:       { historyWindowDays: null, maxPresets: 5,    aiEnabled: true,  cloudSync: true  },
-  team:      { historyWindowDays: null, maxPresets: null, aiEnabled: true,  cloudSync: true  },
+  free:      { historyWindowDays: 30,   maxPresets: 1,    aiEnabled: false, cloudSync: false, diffAdvanced: false },
+  pro:       { historyWindowDays: null, maxPresets: 5,    aiEnabled: true,  cloudSync: true,  diffAdvanced: true  },
+  team:      { historyWindowDays: null, maxPresets: null, aiEnabled: true,  cloudSync: true,  diffAdvanced: true  },
   // Perpetual: paid, non-recurring, AI-enabled, local (resolves the §11 contradiction).
-  perpetual: { historyWindowDays: null, maxPresets: 5,    aiEnabled: true,  cloudSync: false },
+  perpetual: { historyWindowDays: null, maxPresets: 5,    aiEnabled: true,  cloudSync: false, diffAdvanced: true  },
 };
 
 export function entitlementsFor(tier: Tier): Entitlements {

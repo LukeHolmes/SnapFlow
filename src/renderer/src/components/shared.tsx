@@ -1,6 +1,6 @@
 // Shared constants + components used across all screens.
 import { Camera, ScanText, Send, Shield, MessageSquare, FileText, Mail, Crop, Github, Webhook, Layers, HardDrive } from 'lucide-react';
-export type { Capture, Preset, ActivityEvent, Stats, Entitlements } from '../../../shared/types';
+export type { Capture, Preset, ActivityEvent, Stats, Entitlements, DiffRegion } from '../../../shared/types';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 export const TAGS: Record<string, { bg: string; fg: string }> = {
@@ -9,6 +9,7 @@ export const TAGS: Record<string, { bg: string; fg: string }> = {
   chart:    { bg: '#FFF7ED', fg: '#C2410C' },
   document: { bg: '#F0FDF4', fg: '#166534' },
   web:      { bg: '#F0F9FF', fg: '#0369A1' },
+  diff:     { bg: '#FFF7ED', fg: '#EA580C' },
 };
 export const PRESET_ICONS: Record<string, React.ComponentType<any>> = {
   slack: MessageSquare, notion: FileText, gmail: Mail, github: Github, zapier: Webhook, clipboard: Crop, jira: Layers,

@@ -8,8 +8,10 @@ import { contextualise } from './pipeline';
 import { boxesForDetections, locatePiiInOcr } from './ai/pii-locate';
 import { aiProxyFromEnv } from './ai/proxy-client';
 import { runOcr } from './ocr';
-import { computeDiff } from './diff';
+import { computeDiff, findPreviousCapture } from './diff';
+import { diffCaptureFromRaw, persistDiffImage } from './diff/save';
 import { diffsDir } from './paths';
+import type { DiffComputeOptions } from './diff/options';
 import { pinCapture } from './pin';
 import { canAddPreset, canUseDestination } from './entitlements';
 import { integrationBackendClientFromEnv } from './integrations/backend-client';
@@ -240,18 +242,55 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   ipcMain.handle(CH.syncNow, () => sync.run());
 
   // ── Diff mode (v1.1) ────────────────────────────────────────────────────────
-  ipcMain.handle(CH.diffCompute, async (_e, args: { beforeId: string; afterId: string }) => {
+  ipcMain.handle(CH.diffCompute, async (_e, args: { beforeId: string; afterId: string; options?: DiffComputeOptions }) => {
     const before = history.get(WS, args.beforeId);
     const after  = history.get(WS, args.afterId);
     if (!before?.imagePath || !after?.imagePath) return { ok: false, error: 'Capture not found or has no image' };
+    const threshold = args.options?.threshold;
+    if (threshold != null && !ent().diffAdvanced) {
+      return { ok: false, error: 'Diff sensitivity control requires Pro or Team' };
+    }
     try {
       const { join } = require('node:path') as typeof import('node:path');
       const outputPath = join(diffsDir(), `diff-${Date.now()}.png`);
-      const result = await computeDiff(before.imagePath, after.imagePath, outputPath);
-      return { ok: true, ...result };
+      const result = await computeDiff(before.imagePath, after.imagePath, outputPath, args.options);
+      const regions = ent().diffAdvanced ? result.regions : [];
+      return { ok: true, ...result, regions };
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : 'Diff computation failed' };
     }
+  });
+
+  ipcMain.handle(CH.diffGetImage, (_e, imagePath: string) => {
+    const { resolve } = require('node:path') as typeof import('node:path');
+    if (!imagePath || !resolve(imagePath).startsWith(resolve(diffsDir()))) return null;
+    try { return 'data:image/png;base64,' + readFileSync(imagePath).toString('base64'); }
+    catch { return null; }
+  });
+
+  ipcMain.handle(CH.diffSave, async (_e, args: { diffImagePath: string; beforeId: string; afterId: string }) => {
+    const before = history.get(WS, args.beforeId);
+    const after = history.get(WS, args.afterId);
+    if (!before || !after) return { ok: false, error: 'Source captures not found' };
+    const { resolve } = require('node:path') as typeof import('node:path');
+    if (!args.diffImagePath || !resolve(args.diffImagePath).startsWith(resolve(diffsDir()))) {
+      return { ok: false, error: 'Invalid diff image' };
+    }
+    try {
+      const raw = persistDiffImage(args.diffImagePath, before.filename, after.filename);
+      const capture = diffCaptureFromRaw(raw, WS);
+      history.insert(capture);
+      const saved = await contextualise(capture, ent(), history, events, runOcr, { fixedTag: 'diff' });
+      return { ok: true, capture: saved };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Could not save diff to history' };
+    }
+  });
+
+  ipcMain.handle(CH.diffFindPrevious, (_e, captureId: string) => {
+    const list = history.list(WS, { limit: 200, sinceDays: ent().historyWindowDays });
+    const prev = findPreviousCapture(list, captureId);
+    return prev ? { ok: true, captureId: prev.id } : { ok: false };
   });
 
   ipcMain.handle(CH.diffSummarise, async (_e, args: { beforeId: string; afterId: string }) => {

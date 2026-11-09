@@ -2,7 +2,7 @@
 
 export type Tier = 'free' | 'pro' | 'team' | 'perpetual';
 export type ColorFormat = 'hex' | 'rgb' | 'hsl';
-export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web';
+export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web' | 'diff';
 export type DestinationId = 'clipboard' | 'slack' | 'notion' | 'gmail' | 'github' | 'zapier' | 'jira' | 'google-drive';
 export type GuideType = 'sop' | 'bug_report' | 'training' | 'validation' | 'walkthrough';
 export type AnnotationTool = 'arrow' | 'rect' | 'ellipse' | 'highlight' | 'text' | 'redact' | 'step' | 'callout' | 'blur';
@@ -138,6 +138,8 @@ export interface Entitlements {
   aiEnabled: boolean;
   cloudSync: boolean;
   sharedLibrary?: boolean;           // backend Team search capability; optional for older desktop mirrors
+  /** Sensitivity slider + changed-region boxes (local diff; free tier gets pixel diff + views). */
+  diffAdvanced?: boolean;
 }
 
 export interface DeliverResult {
@@ -145,6 +147,13 @@ export interface DeliverResult {
   detail: string;
   url?: string;
   queued?: boolean;
+}
+
+export interface DiffRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export type IntegrationConnectionState = 'connected' | 'pending' | 'error' | 'disconnected';

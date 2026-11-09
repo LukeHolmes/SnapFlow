@@ -4,6 +4,7 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 
 ## [0.6.1] — Unreleased — Project health
 ### Added
+- **Diff mode UI (v1.1)** — History-driven before/after workflow, compare-with-previous-same-window, side-by-side / overlay (opacity) / highlight / change-box views, percent-changed summary, sensitivity threshold (Pro+), export diff to History (`diff` tag) and Deliver via presets; pixel engine tests for bboxes and threshold.
 - **Windows CI installer** — CI job on `windows-latest` builds an unsigned NSIS `.exe`
   (`npm run dist -- --publish never`) and uploads **`snapflow-windows-installer`** as a
   workflow artifact on `main`, PRs into `main`, and `workflow_dispatch` (see README).
