@@ -14,6 +14,7 @@ import { pinCapture } from './pin';
 import { canAddPreset, canUseDestination } from './entitlements';
 import { integrationBackendClientFromEnv } from './integrations/backend-client';
 import { testZapierWebhook } from './integrations/zapier';
+import { connectGoogleDrive, disconnectGoogleDrive, getGoogleDriveStatus } from './integrations/google-drive/service';
 import type { Engine } from './engine';
 import type { SyncAgent } from './sync/agent';
 import type { AnnotationDocument, Capture, ColorFormat, DestinationId, Guide, GuideType, IntegrationStatus } from '../shared/types';
@@ -201,10 +202,12 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
       label: zapier?.target || webhookUrl || undefined,
       secondary: zapier ? (isHttpsUrl(webhookUrl) ? 'Webhook configured' : 'Enter a valid HTTPS webhook URL') : undefined,
     });
+    remote.push(getGoogleDriveStatus());
     return remote;
   });
   ipcMain.handle(CH.integrationsConnect, async (_e, args: { destination: DestinationId; params?: Record<string, string> }) => {
     if (args.destination === 'clipboard' || args.destination === 'zapier') return { ok: false, detail: 'This destination does not use OAuth' };
+    if (args.destination === 'google-drive') return connectGoogleDrive();
     try {
       const url = await integrations.getOAuthUrl(args.destination, args.params ?? {});
       await shell.openExternal(url);
@@ -215,6 +218,7 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   });
   ipcMain.handle(CH.integrationsDisconnect, async (_e, destination: DestinationId) => {
     if (destination === 'clipboard' || destination === 'zapier') return { ok: false, detail: 'This destination does not use OAuth' };
+    if (destination === 'google-drive') return disconnectGoogleDrive();
     if (!integrations.configured) return { ok: false, detail: 'SnapFlow backend is not configured' };
     try {
       await integrations.disconnect(destination);

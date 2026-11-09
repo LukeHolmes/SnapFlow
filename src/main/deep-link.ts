@@ -1,7 +1,7 @@
 import type { DestinationId } from '../shared/types';
 
 const VALID_DESTINATIONS: ReadonlySet<string> = new Set([
-  'slack', 'notion', 'gmail', 'github', 'jira',
+  'slack', 'notion', 'gmail', 'github', 'jira', 'google-drive',
 ]);
 
 export interface DeepLinkResult {

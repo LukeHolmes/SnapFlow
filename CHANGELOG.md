@@ -4,6 +4,7 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 
 ## [0.6.1] — Unreleased — Project health
 ### Added
+- **Google Drive output preset (prototype)** — desktop-only Deliver integration (`google-drive`): PKCE OAuth with tokens in OS keychain/safeStorage, `drive.file` scope, resumable upload, optional target folder (default `SnapFlow`), free-tier manual send, PII gate before upload, disconnect/revoke; unit tests with mocked Drive API; `GOOGLE_DRIVE_CLIENT_ID` in `.env.example`.
 - **PII name detection** — on-device dictionary/heuristic name matching alongside email/phone; optional card (Luhn), IBAN, and IPv4 checks; OCR bounding boxes with a toggleable redact review modal before saving a blurred copy.
 - **Screen colour picker (v1.0 MVP)** — ⌘⇧7 / dashboard **Colour** / tray menu: multi-display overlay, magnified loupe, click-to-copy (HEX default, RGB/HSL via picker keys or dashboard setting), local recent-colour history in SQLite, Esc to cancel.
 - **Snipping suite (consolidated)** — Documents and tests for features that landed via PR #6/#7: guided scroll-stitch preview (⌘⇧6), pinned captures, guide builder, and post-capture quick actions (copy / annotate / pin / OCR / redact / send). Scroll overlap logic extracted to `src/main/capture/stitch.ts` with headless unit tests.

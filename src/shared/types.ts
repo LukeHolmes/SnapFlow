@@ -3,7 +3,7 @@
 export type Tier = 'free' | 'pro' | 'team' | 'perpetual';
 export type ColorFormat = 'hex' | 'rgb' | 'hsl';
 export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web';
-export type DestinationId = 'clipboard' | 'slack' | 'notion' | 'gmail' | 'github' | 'zapier' | 'jira';
+export type DestinationId = 'clipboard' | 'slack' | 'notion' | 'gmail' | 'github' | 'zapier' | 'jira' | 'google-drive';
 export type GuideType = 'sop' | 'bug_report' | 'training' | 'validation' | 'walkthrough';
 export type AnnotationTool = 'arrow' | 'rect' | 'ellipse' | 'highlight' | 'text' | 'redact' | 'step' | 'callout' | 'blur';
 export type PiiType = 'email' | 'phone' | 'name' | 'credit_card' | 'iban' | 'ip';

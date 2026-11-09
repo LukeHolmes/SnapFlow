@@ -14,6 +14,7 @@ import { configureIntegrationRuntime } from './integrations/runtime';
 import { disposeOcr } from './ocr';
 import { closePinnedCaptures } from './pin';
 import { parseDeepLinkUrl } from './deep-link';
+import { completeGoogleDriveOAuthFromDeepLink } from './integrations/google-drive/service';
 
 let win: BrowserWindow | null = null;
 
@@ -26,6 +27,30 @@ if (process.defaultApp) {
 }
 
 function handleDeepLink(url: string): void {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'snapflow:' && parsed.searchParams.get('destination') === 'google-drive') {
+      const code = parsed.searchParams.get('code');
+      const state = parsed.searchParams.get('state');
+      if (code && state) {
+        void completeGoogleDriveOAuthFromDeepLink(code, state).then(result => {
+          if (win && !win.isDestroyed()) {
+            win.show();
+            win.focus();
+          }
+          if (result.ok) {
+            win?.webContents.send(CH.integrationConnected, 'google-drive');
+          } else {
+            win?.webContents.send(CH.integrationError, 'google-drive', result.detail);
+          }
+        });
+        return;
+      }
+    }
+  } catch {
+    /* fall through to generic parser */
+  }
+
   const result = parseDeepLinkUrl(url);
   if (!result) return;
 

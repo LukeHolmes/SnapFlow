@@ -31,6 +31,6 @@ export function canAddPreset(ent: Entitlements, currentCount: number): boolean {
 }
 
 export function canUseDestination(ent: Entitlements, destination: DestinationId): boolean {
-  if (destination === 'clipboard') return true;
+  if (destination === 'clipboard' || destination === 'google-drive') return true;
   return ent.tier !== 'free';
 }
