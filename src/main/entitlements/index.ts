@@ -9,11 +9,11 @@
 import type { DestinationId, Entitlements, Tier } from '../../shared/types';
 
 const TABLE: Record<Tier, Omit<Entitlements, 'tier'>> = {
-  free:      { historyWindowDays: 30,   maxPresets: 1,    aiEnabled: false, cloudSync: false, diffAdvanced: false },
-  pro:       { historyWindowDays: null, maxPresets: 5,    aiEnabled: true,  cloudSync: true,  diffAdvanced: true  },
-  team:      { historyWindowDays: null, maxPresets: null, aiEnabled: true,  cloudSync: true,  diffAdvanced: true  },
+  free:      { historyWindowDays: 30,   maxPresets: 1,    aiEnabled: false, cloudSync: false, diffAdvanced: false, focusBlurMaxRegions: 1, focusBlurPresetAutomation: false },
+  pro:       { historyWindowDays: null, maxPresets: 5,    aiEnabled: true,  cloudSync: true,  diffAdvanced: true,  focusBlurMaxRegions: null, focusBlurPresetAutomation: true },
+  team:      { historyWindowDays: null, maxPresets: null, aiEnabled: true,  cloudSync: true,  diffAdvanced: true,  focusBlurMaxRegions: null, focusBlurPresetAutomation: true },
   // Perpetual: paid, non-recurring, AI-enabled, local (resolves the §11 contradiction).
-  perpetual: { historyWindowDays: null, maxPresets: 5,    aiEnabled: true,  cloudSync: false, diffAdvanced: true  },
+  perpetual: { historyWindowDays: null, maxPresets: 5,    aiEnabled: true,  cloudSync: false, diffAdvanced: true,  focusBlurMaxRegions: null, focusBlurPresetAutomation: true },
 };
 
 export function entitlementsFor(tier: Tier): Entitlements {
@@ -33,4 +33,12 @@ export function canAddPreset(ent: Entitlements, currentCount: number): boolean {
 export function canUseDestination(ent: Entitlements, destination: DestinationId): boolean {
   if (destination === 'clipboard' || destination === 'google-drive') return true;
   return ent.tier !== 'free';
+}
+
+export function canAddFocusBlurRegion(ent: Entitlements, currentCount: number): boolean {
+  return ent.focusBlurMaxRegions == null || currentCount < ent.focusBlurMaxRegions;
+}
+
+export function canUseFocusBlurPresetAutomation(ent: Entitlements): boolean {
+  return !!ent.focusBlurPresetAutomation;
 }

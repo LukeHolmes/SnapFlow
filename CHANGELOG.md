@@ -2,6 +2,14 @@
 
 All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisition readiness).
 
+## [1.1.0] — Unreleased — Focus Blur
+### Added
+- **Focus Blur** — post-capture editor with drawable focus regions (rounded rects), blur strength, dim, invert, live canvas preview, non-destructive params on the annotation layer, undo/redo, and quick actions **Focus window** / **Focus region**.
+- **Preset automation (Pro+)** — `config.focusBlurAuto` on output presets; deliver path renders focus blur then PII boxes (`src/main/capture/delivery-image.ts`).
+- **Pure-JS blur pipeline** — shared mask/compose for renderer export and main-process PNG (`src/focus-blur/*`); no paid image libs.
+- **Entitlements** — `focusBlurMaxRegions` (1 on Free) and `focusBlurPresetAutomation`.
+- Docs: `docs/FOCUS_BLUR.md`; README Focus Blur row; unit tests in `tests/focus-blur.test.ts`.
+
 ## [0.6.1] — Unreleased — Project health
 ### Added
 - **Cloud sync signed URLs** — pluggable blob storage (`local` + S3-compatible/R2/Supabase),

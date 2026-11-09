@@ -1,4 +1,5 @@
-import type { AnnotationDocument, AnnotationEffects, AnnotationPoint, AnnotationTool, CaptureAnnotation } from '../shared/types';
+import type { AnnotationDocument, AnnotationEffects, AnnotationPoint, AnnotationTool, CaptureAnnotation, FocusBlurEffect } from '../shared/types';
+import { emptyFocusBlur, normaliseFocusBlur } from '../focus-blur/model';
 
 export const DEFAULT_ANNOTATION_EFFECTS: AnnotationEffects = { border: false, shadow: false, watermark: '' };
 
@@ -35,6 +36,7 @@ export function createAnnotation({ type, start, end, color, text, existing = [],
 }
 
 export function normaliseAnnotationDocument(doc: AnnotationDocument | null | undefined): AnnotationDocument {
+  const focusBlur = doc?.focusBlur ? normaliseFocusBlur(doc.focusBlur) : emptyFocusBlur();
   return {
     annotations: (doc?.annotations ?? [])
       .map((annotation, idx) => ({
@@ -45,6 +47,7 @@ export function normaliseAnnotationDocument(doc: AnnotationDocument | null | und
       .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0)),
     effects: { ...DEFAULT_ANNOTATION_EFFECTS, ...(doc?.effects ?? {}) },
     crop: doc?.crop ?? null,
+    focusBlur,
   };
 }
 
@@ -53,10 +56,15 @@ export function hasMeaningfulAnnotationLayer(doc: AnnotationDocument | null | un
   return (
     normalised.annotations.length > 0 ||
     normalised.crop !== null ||
+    (normalised.focusBlur?.regions.length ?? 0) > 0 ||
     normalised.effects.border ||
     normalised.effects.shadow ||
     normalised.effects.watermark.trim().length > 0
   );
+}
+
+export function focusBlurFromDoc(doc: AnnotationDocument): FocusBlurEffect {
+  return normaliseFocusBlur(doc.focusBlur);
 }
 
 export function serialiseAnnotationDocument(doc: AnnotationDocument): string {

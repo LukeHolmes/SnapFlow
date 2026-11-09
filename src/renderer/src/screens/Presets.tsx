@@ -4,6 +4,7 @@ import { api } from '../api';
 import { PRESET_ICONS, PRESET_BG, rel } from '../components/shared';
 import type { Preset, Entitlements } from '../components/shared';
 import type { DestinationId, IntegrationOption, IntegrationStatus } from '../../../shared/types';
+import { PRESET_FOCUS_BLUR_KEY, type PresetFocusBlurConfig } from '../../../focus-blur/preset';
 
 interface Props { flash: (text: string, ok?: boolean) => void; refreshKey: number; }
 
@@ -34,6 +35,13 @@ export default function Presets({ flash, refreshKey }: Props) {
   const [github, setGithub] = useState({ owner: '', repo: '', mode: 'create' as 'create' | 'comment', issue_number: '', scope: 'repo' });
   const [zapier, setZapier] = useState({ webhook_url: '', secret: '' });
   const [googleDrive, setGoogleDrive] = useState({ folder_name: 'SnapFlow' });
+  const [focusBlurAuto, setFocusBlurAuto] = useState<PresetFocusBlurConfig>({
+    enabled: false,
+    windowFocus: true,
+    blurRadius: 12,
+    dimAmount: 0.35,
+    invert: false,
+  });
 
   const load = useCallback(async () => {
     const [p, e, s] = await Promise.all([api.presets.list(), api.entitlements.get(), api.integrations.statuses()]);
@@ -84,6 +92,15 @@ export default function Presets({ flash, refreshKey }: Props) {
     });
     setGoogleDrive({
       folder_name: String(drivePreset?.config.folder_name ?? 'SnapFlow'),
+    });
+    const withAuto = p.find(item => item.config[PRESET_FOCUS_BLUR_KEY]) ?? p[0];
+    const auto = (withAuto?.config[PRESET_FOCUS_BLUR_KEY] ?? {}) as PresetFocusBlurConfig;
+    setFocusBlurAuto({
+      enabled: !!auto.enabled,
+      windowFocus: auto.windowFocus !== false,
+      blurRadius: typeof auto.blurRadius === 'number' ? auto.blurRadius : 12,
+      dimAmount: typeof auto.dimAmount === 'number' ? auto.dimAmount : 0.35,
+      invert: !!auto.invert,
     });
   }, []);
 
@@ -155,8 +172,15 @@ export default function Presets({ flash, refreshKey }: Props) {
     );
   };
 
+  const withFocusBlurHook = (config: Record<string, unknown>) => ({
+    ...config,
+    [PRESET_FOCUS_BLUR_KEY]: ent?.focusBlurPresetAutomation
+      ? { ...focusBlurAuto, enabled: !!focusBlurAuto.enabled }
+      : { enabled: false },
+  });
+
   const savePreset = async (destination: DestinationId, name: string, target: string, config: Record<string, unknown>) => {
-    const result = await api.presets.upsert({ destination, name, target, config }) as { ok: boolean; error?: string };
+    const result = await api.presets.upsert({ destination, name, target, config: withFocusBlurHook(config) }) as { ok: boolean; error?: string };
     if (!result.ok) {
       flash(result.error ?? 'Could not save preset', false);
       return;
@@ -184,6 +208,52 @@ export default function Presets({ flash, refreshKey }: Props) {
           {ent.tier === 'pro' && <button className="upgrade-link" onClick={() => flash('Upgrade at snapflow.app/pricing')}>Upgrade to Team for unlimited →</button>}
         </div>
       )}
+
+      <div className="card preset-config-card" style={{ marginBottom: 12 }}>
+        <div className="preset-config-head">
+          <div className="preset-config-title">
+            <div className="preset-meta">
+              <span className="preset-name">Focus Blur on deliver</span>
+              <span className="preset-dest">Pro — apply saved or inset-window focus before Slack/Jira/etc.</span>
+            </div>
+          </div>
+        </div>
+        <div className="preset-config-body">
+          <label>
+            <input
+              type="checkbox"
+              checked={!!focusBlurAuto.enabled}
+              disabled={!ent?.focusBlurPresetAutomation}
+              onChange={e => setFocusBlurAuto(prev => ({ ...prev, enabled: e.target.checked }))}
+            />
+            {' '}Auto-apply Focus Blur when sending via any preset
+          </label>
+          {!ent?.focusBlurPresetAutomation && (
+            <p className="screen-sub">Free tier can edit a single focus region in the editor; upgrade for preset automation.</p>
+          )}
+          {focusBlurAuto.enabled && ent?.focusBlurPresetAutomation && (
+            <>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={focusBlurAuto.windowFocus !== false}
+                  onChange={e => setFocusBlurAuto(prev => ({ ...prev, windowFocus: e.target.checked }))}
+                />
+                {' '}Use inset &quot;window&quot; rect when capture has no saved focus params
+              </label>
+              <label className="mini-style">Blur strength
+                <input
+                  type="range"
+                  min={4}
+                  max={32}
+                  value={focusBlurAuto.blurRadius ?? 12}
+                  onChange={e => setFocusBlurAuto(prev => ({ ...prev, blurRadius: Number(e.target.value) }))}
+                />
+              </label>
+            </>
+          )}
+        </div>
+      </div>
 
       <div className="preset-config-list">
         {DESTINATIONS.map(destination => {

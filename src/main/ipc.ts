@@ -13,7 +13,10 @@ import { diffCaptureFromRaw, persistDiffImage } from './diff/save';
 import { diffsDir } from './paths';
 import type { DiffComputeOptions } from './diff/options';
 import { pinCapture } from './pin';
-import { canAddPreset, canUseDestination } from './entitlements';
+import { canAddPreset, canUseDestination, canUseFocusBlurPresetAutomation } from './entitlements';
+import { presetFocusBlurConfig } from '../focus-blur/preset';
+import { buildDeliveryImagePath, disposeDeliveryImage } from './capture/delivery-image';
+import { normaliseFocusBlur } from '../focus-blur/model';
 import { integrationBackendClientFromEnv } from './integrations/backend-client';
 import { testZapierWebhook } from './integrations/zapier';
 import { connectGoogleDrive, disconnectGoogleDrive, getGoogleDriveStatus } from './integrations/google-drive/service';
@@ -58,6 +61,12 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     return saveRawCapture(persistDataUrl(args.dataUrl, `${original.filename} annotated`));
   });
 
+  ipcMain.handle(CH.captureSaveFocusBlur, async (_e, args: { captureId: string; dataUrl: string }) => {
+    const original = history.get(WS, args.captureId);
+    if (!original) throw new Error('Capture not found');
+    return saveRawCapture(persistDataUrl(args.dataUrl, `${original.filename} focus`));
+  });
+
   ipcMain.handle(CH.capturePiiScan, async (_e, id: string) => {
     const original = history.get(WS, id);
     if (!original?.imagePath) throw new Error('Capture not found');
@@ -87,6 +96,11 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   ipcMain.handle(CH.captureAnnotationsSave, (_e, args: { captureId: string; doc: AnnotationDocument }) => {
     const capture = history.get(WS, args.captureId);
     if (!capture) return { ok: false, detail: 'Capture not found' };
+    const fx = normaliseFocusBlur(args.doc.focusBlur);
+    const maxRegions = ent().focusBlurMaxRegions;
+    if (maxRegions != null && fx.regions.length > maxRegions) {
+      return { ok: false, detail: `Your plan allows ${maxRegions} focus region. Upgrade to Pro for multi-region.` };
+    }
     history.saveAnnotationDocument(WS, args.captureId, args.doc);
     return { ok: true, detail: 'Annotation draft saved' };
   });
@@ -132,6 +146,9 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     if (!existing && !canAddPreset(ent(), presets.count(WS))) {
       return { ok: false, error: `Your plan allows ${ent().maxPresets} preset(s). Upgrade for more.` };
     }
+    if (presetFocusBlurConfig(p.config ?? {}).enabled && !canUseFocusBlurPresetAutomation(ent())) {
+      return { ok: false, error: 'Automatic Focus Blur on deliver requires Pro or higher.' };
+    }
     return { ok: true, preset: presets.upsertByDestination({ workspaceId: WS, ...p }) };
   });
   ipcMain.handle(CH.presetsRemove, (_e, id: string) => { presets.remove(WS, id); return { ok: true }; });
@@ -143,10 +160,19 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
       return { ok: false, detail: 'Your current plan only supports clipboard delivery for this destination' };
     }
 
+    const annotationDoc = history.getAnnotationDocument(WS, capture.id);
+    const { imagePath, temporary } = await buildDeliveryImagePath(capture, {
+      entitlements: ent(),
+      annotationDoc,
+      preset,
+      applyPiiRedaction: true,
+    });
+    const deliverCapture = { ...capture, imagePath };
+
     try {
       const dest = getDestination(preset.destination);
       if (!dest) return { ok: false, detail: 'Unknown destination' };
-      const result = await dest.deliver(capture, preset.config);
+      const result = await dest.deliver(deliverCapture, preset.config);
       if (result.queued) {
         events.append(WS, 'delivery_queued', `${preset.name} queued — ${result.detail}`);
       } else if (result.ok) {
@@ -159,6 +185,8 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
       const detail = err instanceof Error ? err.message : 'Delivery failed';
       events.append(WS, 'delivery_failed', `${preset.name} failed — ${detail}`);
       return { ok: false, detail };
+    } finally {
+      disposeDeliveryImage(imagePath, temporary);
     }
   });
 
