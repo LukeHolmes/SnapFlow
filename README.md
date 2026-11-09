@@ -2,40 +2,51 @@
 
 **Capture → Context → Deliver.** A local-first, cross-platform screen-capture utility.
 This repository is a real, runnable Electron desktop app plus a thin Node backend.
-The codebase is currently in the **v0.6 unreleased** track: the desktop foundation,
-backend, cloud sync, server-side delivery path, Team search, and Diff mode are all
-present, with several integrations still intentionally stubbed.
+The codebase is on the **v0.6.1 unreleased** track (`package.json` and `CHANGELOG.md`
+aligned); nothing is tagged for release yet.
 
 It is built directly to the project's *Technical Architecture* and *Developer Instructions*.
 
 ---
 
-## What actually works right now
+## v1.0 MVP status (honest, code-checked)
+
+Legend: **Done** ships in `main` and is usable locally with default/dev setup.
+**Partial** works in code but needs config, polish, or a deliberate follow-up layer.
+**Not started** has no meaningful implementation yet.
+
+| Capability | Status | Notes |
+|---|---|---|
+| Region capture (freeze-frame overlay, ⌘⇧4) | **Done** | `src/main/region.ts`, multi-display overlays |
+| Window / screen picker (⌘⇧5) | **Done** | `desktopCapturer` thumbnails in the dashboard modal |
+| Scrolling capture | **Partial** | Guided scroll-stitch MVP: sample frames while the user scrolls, vertical stitch with overlap de-dupe (`src/main/capture/index.ts`, ⌘⇧6 UI). No native auto-scroll or sidecar yet. |
+| OCR + FTS5 history search | **Done** | Tesseract via `tesseract.js` (WASM); SQLite FTS5 in `src/main/history/` |
+| Auto-tagging | **Done** | Metered `/v1/ai/tag` when configured; local heuristic fallback |
+| Output presets (clipboard, Slack, Jira, Notion, Gmail, GitHub, Zapier) | **Partial** | Desktop `OutputDestination` plugins call `POST /v1/deliver`; server implementations live in `backend/src/deliver/destinations.ts` (Slack/Jira/Notion/Gmail/GitHub — not stubs). End-to-end delivery still needs vault OAuth tokens and preset config per destination. Clipboard is fully local. |
+| PII handling | **Partial** | On-device regex detect (email/phone) flags captures and feeds events; manual redacted copy + annotation redact/blur tools. Pipeline does **not** auto-burn pixels on detect. |
+| Delay timer (2s / 5s) | **Done** | Full-screen delayed capture from the dashboard |
+| Colour picker | **Partial** | Annotation stroke colour via `<input type="color">` in the editor (`AnnotationEditor.tsx`). No screen eyedropper / system colour sampler. |
+
+Core architecture rules still hold: capture/OCR/history never import concrete integrations;
+integrations only implement `deliver(capture, config)`; AI is tier-gated and proxy-metered.
+
+---
+
+## What else works on `main`
 
 | Area | Status |
 |---|---|
 | **Electron app shell** (main / preload / renderer, typed IPC) | ✅ working |
 | **Screen capture** via `desktopCapturer`, saved to disk | ✅ working |
-| **Region select** — freeze-frame overlay, drag-to-crop, ⌘⇧4 global shortcut | ✅ working |
-| **Multi-display** region capture (per-monitor overlays) | ✅ working |
-| **Window picker** — pick any window/screen, ⌘⇧5 | ✅ working |
-| **OCR** (Tesseract, on-device, background) | ✅ working |
-| **History engine** — SQLite + **FTS5** full-text search, workspace-scoped | ✅ working & unit-tested |
 | **Local PII detection** (email + phone) | ✅ working & unit-tested |
-| **Heuristic auto-tagging** (offline fallback) | ✅ working |
-| **Output presets** — plugin contract + **clipboard** destination | ✅ working |
-| Slack / Jira / Notion / Email destinations | 🟡 contract implemented, credentials/OAuth pending |
-| **Backend** — auth, entitlements, metered AI proxy, OAuth vault, billing | ✅ working (in `backend/`) |
-| **Live AI auto-tagging** via the proxy (heuristic fallback) | ✅ wired |
+| **Backend** — auth, entitlements, metered AI proxy, OAuth vault, billing, sync | ✅ working (`backend/`) |
 | **Cloud sync** — metadata-first, LWW, tombstones, lazy blobs (Pro/Team) | ✅ working |
-| **Tier & entitlement model** (free/pro/team/perpetual) | ✅ working & unit-tested |
-| **Dashboard UI** wired to the live engine | ✅ working |
 | **Diff mode** — pixel diff + AI summary path | ✅ working & unit-tested |
+| **Annotations** — editor, persistence, guide-oriented types | ✅ working & unit-tested |
 | **Team server-side search** over the shared workspace library | ✅ backend implemented |
-| Native sidecar, scrolling capture, Team admin/library UI | ⬜ next layers |
+| Native capture sidecar, auto-scroll capture, Team admin/library UI polish | ⬜ next layers |
 
-59 headless unit tests cover the desktop history/PII/entitlements/pipeline/sync/diff
-logic and backend auth/vault/AI/sync/delivery/OAuth modules.
+**85 headless unit tests** — 45 desktop (`npm test`) + 40 backend (`cd backend && npm test`).
 
 ---
 
@@ -57,6 +68,7 @@ npm run rebuild:electron # manual Electron/runtime rebuild
 ```
 
 Other scripts:
+
 ```bash
 npm test           # headless unit tests (no Electron needed)
 npm run typecheck  # tsc --noEmit
@@ -66,6 +78,10 @@ npm run dist       # package installers (electron-builder)
 
 **macOS:** first capture will prompt for Screen Recording permission
 (System Settings → Privacy & Security → Screen Recording).
+
+**Linux / cloud agents:** `npm run build` and `npm test` are the reliable paths. `npm run dev`
+can still fail on Linux with `ERR_REQUIRE_ESM` when the main bundle `require()`s ESM-only
+`pixelmatch` — see `AGENTS.md`.
 
 Copy `.env.example` to `.env` to configure local desktop runs. Set the tier for local
 testing with `SNAPFLOW_TIER=free npm run dev` (default `pro`).
@@ -78,7 +94,7 @@ testing with `SNAPFLOW_TIER=free npm run dev` (default `pro`).
 src/
   shared/            Types + IPC channel names — the contract across all processes
   main/              Electron main process (the engine; never depends on the UI)
-    capture/         Narrow capture interface (swappable for a native sidecar later)
+    capture/         Narrow capture interface (+ guided scroll-stitch MVP)
     ocr/             Tesseract pipeline
     history/         SQLite + FTS5 store and schema  ← core IP #1
     ai/              Local PII detection + metered AI proxy client
@@ -94,55 +110,38 @@ src/
 tests/               Headless unit tests
 ```
 
-This maps onto the architecture's repository layout (capture / ocr / ai / history /
-integrations), adapted for Electron's main-vs-renderer split.
-
 ---
 
 ## Key design decisions (already baked in)
 
-These are the things the architecture says are *painful to change later*, so they are correct from v0.1:
-
 - **Multi-tenancy from day one.** Every capture, preset and event carries a `workspace_id`;
-  search and reads are scoped to it. The Team shared library slots in with no migration.
-- **Two core-IP engines are cleanly separable.** The history/FTS engine and the output-preset
-  plugin system have no dependency on the UI shell or on each other.
-- **Capture behind a narrow interface.** `captureSource` / `captureRegion` only — a native
-  capture sidecar can replace this without touching anything upstream.
-- **AI is gated and metered.** The free tier never reaches a model; all model access flows
-  through the backend proxy when configured (the API key never touches the client). Offline
-  heuristic tagging is the fallback.
-- **PII detection is fully local** (resolves the §11 contradiction — no screenshots sent out to find PII).
-- **Entitlements** express recurring (Pro/Team), non-recurring (Perpetual) and future on-prem states.
+  search and reads are scoped to it.
+- **Two core-IP engines are cleanly separable.** History/FTS and output presets do not
+  depend on the UI or on each other.
+- **Capture behind a narrow interface.** A native sidecar can replace capture without
+  touching upstream stages.
+- **AI is gated and metered.** Free tier never hits a model; keys stay on the backend proxy.
+- **PII detection is fully local** — no screenshots are sent out to find PII.
+- **Entitlements** express Free / Pro / Team / Perpetual (+ future on-prem).
 
 ---
 
 ## How region capture works
 
-Triggering a region capture (the **New Capture** / **Region** buttons, or **⌘⇧4** anywhere)
-grabs a full-resolution frame of the screen *first*, then opens a transparent overlay window
-showing that frozen frame dimmed. You drag a bright selection rectangle; on release the engine
-crops the frozen frame (converting CSS pixels → device pixels via the display's scale factor),
-runs it through the OCR → PII → tag → index pipeline, and the dashboard refreshes via a
-`capture:added` event. No screen flash, and the overlay never appears in the shot.
+Triggering a region capture ( **New Capture** / **Region**, or **⌘⇧4** ) grabs a
+full-resolution frame first, then opens a transparent overlay on that frozen frame. On
+release the engine crops (CSS → device pixels), runs OCR → PII scan → tag → index, and
+the dashboard refreshes via `capture:added`.
 
-The overlay is a separate `BrowserWindow` with its own minimal preload — it reports only a
-rectangle back to the engine and never touches the stores directly.
+---
 
-## The next layers to build (in order)
+## Roadmap (remaining layers)
 
-1. ✅ ~~Region-select overlay~~ — done (freeze-frame overlay, multi-display is the one follow-up).
-2. ✅ ~~Window picker + multi-display region support~~ — done.
-3. ✅ ~~Backend (auth, entitlements, metered AI proxy, OAuth vault, billing)~~ — done (`backend/`).
-   ✅ ~~Cloud sync service~~ — done (metadata + blobs, tier-gated).
-   ✅ ~~Postgres-capable store, real OAuth login, and server-side Team search~~ — done.
-4. ✅ ~~Diff mode~~ — done (pixel diff, UI, backend AI summary path).
-5. **Finish the destination integrations** end-to-end (Slack is live server-side;
-   Jira/Notion/email remain stubbed behind the same contract).
-6. **Team shared-library product surface** — admin, membership/SSO, and richer client UI.
-7. **Scrolling capture & window-shadow accuracy** via the native capture sidecar.
-8. **Screen recording** and deeper collaboration workflows.
+1. **Destination UX** — OAuth connect flows, preset wizards, and error surfacing so
+   server-side delivery is one-click for Pro users.
+2. **Team product surface** — shared-library admin, membership/SSO, richer client UI.
+3. **Scrolling capture v2** — native sidecar with auto-scroll and robust overlap detection.
+4. **Screen recording** and deeper collaboration workflows.
 
-The backend lives in `backend/` — see `backend/README.md` to run it.
-
-See `CHANGELOG.md` for the running log.
+The backend lives in `backend/` — see `backend/README.md`. See `CHANGELOG.md` for the
+running log.

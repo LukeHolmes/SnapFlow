@@ -33,9 +33,11 @@ Main process (Node)           Renderer process (React)
 ## Data flow: Capture → Context → Deliver
 
 ```
-[trigger: button / ⌘⇧4]
+[trigger: button / ⌘⇧4 / ⌘⇧5 / ⌘⇧6 / delay]
        ↓
-  grabPrimaryFrame()         ← device-res screenshot, stays in memory
+  capture path (region / source / scroll-stitch / delayed full-screen)
+       ↓
+  grabPrimaryFrame()         ← device-res screenshot, stays in memory (region path)
        ↓
   region overlay              ← user selects rect (CSS px)
        ↓
@@ -86,6 +88,20 @@ src/
 tests/             Headless unit tests (no Electron dependency)
 docs/              Architecture notes
 ```
+
+## Guided scrolling capture (MVP)
+
+⌘⇧6 (and the dashboard **Scroll** card) runs a **guided** capture: the app samples the same
+`desktopCapturer` source several times while the user scrolls, then stitches frames vertically
+with simple overlap de-dupe (`src/main/capture/index.ts`). A native/browser sidecar can replace
+this implementation later without changing IPC (`capture:scroll`, `capture:scrollPreview`).
+
+## Server-side delivery
+
+Desktop integrations (`src/main/integrations/*.ts`) send image bytes and preset config to
+`POST /v1/deliver`. The backend picks the matching `ServerDestination` in
+`backend/src/deliver/destinations.ts`, reveals the OAuth token from the vault server-side,
+and talks to Slack/Jira/Notion/Gmail/GitHub APIs. The bearer token never reaches the client.
 
 ## Cloud sync (Pro/Team)
 

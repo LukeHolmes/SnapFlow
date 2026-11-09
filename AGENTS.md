@@ -35,8 +35,8 @@ Use **tmux** for long-running `npm run dev` processes in Cloud Agent VMs.
 
 | Package | Typecheck | Tests | Build / run |
 |---------|-----------|-------|-------------|
-| Root (desktop) | `npm run typecheck` | `npm test` (29 tests; `pretest` runs `rebuild:node`) | `npm run build`; `npm run dev` for GUI |
-| Backend | `cd backend && npm run typecheck` | `cd backend && npm test` (30 tests) | `cd backend && npm run dev` |
+| Root (desktop) | `npm run typecheck` | `npm test` (45 tests; `pretest` runs `rebuild:node`) | `npm run build`; `npm run dev` for GUI |
+| Backend | `cd backend && npm run typecheck` | `cd backend && npm test` (40 tests) | `cd backend && npm run dev` |
 
 There is **no** configured `lint` script.
 

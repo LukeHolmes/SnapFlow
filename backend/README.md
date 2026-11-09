@@ -29,7 +29,7 @@ current store/rate-limit ports.
 | GET  | `/auth/oauth/:provider/start` | — | Begin OAuth login (redirects to Google/GitHub) |
 | GET  | `/auth/oauth/:provider/callback` | — | OAuth callback: exchange code → issue bearer |
 | GET  | `/v1/search` | ✅ | Server-side Team search across the shared library (Team only) |
-| POST | `/v1/deliver` | ✅ | Server-side delivery using the vault token (never sent to the client) |
+| POST | `/v1/deliver` | ✅ | Server-side delivery using vault OAuth tokens (Slack, Jira, Notion, Gmail, GitHub) |
 | GET  | `/v1/entitlements` | ✅ | Server-authoritative tier capabilities |
 | POST | `/v1/ai/tag` | ✅ | Metered, tier-gated auto-tagging (Free rejected with 402) |
 | PUT/GET/DELETE | `/v1/vault/:destination` | ✅ | Encrypted OAuth credential store (GET returns metadata only) |
@@ -45,7 +45,7 @@ Sync endpoints are gated on the `cloudSync` entitlement (Free/Perpetual → 402)
 - **Metered AI behind a proxy** — the vision API key lives only here; Free tier is rejected
   before any model call; every call is rate-limited (Redis-ready) and metered.
 - **OAuth vault** — tokens are AES-256-GCM encrypted at rest and never returned to clients;
-  `vault.reveal()` is internal-use for future server-side deliveries.
+  `withDestinationAccessToken` reveals them only inside `POST /v1/deliver` handlers.
 - **Server-authoritative entitlements** — the desktop client mirror is UX only.
 - **OAuth login** — authorization-code flow with single-use CSRF state; Google/GitHub
   presets from env. Dev email→token login stays available behind `DEV_LOGIN=true`.

@@ -4,6 +4,7 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 
 ## [0.6.1] — Unreleased — Project health
 ### Added
+- README **v1.0 MVP status** table (done / partial / not started) aligned with the code on `main`.
 - Shared TypeScript contract file (`src/shared/types.ts`) restored so IPC, stores, tests,
   and renderer code compile against one source of truth.
 - Root and backend `.env.example` files for local desktop/backend configuration.
@@ -11,10 +12,12 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 - `.gitignore` for generated dependencies, build output, local env files, SQLite files,
   blobs, and logs.
 ### Changed
+- Root `package.json` **version set to 0.6.1** to match this changelog track (was stuck at 0.5.0).
 - Native `better-sqlite3` rebuild workflow is explicit:
   `npm test` rebuilds for Node, while `npm run dev`/`preview`/`dist` rebuild for Electron.
-- README and contributor docs now describe the current v0.6 implementation state,
-  59-test suite, and remaining integration/product gaps.
+- README, `AGENTS.md`, and `docs/CONTRIBUTING.md` now describe the real branching model
+  (`main` + feature PRs), guided scroll-capture MVP, server-side destinations, **85** unit
+  tests (45 desktop + 40 backend), and honest integration gaps (OAuth/vault wiring).
 
 ## [0.6.0] — Unreleased — Production-grade backend
 ### Added
