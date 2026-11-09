@@ -84,6 +84,23 @@ npm run dist       # package installers (electron-builder)
 **macOS:** first capture will prompt for Screen Recording permission
 (System Settings → Privacy & Security → Screen Recording).
 
+**Windows (installer from CI):** There is no signed release on GitHub Releases yet. To try
+SnapFlow on Windows, download the unsigned NSIS installer from a green CI run:
+
+1. Open [Actions → CI](https://github.com/LukeHolmes/SnapFlow/actions/workflows/ci.yml).
+2. Pick a run whose **Windows (NSIS installer)** job succeeded (on `main`, a PR into `main`,
+   or **Run workflow** via `workflow_dispatch`).
+3. At the bottom of the run summary, under **Artifacts**, download **`snapflow-windows-installer`**
+   (a `.zip` containing `SnapFlow Setup <version>.exe`).
+4. Extract the `.exe` and run the installer. Windows SmartScreen may warn because the build is
+   **not code-signed** — choose *More info* → *Run anyway* for local testing only.
+5. After install, launch **SnapFlow** from the Start menu. Grant **screen capture** permission
+   when Windows prompts. Optional: copy `.env.example` to `%APPDATA%\SnapFlow\.env` if you add
+   per-user config later (defaults work for a local-only try).
+
+To rebuild the installer yourself: `npm run dist -- --publish never` on Windows (requires
+Electron’s native toolchain; CI uses `windows-latest`).
+
 **Linux / cloud agents:** `npm run build` and `npm test` are the reliable paths. `npm run dev`
 can still fail on Linux with `ERR_REQUIRE_ESM` when the main bundle `require()`s ESM-only
 `pixelmatch` — see `AGENTS.md`.

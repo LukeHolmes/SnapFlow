@@ -4,6 +4,9 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 
 ## [0.6.1] — Unreleased — Project health
 ### Added
+- **Windows CI installer** — CI job on `windows-latest` builds an unsigned NSIS `.exe`
+  (`npm run dist -- --publish never`) and uploads **`snapflow-windows-installer`** as a
+  workflow artifact on `main`, PRs into `main`, and `workflow_dispatch` (see README).
 - **PII name detection** — on-device dictionary/heuristic name matching alongside email/phone; optional card (Luhn), IBAN, and IPv4 checks; OCR bounding boxes with a toggleable redact review modal before saving a blurred copy.
 - **Screen colour picker (v1.0 MVP)** — ⌘⇧7 / dashboard **Colour** / tray menu: multi-display overlay, magnified loupe, click-to-copy (HEX default, RGB/HSL via picker keys or dashboard setting), local recent-colour history in SQLite, Esc to cancel.
 - **Snipping suite (consolidated)** — Documents and tests for features that landed via PR #6/#7: guided scroll-stitch preview (⌘⇧6), pinned captures, guide builder, and post-capture quick actions (copy / annotate / pin / OCR / redact / send). Scroll overlap logic extracted to `src/main/capture/stitch.ts` with headless unit tests.
@@ -17,6 +20,10 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 - npm lockfiles for reproducible root and backend installs.
 - `.gitignore` for generated dependencies, build output, local env files, SQLite files,
   blobs, and logs.
+### Removed
+- Orphan **`eng.traineddata`** at repo root — OCR uses `tesseract.js`, which downloads English
+  language data on first use; the file was not referenced anywhere in the tree.
+
 ### Changed
 - Root `package.json` **version set to 0.6.1** to match this changelog track (was stuck at 0.5.0).
 - Native `better-sqlite3` rebuild workflow is explicit:

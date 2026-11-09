@@ -60,11 +60,16 @@ AI, delivery, OAuth, sync and entitlement behavior.
 ## Continuous integration
 
 GitHub Actions workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on
-every pull request and on pushes to `main`. It installs the root Electron app and the
-sibling `backend/` package (separate `npm ci` + lockfile caches), then runs `npm run
-typecheck` and `npm test` in each. Root tests use `pretest` to rebuild `better-sqlite3`
-for Node; the backend job runs `npm rebuild better-sqlite3` after install. Hosted
-`ubuntu-latest` runners only — no matrix of OS images.
+every pull request and on pushes to `main`, and can be started manually via
+**workflow_dispatch**. It installs the root Electron app and the sibling `backend/` package
+(separate `npm ci` + lockfile caches), then runs `npm run typecheck` and `npm test` in each.
+Root tests use `pretest` to rebuild `better-sqlite3` for Node; the backend job runs
+`npm rebuild better-sqlite3` after install. Desktop and backend jobs use `ubuntu-latest`.
+
+On pushes to `main`, PRs targeting `main`, and manual dispatch, a **Windows (NSIS installer)**
+job on `windows-latest` runs `npm ci`, `npm run build`, and `npm run dist -- --publish never`,
+then uploads `dist/*.exe` as the **`snapflow-windows-installer`** artifact (unsigned; no
+GitHub Release publish). See the root `README.md` for how to download and run it.
 
 The [Web preview (GitHub Pages)](../.github/workflows/web-preview-pages.yml) workflow is
 unchanged and still deploys the browser UI preview from `main`.
