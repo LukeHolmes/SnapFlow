@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Send, ArrowUpRight, Crop, AppWindow, ScrollText, Timer } from 'lucide-react';
+import { Send, ArrowUpRight, Crop, AppWindow, ScrollText, Timer, Pipette } from 'lucide-react';
+import type { ColorFormat, PickedColor } from '../../../shared/types';
 import { api } from '../api';
 import { TAGS, PRESET_ICONS, PRESET_BG, DOT, STAT_META, CaptureThumb, rel } from '../components/shared';
 import type { Capture, Preset, ActivityEvent, Stats, Entitlements } from '../components/shared';
@@ -12,19 +13,25 @@ interface Props {
   openPicker: () => Promise<void>;
   startScroll: () => void;
   startDelay: () => void;
+  startColour: () => void;
 }
 
-export default function Dashboard({ flash, refreshKey, setActive, startRegion, openPicker, startScroll, startDelay }: Props) {
+export default function Dashboard({ flash, refreshKey, setActive, startRegion, openPicker, startScroll, startDelay, startColour }: Props) {
   const [stats, setStats] = useState<Stats>({ total: 0, ocrIndexed: 0, sent: 0, piiRedacted: 0 });
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [recentColours, setRecentColours] = useState<PickedColor[]>([]);
+  const [colourFormat, setColourFormat] = useState<ColorFormat>('hex');
 
   const load = useCallback(async () => {
-    const [s, c, p, ev] = await Promise.all([
+    const [s, c, p, ev, colours, format] = await Promise.all([
       api.stats.get(), api.history.list(3), api.presets.list(), api.events.recent(6),
+      api.colour.recent(12), api.colour.getFormat(),
     ]);
     setStats(s); setCaptures(c); setPresets(p); setEvents(ev);
+    setRecentColours(colours);
+    setColourFormat(format);
   }, []);
 
   useEffect(() => { load(); }, [load, refreshKey]);
@@ -42,7 +49,23 @@ export default function Dashboard({ flash, refreshKey, setActive, startRegion, o
     if (label === 'Window') return openPicker();
     if (label === 'Scroll') return startScroll();
     if (label === 'Delay') return startDelay();
+    if (label === 'Colour') return startColour();
     flash(`${label} capture is coming in a later build`);
+  };
+
+  const copySwatch = async (hex: string) => {
+    try {
+      await navigator.clipboard.writeText(hex);
+      flash(`Copied ${hex}`);
+    } catch {
+      flash('Could not copy colour', false);
+    }
+  };
+
+  const onFormatChange = async (format: ColorFormat) => {
+    const next = await api.colour.setFormat(format);
+    setColourFormat(next);
+    flash(`Clipboard format: ${next.toUpperCase()}`);
   };
 
   return (
@@ -60,13 +83,38 @@ export default function Dashboard({ flash, refreshKey, setActive, startRegion, o
 
       {/* Quick capture */}
       <section className="quick-row">
-        {([['Region','⌘⇧4',Crop],['Window','⌘⇧5',AppWindow],['Scroll','⌘⇧6',ScrollText],['Delay','2s / 5s',Timer]] as const).map(([l,c,Icon]: any) => (
+        {([['Region','⌘⇧4',Crop],['Window','⌘⇧5',AppWindow],['Scroll','⌘⇧6',ScrollText],['Colour','⌘⇧7',Pipette],['Delay','2s / 5s',Timer]] as const).map(([l,c,Icon]: any) => (
           <button className="quick-btn" key={l} onClick={() => onQuick(l)}>
             <Icon size={15} strokeWidth={1.9} color="#666" />
             <span className="quick-label">{l}</span>
             <span className="quick-combo">{c}</span>
           </button>
         ))}
+      </section>
+
+      <section className="card panel colour-panel">
+        <div className="section-head" style={{ marginBottom: 12 }}>
+          <h2 className="section-title">Recent colours</h2>
+          <label className="colour-format">
+            Copy as
+            <select value={colourFormat} onChange={e => onFormatChange(e.target.value as ColorFormat)}>
+              <option value="hex">HEX</option>
+              <option value="rgb">RGB</option>
+              <option value="hsl">HSL</option>
+            </select>
+          </label>
+        </div>
+        {recentColours.length === 0 ? (
+          <div className="empty">Pick a colour with <strong>Colour</strong> or <span className="kbd">⌘⇧7</span> — values land here and on the clipboard.</div>
+        ) : (
+          <div className="colour-swatches">
+            {recentColours.map(c => (
+              <button key={c.id} type="button" className="colour-swatch" title={c.hex} onClick={() => copySwatch(c.hex)} style={{ background: c.hex }}>
+                <span className="colour-swatch-label">{c.hex}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Recent captures */}

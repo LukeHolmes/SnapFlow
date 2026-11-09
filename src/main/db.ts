@@ -1,7 +1,7 @@
 // Opens the local SQLite database and applies the schema.
 // Deliberately free of any Electron import so the store is unit-testable headless.
 import Database from 'better-sqlite3';
-import { SCHEMA, SYNC_SCHEMA } from './history/schema';
+import { SCHEMA, SYNC_SCHEMA, COLOR_SCHEMA } from './history/schema';
 
 export type Db = Database.Database;
 
@@ -12,6 +12,7 @@ export function openDb(path: string): Db {
   migrate(db);
   db.exec(SCHEMA);
   db.exec(SYNC_SCHEMA);
+  db.exec(COLOR_SCHEMA);
   rebuildFts(db);
   return db;
 }

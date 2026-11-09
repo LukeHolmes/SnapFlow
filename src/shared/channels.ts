@@ -47,6 +47,16 @@ export const CH = {
   integrationConnected:'integration:connected', // main -> dashboard: OAuth deep-link success
   integrationError:   'integration:error',      // main -> dashboard: OAuth deep-link failure
   openWindowPicker:   'window:openPicker',  // main -> dashboard: open the window picker (⌘⇧5)
+  // Screen colour picker (eyedropper)
+  colourStart:        'colour:start',
+  colourPickerFrame:  'colour:pickerFrame',
+  colourPickerSample: 'colour:pickerSample',
+  colourPickerPick:   'colour:pickerPick',
+  colourPickerCancel: 'colour:pickerCancel',
+  colourPicked:       'colour:picked',      // main -> dashboard: colour copied
+  colourRecentList:   'colour:recentList',
+  colourFormatGet:    'colour:formatGet',
+  colourFormatSet:    'colour:formatSet',
   syncNow:            'sync:now',
   diffCompute:        'diff:compute',    // before+after capture IDs → pixel diff result + path
   diffSummarise:      'diff:summarise',  // before+after IDs → AI plain-English summary (Pro/Team)

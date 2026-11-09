@@ -17,7 +17,7 @@ export const PRESET_BG: Record<string, string> = {
   slack: '#4A154B', notion: '#191919', gmail: '#EA4335', github: '#24292F', zapier: '#FF4A00', clipboard: '#666', jira: '#0052CC',
 };
 export const DOT: Record<string, string> = {
-  capture: '#818CF8', sent: '#34D399', delivered: '#34D399', delivery_failed: '#F87171', delivery_queued: '#FBBF24', pii: '#F472B6', tag: '#FB923C',
+  capture: '#818CF8', sent: '#34D399', delivered: '#34D399', delivery_failed: '#F87171', delivery_queued: '#FBBF24', pii: '#F472B6', tag: '#FB923C', color: '#A78BFA',
 };
 export const STAT_META = [
   { key: 'total',       label: 'Total Captures',   Icon: Camera,   fg: 'var(--color-brand)',      bg: '#EEF0FD' },

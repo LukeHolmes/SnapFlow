@@ -1,7 +1,7 @@
 // The main↔renderer bridge for the dashboard window.
 import { contextBridge, ipcRenderer } from 'electron';
 import { CH } from '../shared/channels';
-import type { AnnotationDocument, Capture, CaptureSource, Preset, ActivityEvent, Stats, Entitlements, DeliverResult, DestinationId, ScrollCapturePreview, Guide, GuideExportResult, GuideListItem, GuideType, IntegrationOption, IntegrationStatus } from '../shared/types';
+import type { AnnotationDocument, Capture, CaptureSource, Preset, ActivityEvent, Stats, Entitlements, DeliverResult, DestinationId, ScrollCapturePreview, Guide, GuideExportResult, GuideListItem, GuideType, IntegrationOption, IntegrationStatus, ColorFormat, PickedColor } from '../shared/types';
 
 const api = {
   capture: {
@@ -21,6 +21,12 @@ const api = {
   },
   region: {
     start: (): Promise<{ started: boolean }> => ipcRenderer.invoke(CH.regionStart),
+  },
+  colour: {
+    start: (): Promise<{ started: boolean }> => ipcRenderer.invoke(CH.colourStart),
+    recent: (limit?: number): Promise<PickedColor[]> => ipcRenderer.invoke(CH.colourRecentList, limit),
+    getFormat: (): Promise<ColorFormat> => ipcRenderer.invoke(CH.colourFormatGet),
+    setFormat: (format: ColorFormat): Promise<ColorFormat> => ipcRenderer.invoke(CH.colourFormatSet, format),
   },
   history: {
     list: (limit?: number): Promise<Capture[]> => ipcRenderer.invoke(CH.historyList, limit),
@@ -80,6 +86,12 @@ const api = {
     const handler = () => cb();
     ipcRenderer.on(CH.openWindowPicker, handler);
     return () => ipcRenderer.removeListener(CH.openWindowPicker, handler);
+  },
+
+  onColourPicked: (cb: (payload: { hex: string; formatted: string; format: ColorFormat; r: number; g: number; b: number }) => void): (() => void) => {
+    const handler = (_e: unknown, payload: { hex: string; formatted: string; format: ColorFormat; r: number; g: number; b: number }) => cb(payload);
+    ipcRenderer.on(CH.colourPicked, handler);
+    return () => ipcRenderer.removeListener(CH.colourPicked, handler);
   },
 
   onIntegrationConnected: (cb: (destination: DestinationId) => void): (() => void) => {

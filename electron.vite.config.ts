@@ -9,7 +9,11 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
-        input: { index: resolve('src/preload/index.ts'), overlay: resolve('src/preload/overlay.ts') },
+        input: {
+          index: resolve('src/preload/index.ts'),
+          overlay: resolve('src/preload/overlay.ts'),
+          'picker-overlay': resolve('src/preload/picker-overlay.ts'),
+        },
       },
     },
   },
@@ -19,7 +23,11 @@ export default defineConfig({
     plugins: [react()],
     build: {
       rollupOptions: {
-        input: { index: resolve('src/renderer/index.html'), overlay: resolve('src/renderer/overlay.html') },
+        input: {
+          index: resolve('src/renderer/index.html'),
+          overlay: resolve('src/renderer/overlay.html'),
+          'picker-overlay': resolve('src/renderer/picker-overlay.html'),
+        },
       },
     },
   },

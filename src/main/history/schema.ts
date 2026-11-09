@@ -101,3 +101,22 @@ CREATE TABLE IF NOT EXISTS sync_state (
   cursor       INTEGER NOT NULL DEFAULT 0
 );
 `;
+
+/** Local-only recent screen colours (free tier, not synced). */
+export const COLOR_SCHEMA = `
+CREATE TABLE IF NOT EXISTS picked_colors (
+  id           TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  hex          TEXT NOT NULL,
+  r            INTEGER NOT NULL,
+  g            INTEGER NOT NULL,
+  b            INTEGER NOT NULL,
+  created_at   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_picked_colors_ws_time ON picked_colors(workspace_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS app_prefs (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+`;
