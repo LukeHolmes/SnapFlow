@@ -2,13 +2,15 @@
 
 All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisition readiness).
 
-## [1.1.0] — Unreleased — Focus Blur
+## [1.1.0] — Unreleased — Focus Blur & Screen Recording
 ### Added
 - **Focus Blur** — post-capture editor with drawable focus regions (rounded rects), blur strength, dim, invert, live canvas preview, non-destructive params on the annotation layer, undo/redo, and quick actions **Focus window** / **Focus region**.
-- **Preset automation (Pro+)** — `config.focusBlurAuto` on output presets; deliver path renders focus blur then PII boxes (`src/main/capture/delivery-image.ts`).
+- **Focus Blur preset automation (Pro+)** — `config.focusBlurAuto` on output presets; deliver path renders focus blur then PII boxes (`src/main/capture/delivery-image.ts`).
 - **Pure-JS blur pipeline** — shared mask/compose for renderer export and main-process PNG (`src/focus-blur/*`); no paid image libs.
-- **Entitlements** — `focusBlurMaxRegions` (1 on Free) and `focusBlurPresetAutomation`.
-- Docs: `docs/FOCUS_BLUR.md`; README Focus Blur row; unit tests in `tests/focus-blur.test.ts`.
+- **Screen recording** — VP9/WebM via `desktopCapturer` + `MediaRecorder`: full screen, window (dashboard window picker — same UI as ⌘⇧5 capture), or region; optional mic/system audio (tier-gated); countdown; tray, **⌘⇧8**, floating stop/pause; max-duration safeguard; local History (`kind: recording`, tag `recording`); clipboard path + Google Drive `.webm` deliver; optional Pro GIF export (`gifenc`).
+- **Diff mode UI** — History-driven before/after workflow, compare-with-previous-same-window, multi-view diff UI, sensitivity threshold (Pro+), export diff to History (`diff` tag) and Deliver via presets; pixel engine tests for bboxes and threshold.
+- **Entitlements** — `focusBlurMaxRegions` / `focusBlurPresetAutomation`; `maxRecordingDurationSec` and recording audio/GIF flags per tier.
+- Docs: `docs/FOCUS_BLUR.md`, `docs/SCREEN_RECORDING.md`; README rows for both; `tests/focus-blur.test.ts`, `tests/recording.test.ts`.
 
 ## [0.6.1] — Unreleased — Project health
 ### Added
@@ -16,7 +18,6 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
   expiring HMAC capture links (`exp` + `sig`), verify/revoke APIs, and destination fallbacks
   when no public URL exists. Desktop cloud sync is **opt-in** (Account); blobs upload on
   delivery to URL-based destinations or manual Sync now; PII-tagged captures skip upload.
-- **Diff mode UI (v1.1)** — History-driven before/after workflow, compare-with-previous-same-window, side-by-side / overlay (opacity) / highlight / change-box views, percent-changed summary, sensitivity threshold (Pro+), export diff to History (`diff` tag) and Deliver via presets; pixel engine tests for bboxes and threshold.
 - **Windows CI installer** — CI job on `windows-latest` builds an unsigned NSIS `.exe`
   (`npm run dist -- --publish never`) and uploads **`snapflow-windows-installer`** as a
   workflow artifact on `main`, PRs into `main`, and `workflow_dispatch` (see README).

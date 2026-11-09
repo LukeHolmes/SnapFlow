@@ -2,7 +2,8 @@
 
 export type Tier = 'free' | 'pro' | 'team' | 'perpetual';
 export type ColorFormat = 'hex' | 'rgb' | 'hsl';
-export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web' | 'diff';
+export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web' | 'diff' | 'recording';
+export type CaptureKind = 'screenshot' | 'recording';
 export type DestinationId = 'clipboard' | 'slack' | 'notion' | 'gmail' | 'github' | 'zapier' | 'jira' | 'google-drive';
 export type GuideType = 'sop' | 'bug_report' | 'training' | 'validation' | 'walkthrough';
 export type AnnotationTool = 'arrow' | 'rect' | 'ellipse' | 'highlight' | 'text' | 'redact' | 'step' | 'callout' | 'blur';
@@ -96,12 +97,17 @@ export interface Capture {
   workspaceId: string;        // multi-tenant from day one (architecture §9)
   filename: string;
   imagePath: string;
+  kind: CaptureKind;
   tag: ContentTag | null;
   ocrText: string;
   hasPii: boolean;
   createdAt: number;          // epoch ms
   snippet?: string;           // populated by search results only
   hasAnnotations?: boolean;    // true when a non-destructive annotation layer exists
+  /** WebM path for screen recordings (`kind === 'recording'`). */
+  mediaPath?: string | null;
+  durationMs?: number | null;
+  byteSize?: number | null;
 }
 
 export interface CaptureSource {
@@ -109,6 +115,33 @@ export interface CaptureSource {
   name: string;
   thumbnail: string;          // data URL
   kind: 'screen' | 'window';
+}
+
+export type RecordingMode = 'screen' | 'window' | 'region';
+export type RecordingPhase = 'idle' | 'countdown' | 'recording' | 'paused' | 'stopping' | 'saving' | 'error';
+
+export interface RecordingCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface RecordingStartOptions {
+  mode: RecordingMode;
+  sourceId?: string;
+  crop?: RecordingCrop;
+  countdownSec?: number;
+  includeMic?: boolean;
+  includeSystemAudio?: boolean;
+}
+
+export interface RecordingStatus {
+  phase: RecordingPhase;
+  elapsedMs: number;
+  maxDurationSec: number;
+  paused: boolean;
+  message?: string;
 }
 
 export interface ScrollCapturePreview {
@@ -134,7 +167,7 @@ export interface Preset {
 export interface ActivityEvent {
   id: string;
   workspaceId: string;
-  kind: 'capture' | 'delivered' | 'delivery_failed' | 'delivery_queued' | 'pii' | 'tag' | 'color';
+  kind: 'capture' | 'delivered' | 'delivery_failed' | 'delivery_queued' | 'pii' | 'tag' | 'color' | 'recording';
   text: string;
   createdAt: number;
 }
@@ -169,6 +202,11 @@ export interface Entitlements {
   focusBlurMaxRegions: number | null;
   /** Pro+ may auto-apply Focus Blur from output presets on deliver. */
   focusBlurPresetAutomation: boolean;
+  /** Max single recording length (seconds). */
+  maxRecordingDurationSec: number;
+  recordingSystemAudio: boolean;
+  recordingMicrophone: boolean;
+  recordingGifExport: boolean;
 }
 
 export interface DeliverResult {

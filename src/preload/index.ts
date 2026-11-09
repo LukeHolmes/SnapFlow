@@ -22,6 +22,14 @@ const api = {
     copyOcr: (id: string): Promise<DeliverResult> => ipcRenderer.invoke(CH.captureCopyOcr, id),
     pin: (id: string): Promise<DeliverResult> => ipcRenderer.invoke(CH.capturePin, id),
     getImageDataUrl: (id: string): Promise<string | null> => ipcRenderer.invoke(CH.captureGetImage, id),
+    getMediaDataUrl: (id: string): Promise<string | null> => ipcRenderer.invoke(CH.captureGetMedia, id),
+  },
+  recording: {
+    start: (opts: import('../shared/types').RecordingStartOptions) => ipcRenderer.invoke(CH.recordingStart, opts),
+    stop: () => ipcRenderer.invoke(CH.recordingStop),
+    pause: () => ipcRenderer.invoke(CH.recordingPause),
+    resume: () => ipcRenderer.invoke(CH.recordingResume),
+    status: () => ipcRenderer.invoke(CH.recordingStatusGet),
   },
   region: {
     start: (): Promise<{ started: boolean }> => ipcRenderer.invoke(CH.regionStart),
@@ -97,6 +105,21 @@ const api = {
     const handler = () => cb();
     ipcRenderer.on(CH.openWindowPicker, handler);
     return () => ipcRenderer.removeListener(CH.openWindowPicker, handler);
+  },
+  onOpenRecordingPicker: (cb: () => void): (() => void) => {
+    const handler = () => cb();
+    ipcRenderer.on(CH.openRecordingPicker, handler);
+    return () => ipcRenderer.removeListener(CH.openRecordingPicker, handler);
+  },
+  onOpenRecordWindowPicker: (cb: () => void): (() => void) => {
+    const handler = () => cb();
+    ipcRenderer.on(CH.openRecordWindowPicker, handler);
+    return () => ipcRenderer.removeListener(CH.openRecordWindowPicker, handler);
+  },
+  onRecordingStatus: (cb: (status: import('../shared/types').RecordingStatus) => void): (() => void) => {
+    const handler = (_e: unknown, status: import('../shared/types').RecordingStatus) => cb(status);
+    ipcRenderer.on(CH.recordingStatus, handler);
+    return () => ipcRenderer.removeListener(CH.recordingStatus, handler);
   },
 
   onColourPicked: (cb: (payload: { hex: string; formatted: string; format: ColorFormat; r: number; g: number; b: number }) => void): (() => void) => {

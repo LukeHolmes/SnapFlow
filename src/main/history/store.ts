@@ -8,10 +8,19 @@ export class HistoryStore {
 
   insert(c: Capture): void {
     this.db.prepare(
-      `INSERT INTO captures (id, workspace_id, filename, image_path, tag, ocr_text, has_pii, created_at, updated_at, deleted, dirty)
-       VALUES (@id, @workspaceId, @filename, @imagePath, @tag, @ocrText, @hasPii, @createdAt, @createdAt, 0, 1)`
+      `INSERT INTO captures (
+         id, workspace_id, filename, image_path, kind, media_path, duration_ms, byte_size,
+         tag, ocr_text, has_pii, created_at, updated_at, deleted, dirty
+       ) VALUES (
+         @id, @workspaceId, @filename, @imagePath, @kind, @mediaPath, @durationMs, @byteSize,
+         @tag, @ocrText, @hasPii, @createdAt, @createdAt, 0, 1
+       )`
     ).run({
       id: c.id, workspaceId: c.workspaceId, filename: c.filename, imagePath: c.imagePath,
+      kind: c.kind ?? 'screenshot',
+      mediaPath: c.mediaPath ?? null,
+      durationMs: c.durationMs ?? null,
+      byteSize: c.byteSize ?? null,
       tag: c.tag, ocrText: c.ocrText, hasPii: c.hasPii ? 1 : 0, createdAt: c.createdAt,
     });
   }
@@ -261,11 +270,15 @@ function toCapture(r: Record<string, unknown>): Capture {
     workspaceId: r.workspace_id as string,
     filename: r.filename as string,
     imagePath: r.image_path as string,
+    kind: (r.kind as Capture['kind']) ?? 'screenshot',
     tag: (r.tag as Capture['tag']) ?? null,
     ocrText: (r.ocr_text as string) ?? '',
     hasPii: !!r.has_pii,
     createdAt: r.created_at as number,
     hasAnnotations: !!r.has_annotations,
+    mediaPath: (r.media_path as string | null) ?? null,
+    durationMs: (r.duration_ms as number | null) ?? null,
+    byteSize: (r.byte_size as number | null) ?? null,
   };
 }
 

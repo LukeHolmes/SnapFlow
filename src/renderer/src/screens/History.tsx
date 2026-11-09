@@ -1,17 +1,19 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Trash2, Filter, Pencil, GitCompare } from 'lucide-react';
+import { Trash2, Filter, Pencil, GitCompare, Play } from 'lucide-react';
 import { api } from '../api';
 import { TAGS, CaptureThumb, rel } from '../components/shared';
-import type { Capture } from '../components/shared';
+import type { Capture, Entitlements } from '../components/shared';
+import RecordingModal from '../components/RecordingModal';
 
 interface Props {
   flash: (text: string, ok?: boolean) => void;
   refreshKey: number;
+  ent: Entitlements | null;
   onAnnotate?: (capture: Capture) => void;
   onCompare?: (capture: Capture) => void;
 }
 
-const TAG_FILTERS = ['all', 'ui', 'code', 'chart', 'document', 'web'] as const;
+const TAG_FILTERS = ['all', 'ui', 'code', 'chart', 'document', 'web', 'recording'] as const;
 const DATE_FILTERS = [
   { id: 'all',   label: 'All time',  ms: 0 },
   { id: 'today', label: 'Today',     ms: 86_400_000 },
@@ -19,12 +21,13 @@ const DATE_FILTERS = [
   { id: 'month', label: 'This month',ms: 30 * 86_400_000 },
 ] as const;
 
-export default function History({ flash, refreshKey, onAnnotate, onCompare }: Props) {
+export default function History({ flash, refreshKey, ent, onAnnotate, onCompare }: Props) {
   const [all, setAll] = useState<Capture[]>([]);
   const [loading, setLoading] = useState(true);
   const [tag, setTag] = useState<string>('all');
   const [date, setDate] = useState<string>('all');
   const [query, setQuery] = useState('');
+  const [recording, setRecording] = useState<Capture | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -108,9 +111,16 @@ export default function History({ flash, refreshKey, onAnnotate, onCompare }: Pr
           {filtered.map(c => {
             const t = TAGS[c.tag ?? 'ui'] ?? TAGS.ui;
             return (
-              <div className="card capture-card capture-card-deletable" key={c.id} onClick={() => onAnnotate?.(c)}>
+              <div
+                className="card capture-card capture-card-deletable"
+                key={c.id}
+                onClick={() => (c.kind === 'recording' || c.tag === 'recording') ? setRecording(c) : onAnnotate?.(c)}
+              >
                 <div style={{ position: 'relative' }}>
-                  <CaptureThumb tag={c.tag} />
+                  <CaptureThumb tag={c.tag ?? (c.kind === 'recording' ? 'recording' : null)} />
+                  {(c.kind === 'recording' || c.tag === 'recording') && (
+                    <span className="annotation-badge" title="Screen recording"><Play size={10} fill="currentColor" /></span>
+                  )}
                   {c.hasAnnotations && (
                     <span className="annotation-badge" title="Annotation layer present">
                       <Pencil size={10} strokeWidth={2.4} />
@@ -131,6 +141,9 @@ export default function History({ flash, refreshKey, onAnnotate, onCompare }: Pr
                   <div className="capture-meta">
                     {c.tag && <span className="tag" style={{ background: t.bg, color: t.fg }}>{c.tag}</span>}
                     {c.hasPii && <span className="pii-dot" title="PII redacted" />}
+                    {c.durationMs != null && c.durationMs > 0 && (
+                      <span className="capture-time">{Math.round(c.durationMs / 1000)}s</span>
+                    )}
                     <span className="capture-time">{rel(c.createdAt)}</span>
                   </div>
                 </div>
@@ -141,6 +154,9 @@ export default function History({ flash, refreshKey, onAnnotate, onCompare }: Pr
             );
           })}
         </div>
+      )}
+      {recording && (
+        <RecordingModal capture={recording} ent={ent} onClose={() => setRecording(null)} flash={flash} />
       )}
     </div>
   );

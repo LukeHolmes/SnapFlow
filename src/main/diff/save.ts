@@ -16,6 +16,7 @@ export function diffCaptureFromRaw(raw: { id: string; imagePath: string; filenam
     workspaceId,
     filename: raw.filename,
     imagePath: raw.imagePath,
+    kind: 'screenshot',
     tag: 'diff',
     ocrText: '',
     hasPii: false,

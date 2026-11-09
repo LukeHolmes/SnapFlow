@@ -99,6 +99,14 @@ copies the formatted value to the clipboard; picks are stored in local `picked_c
 (no cloud sync). H/R/L switch format while picking; the dashboard **Copy as** control
 persists the default format in `app_prefs`.
 
+## Screen recording (v1.1)
+
+⌘⇧8 / tray / dashboard **Record** starts a **VP9/WebM** session via a hidden
+`MediaRecorder` worker (`src/main/recording/`). Modes: full screen, window, or
+region (reuses the freeze-frame overlay). A visible red indicator, floating
+stop/pause control, tier max-duration, and local History rows (`kind: recording`)
+keep capture independent of Deliver. See `docs/SCREEN_RECORDING.md`.
+
 ## Guided scrolling capture (MVP)
 
 ⌘⇧6 (and the dashboard **Scroll** card) runs a **guided** capture: the app samples the same

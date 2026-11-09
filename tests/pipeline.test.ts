@@ -17,7 +17,7 @@ const codeOcr = async (_: string) => ({ text: 'const x = 1;' }); // produces 'co
 function db() { return openDb(':memory:'); }
 
 function capture(id = 'c1', path = '/dev/null'): Capture {
-  return { id, workspaceId: WS, filename: 'test-cap', imagePath: path, tag: null, ocrText: '', hasPii: false, createdAt: Date.now() };
+  return { id, workspaceId: WS, filename: 'test-cap', imagePath: path, kind: 'screenshot', tag: null, ocrText: '', hasPii: false, createdAt: Date.now() };
 }
 
 test('assigns a heuristic tag and emits capture + tag events (free tier)', async () => {

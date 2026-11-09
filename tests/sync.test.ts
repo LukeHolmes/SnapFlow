@@ -7,7 +7,7 @@ import type { Capture, SyncRecord } from '../src/shared/types';
 const WS = 'ws_local';
 const cap = (id: string, createdAt = Date.now()): Capture => ({
   id, workspaceId: WS, filename: `cap-${id}`, imagePath: `/tmp/${id}.png`,
-  tag: 'ui', ocrText: 'hello', hasPii: false, createdAt,
+  kind: 'screenshot', tag: 'ui', ocrText: 'hello', hasPii: false, createdAt,
 });
 const remote = (id: string, updatedAt: number, extra: Partial<SyncRecord> = {}): SyncRecord => ({
   id, workspaceId: WS, filename: `remote-${id}`, tag: 'code', ocrText: 'remote text',
