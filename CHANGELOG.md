@@ -29,6 +29,8 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
   language data on first use; the file was not referenced anywhere in the tree.
 
 ### Changed
+- **Capture public URLs** — `GET /v1/public/captures/...` requires a non-expired `exp` and `sig`;
+  legacy non-expiring signatures are rejected with HTTP 403.
 - Root `package.json` **version set to 0.6.1** to match this changelog track (was stuck at 0.5.0).
 - Native `better-sqlite3` rebuild workflow is explicit:
   `npm test` rebuilds for Node, while `npm run dev`/`preview`/`dist` rebuild for Electron.

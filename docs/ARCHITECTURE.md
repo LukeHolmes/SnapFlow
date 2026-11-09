@@ -132,7 +132,8 @@ markdown) use short-lived **HMAC-signed GET URLs** served by the backend:
 
 - `PUT/POST /v1/sync/blob/:id` — authenticated upload (tier-gated).
 - `GET /v1/sync/blob/:id/signed-url` — mint a URL (default TTL 7 days, `SIGNED_URL_TTL_MS`).
-- `GET /v1/public/captures/:accountId/:id.png?exp=&sig=` — unauthenticated fetch after verify.
+- `GET /v1/public/captures/:accountId/:id.png?exp=&sig=` — unauthenticated fetch; both query
+  params are required and the signature must not be expired (no legacy permanent URLs).
 - `POST /v1/sync/signed-url/verify` — check signature, expiry, and revocation.
 - `DELETE /v1/sync/blob/:id` — revoke/delete blob and invalidate links.
 

@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import { config } from '../config';
 import { requireAuth } from '../auth/middleware';
 import { AppError, asyncHandler } from '../errors';
@@ -137,15 +136,11 @@ integrationsRouter.get('/v1/integrations/capture-url/:captureId', requireAuth, a
 integrationsRouter.get('/v1/public/captures/:accountId/:captureId.png', asyncHandler(async (req, res) => {
   const sig = String(req.query.sig ?? '');
   const expRaw = req.query.exp;
-  if (expRaw !== undefined && String(expRaw).length > 0) {
-    const verdict = verifyCaptureSignature(req.params.accountId, req.params.captureId, Number(expRaw), sig);
-    if (!verdict.ok) throw new AppError(403, 'forbidden', `Invalid capture signature (${verdict.reason})`);
-  } else if (sig) {
-    const expected = legacySignature(req.params.accountId, req.params.captureId);
-    if (!safeEqual(expected, sig)) throw new AppError(403, 'forbidden', 'Invalid capture signature');
-  } else {
-    throw new AppError(403, 'forbidden', 'Invalid capture signature');
+  if (expRaw === undefined || String(expRaw).length === 0 || !sig) {
+    throw new AppError(403, 'forbidden', 'Invalid capture signature (exp and sig required)');
   }
+  const verdict = verifyCaptureSignature(req.params.accountId, req.params.captureId, Number(expRaw), sig);
+  if (!verdict.ok) throw new AppError(403, 'forbidden', `Invalid capture signature (${verdict.reason})`);
 
   const bytes = await sync.readBlobBytes(req.params.accountId, req.params.captureId);
   if (!bytes) throw new AppError(404, 'not_found', 'Capture blob not found');
@@ -160,16 +155,6 @@ integrationsRouter.get('/v1/public/captures/:accountId/:captureId.png', asyncHan
 export async function captureUrl(accountId: string, captureId: string): Promise<string | null> {
   if (!(await sync.blobAvailable(accountId, captureId))) return null;
   return buildCaptureUrl(accountId, captureId);
-}
-
-function legacySignature(accountId: string, captureId: string): string {
-  return createHmac('sha256', config.authSecret).update(`${accountId}:${captureId}`).digest('hex');
-}
-
-function safeEqual(a: string, b: string): boolean {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  return left.length === right.length && timingSafeEqual(left, right);
 }
 
 function notionTitle(page: Record<string, unknown>): string | null {

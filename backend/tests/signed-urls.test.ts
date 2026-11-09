@@ -1,5 +1,6 @@
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -99,6 +100,33 @@ test('tier gate blocks blob upload for free accounts', async () => {
     .send({ base64: Buffer.from('x').toString('base64') });
   assert.equal(res.status, 402);
   assert.equal(res.body.error, 'sync_not_entitled');
+});
+
+test('public GET rejects missing exp, legacy sig-only URLs, and legacy HMAC format', async () => {
+  const { token, accountId } = await bearerFor('pro');
+  await request(app)
+    .post('/v1/sync/blob/cap_legacy/upload')
+    .set('Authorization', `Bearer ${token}`)
+  .send({ base64: Buffer.from('png').toString('base64') });
+
+  const legacySig = createHmac('sha256', process.env.AUTH_SECRET!)
+    .update(`${accountId}:cap_legacy`)
+    .digest('hex');
+  const path = `/v1/public/captures/${encodeURIComponent(accountId)}/${encodeURIComponent('cap_legacy')}.png`;
+
+  const noQuery = await request(app).get(path);
+  assert.equal(noQuery.status, 403);
+
+  const sigOnly = await request(app).get(`${path}?sig=${encodeURIComponent(legacySig)}`);
+  assert.equal(sigOnly.status, 403);
+
+  const legacyPair = await request(app).get(`${path}?sig=${encodeURIComponent(legacySig)}&exp=`);
+  assert.equal(legacyPair.status, 403);
+
+  const wrongExpSig = await request(app).get(
+    `${path}?exp=${Date.now() + 60_000}&sig=${encodeURIComponent(legacySig)}`,
+  );
+  assert.equal(wrongExpSig.status, 403);
 });
 
 test('mocked storage round-trip via sync store', async () => {
