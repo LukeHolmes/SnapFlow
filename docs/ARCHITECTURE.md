@@ -103,7 +103,7 @@ persists the default format in `app_prefs`.
 
 ⌘⇧6 (and the dashboard **Scroll** card) runs a **guided** capture: the app samples the same
 `desktopCapturer` source several times while the user scrolls, then stitches frames vertically
-with simple overlap de-dupe (`src/main/capture/index.ts`). A native/browser sidecar can replace
+with simple overlap de-dupe (`src/main/capture/stitch.ts`). A native/browser sidecar can replace
 this implementation later without changing IPC (`capture:scroll`, `capture:scrollPreview`).
 
 ## Server-side delivery

@@ -21,8 +21,8 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 - Native `better-sqlite3` rebuild workflow is explicit:
   `npm test` rebuilds for Node, while `npm run dev`/`preview`/`dist` rebuild for Electron.
 - README, `AGENTS.md`, and `docs/CONTRIBUTING.md` now describe the real branching model
-  (`main` + feature PRs), guided scroll-capture MVP, server-side destinations, **85** unit
-  tests (45 desktop + 40 backend), and honest integration gaps (OAuth/vault wiring).
+  (`main` + feature PRs), guided scroll-capture MVP, server-side destinations, **108** unit
+  tests (63 desktop + 45 backend), and honest integration gaps (OAuth/vault wiring).
 
 ## [0.6.0] — Unreleased — Production-grade backend
 ### Added
