@@ -3,6 +3,13 @@
 All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisition readiness).
 
 ## [1.1.0] — Unreleased — Focus Blur, Screen Recording & Team tier
+### Hardening (pre-release)
+- Shared entitlement matrix (`shared/entitlements-matrix.ts`) for desktop + backend; matrix parity tests.
+- Team invite accept uses `BEGIN IMMEDIATE` transaction with in-tx seat check (race-safe).
+- Team authz tests: removed member and non-member library access → 403; leave endpoint requires membership.
+- `docs/RELEASE_CHECKLIST_1.1.md`; README v1.1 tier table; backend `npm audit fix` (express/body-parser/proxy-addr).
+- Deferred: `qs` moderate advisories via nested Express dependency until upstream ships patched range.
+
 ### Added
 - **Team tier (foundation)** — backend teams with roles (owner/admin/member), email invites via single-use HMAC tokens (invite link returned, no outbound email), seat limits, effective Team entitlements for members, shared team library with member-gated signed capture URLs, Account → Team panel, and History **Share to team**. Billing remains a documented stub (`POST /v1/billing/team/checkout-stub`). See `docs/TEAM_TIER.md`.
 - **Focus Blur** — post-capture editor with drawable focus regions (rounded rects), blur strength, dim, invert, live canvas preview, non-destructive params on the annotation layer, undo/redo, and quick actions **Focus window** / **Focus region**.

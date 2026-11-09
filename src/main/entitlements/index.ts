@@ -7,36 +7,10 @@
 // app must never be the sole enforcement point for paid capabilities.
 
 import type { DestinationId, Entitlements, Tier } from '../../shared/types';
-
-const TABLE: Record<Tier, Omit<Entitlements, 'tier'>> = {
-  free: {
-    historyWindowDays: 30, maxPresets: 1, aiEnabled: false, cloudSync: false, sharedLibrary: false, diffAdvanced: false,
-    focusBlurMaxRegions: 1, focusBlurPresetAutomation: false,
-    maxRecordingDurationSec: 5 * 60,
-    recordingSystemAudio: false, recordingMicrophone: false, recordingGifExport: false,
-  },
-  pro: {
-    historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: true, sharedLibrary: false, diffAdvanced: true,
-    focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
-    maxRecordingDurationSec: 60 * 60,
-    recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
-  },
-  team: {
-    historyWindowDays: null, maxPresets: null, aiEnabled: true, cloudSync: true, sharedLibrary: true, diffAdvanced: true,
-    focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
-    maxRecordingDurationSec: 2 * 60 * 60,
-    recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
-  },
-  perpetual: {
-    historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: false, sharedLibrary: false, diffAdvanced: true,
-    focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
-    maxRecordingDurationSec: 60 * 60,
-    recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
-  },
-};
+import { ENTITLEMENTS_MATRIX } from '../../../shared/entitlements-matrix';
 
 export function entitlementsFor(tier: Tier): Entitlements {
-  return { tier, ...TABLE[tier] };
+  return { tier, ...ENTITLEMENTS_MATRIX[tier] };
 }
 
 /** Dev convenience: tier comes from env, defaults to pro. Real builds read it from the backend. */

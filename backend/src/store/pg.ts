@@ -30,7 +30,7 @@ class PgQueries {
 
 // A transaction-scoped Db bound to a single checked-out client.
 class PgTxDb extends PgQueries implements Db {
-  async tx<T>(fn: (db: Db) => Promise<T>): Promise<T> { return fn(this); } // already in a tx
+  async tx<T>(fn: (db: Db) => Promise<T>, _opts?: { immediate?: boolean }): Promise<T> { return fn(this); } // already in a tx
   async init(): Promise<void> { /* no-op inside tx */ }
   async close(): Promise<void> { /* pool owns lifecycle */ }
 }
@@ -42,7 +42,7 @@ export class PostgresDb extends PgQueries implements Db {
     super(pool);
     this.pool = pool;
   }
-  async tx<T>(fn: (db: Db) => Promise<T>): Promise<T> {
+  async tx<T>(fn: (db: Db) => Promise<T>, _opts?: { immediate?: boolean }): Promise<T> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');

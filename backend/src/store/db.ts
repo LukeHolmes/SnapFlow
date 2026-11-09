@@ -8,7 +8,7 @@ export interface Db {
   /** INSERT / UPDATE / DELETE / DDL. */
   run(sql: string, params?: unknown[]): Promise<void>;
   /** Run fn inside a transaction; rolls back on throw. */
-  tx<T>(fn: (db: Db) => Promise<T>): Promise<T>;
+  tx<T>(fn: (db: Db) => Promise<T>, opts?: { immediate?: boolean }): Promise<T>;
   /** Apply the schema (idempotent). */
   init(): Promise<void>;
   close(): Promise<void>;

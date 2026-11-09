@@ -134,36 +134,48 @@ export const teams = {
 
   async acceptInvite(token: string, accountId: string): Promise<Team> {
     const hash = hashInviteToken(token);
-    const invite = await db().get(`SELECT * FROM team_invites WHERE token_hash = ?`, [hash]);
-    if (!invite) throw new Error('invite_not_found');
-    if (invite.used_at != null) throw new Error('invite_used');
-    if (Number(invite.expires_at) < Date.now()) throw new Error('invite_expired');
+    const accepted = await db().tx(async d => {
+      const invite = await d.get(`SELECT * FROM team_invites WHERE token_hash = ?`, [hash]);
+      if (!invite) throw new Error('invite_not_found');
+      if (invite.used_at != null) throw new Error('invite_used');
+      if (Number(invite.expires_at) < Date.now()) throw new Error('invite_expired');
 
-    const teamId = invite.team_id as string;
-    const team = await this.get(teamId);
-    if (!team) throw new Error('team_not_found');
+      const teamId = invite.team_id as string;
+      const row = await d.get(`SELECT * FROM teams WHERE id = ?`, [teamId]);
+      if (!row) throw new Error('team_not_found');
+      const seatLimit = Number(row.seat_limit);
 
-    const existing = await this.getMembership(teamId, accountId);
-    if (existing) {
-      await db().run(`UPDATE team_invites SET used_at = ? WHERE id = ?`, [Date.now(), invite.id]);
-      return team;
-    }
+      const existing = await d.get(
+        `SELECT 1 FROM team_members WHERE team_id = ? AND account_id = ?`,
+        [teamId, accountId],
+      );
+      if (existing) {
+        await d.run(`UPDATE team_invites SET used_at = ? WHERE id = ? AND used_at IS NULL`, [
+          Date.now(),
+          invite.id,
+        ]);
+        return row;
+      }
 
-    const count = await this.memberCount(teamId);
-    if (count >= team.seatLimit) throw new Error('seat_limit');
+      const countRow = await d.get<{ c: number }>(
+        `SELECT COUNT(*) AS c FROM team_members WHERE team_id = ?`,
+        [teamId],
+      );
+      const count = Number(countRow?.c ?? 0);
+      if (count >= seatLimit) throw new Error('seat_limit');
 
-    const role = invite.role as TeamRole;
-    const joinedAt = Date.now();
-    await db().tx(async d => {
+      const role = invite.role as TeamRole;
+      const joinedAt = Date.now();
       await d.run(`INSERT INTO team_members (team_id, account_id, role, joined_at) VALUES (?,?,?,?)`, [
         teamId,
         accountId,
         role,
         joinedAt,
       ]);
-      await d.run(`UPDATE team_invites SET used_at = ? WHERE id = ?`, [joinedAt, invite.id]);
-    });
-    return (await this.get(teamId))!;
+      await d.run(`UPDATE team_invites SET used_at = ? WHERE id = ? AND used_at IS NULL`, [joinedAt, invite.id]);
+      return row;
+    }, { immediate: true });
+    return teamRow(accepted);
   },
 
   async shareToLibrary(

@@ -20,8 +20,8 @@ export class SqliteDb implements Db {
   async run(sql: string, params: unknown[] = []): Promise<void> {
     this.db.prepare(sql).run(...(params as never[]));
   }
-  async tx<T>(fn: (db: Db) => Promise<T>): Promise<T> {
-    this.db.prepare('BEGIN').run();
+  async tx<T>(fn: (db: Db) => Promise<T>, opts?: { immediate?: boolean }): Promise<T> {
+    this.db.prepare(opts?.immediate ? 'BEGIN IMMEDIATE' : 'BEGIN').run();
     try {
       const result = await fn(this);
       this.db.prepare('COMMIT').run();
