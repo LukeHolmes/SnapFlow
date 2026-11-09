@@ -68,5 +68,10 @@ export const CH = {
   diffSave:           'diff:save',       // diff path + source IDs → history row tagged diff
   diffFindPrevious:   'diff:findPrevious', // captureId → previous same-window capture id
   captureGetImage:    'capture:getImage',// capture ID → base64 data URL for rendering in the renderer
+  teamMe:             'team:me',
+  teamCreate:         'team:create',
+  teamInvite:         'team:invite',
+  teamLeave:          'team:leave',
+  teamShareCapture:   'team:shareCapture',
 } as const;
 export type Channel = (typeof CH)[keyof typeof CH];

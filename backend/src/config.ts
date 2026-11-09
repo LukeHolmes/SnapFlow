@@ -54,4 +54,9 @@ export const config = {
   notionClientSecret: process.env.NOTION_CLIENT_SECRET ?? '',
   // Dev email→token login. Set DEV_LOGIN=false in production (OAuth only).
   devLogin: (process.env.DEV_LOGIN ?? 'true') !== 'false',
+
+  /** Default seat cap for new teams (free/dev; production maps to purchased seats via billing). */
+  teamDefaultSeatLimit: Number(process.env.TEAM_DEFAULT_SEAT_LIMIT ?? 5),
+  /** Single-use team invite link TTL (default 7 days). */
+  teamInviteTtlMs: Number(process.env.TEAM_INVITE_TTL_MS ?? 7 * 24 * 60 * 60 * 1000),
 };

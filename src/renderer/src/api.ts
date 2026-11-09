@@ -210,6 +210,13 @@ const mock: SnapFlowApi = {
     getEnabled: async () => ({ enabled: false }),
     setEnabled: async (enabled: boolean) => ({ enabled }),
   },
+  team: {
+    me: async () => ({ configured: false, team: null }),
+    create: async () => ({ ok: false, detail: 'Mock — run in Electron with backend token' }),
+    invite: async () => ({ ok: false, detail: 'Mock' }),
+    leave: async () => ({ ok: false, detail: 'Mock' }),
+    shareCapture: async () => ({ ok: false, detail: 'Mock' }),
+  },
   onCaptureAdded: (cb) => { addedListener = cb; return () => { addedListener = null; }; },
   onCaptureError: () => () => {},
   onOpenWindowPicker: () => () => {},

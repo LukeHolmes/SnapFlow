@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Trash2, Filter, Pencil, GitCompare } from 'lucide-react';
+import { Trash2, Filter, Pencil, GitCompare, UsersRound } from 'lucide-react';
 import { api } from '../api';
 import { TAGS, CaptureThumb, rel } from '../components/shared';
 import type { Capture } from '../components/shared';
@@ -25,6 +25,7 @@ export default function History({ flash, refreshKey, onAnnotate, onCompare }: Pr
   const [tag, setTag] = useState<string>('all');
   const [date, setDate] = useState<string>('all');
   const [query, setQuery] = useState('');
+  const [teamShare, setTeamShare] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -33,6 +34,10 @@ export default function History({ flash, refreshKey, onAnnotate, onCompare }: Pr
   }, []);
 
   useEffect(() => { load(); }, [load, refreshKey]);
+
+  useEffect(() => {
+    api.entitlements.get().then(e => setTeamShare(Boolean(e.sharedLibrary && e.cloudSync)));
+  }, [refreshKey]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -43,6 +48,12 @@ export default function History({ flash, refreshKey, onAnnotate, onCompare }: Pr
       (!q || c.filename.toLowerCase().includes(q) || (c.ocrText ?? '').toLowerCase().includes(q))
     );
   }, [all, tag, date, query]);
+
+  const shareToTeam = async (c: Capture, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const res = await api.team.shareCapture(c.id);
+    flash(res.ok ? (res.detail ?? 'Shared with team') : (res.detail ?? 'Share failed'), res.ok);
+  };
 
   const del = async (id: string) => {
     await api.history.remove(id);
@@ -123,6 +134,16 @@ export default function History({ flash, refreshKey, onAnnotate, onCompare }: Pr
                       onClick={e => { e.stopPropagation(); onCompare(c); }}
                     >
                       <GitCompare size={13} strokeWidth={2} />
+                    </button>
+                  )}
+                  {teamShare && (
+                    <button
+                      className="diff-history-compare icon-btn"
+                      style={{ right: onCompare ? 36 : undefined }}
+                      title="Share to team library"
+                      onClick={e => void shareToTeam(c, e)}
+                    >
+                      <UsersRound size={13} strokeWidth={2} />
                     </button>
                   )}
                 </div>

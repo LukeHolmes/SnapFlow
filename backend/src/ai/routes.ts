@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../auth/middleware';
 import { entitlementsFor } from '../entitlements/index';
+import { effectiveTierForAccount } from '../entitlements/resolve';
 import { classifyImage, summariseDiff } from './vision';
 import { meter } from './meter';
 import { allow } from '../rate-limit';
@@ -14,7 +15,7 @@ export const aiRouter = Router();
 
 aiRouter.post('/v1/ai/tag', requireAuth, asyncHandler(async (req, res) => {
   const account = req.account!;
-  const ent = entitlementsFor(account.tier);
+  const ent = entitlementsFor(await effectiveTierForAccount(account.id));
   if (!ent.aiEnabled) throw new AppError(402, 'ai_not_entitled', 'AI features require a paid tier');
   if (!allow(account.id, config.aiRatePerMin)) throw new AppError(429, 'rate_limited', 'Too many AI requests — slow down');
 
@@ -28,7 +29,7 @@ aiRouter.post('/v1/ai/tag', requireAuth, asyncHandler(async (req, res) => {
 
 aiRouter.post('/v1/ai/diff', requireAuth, asyncHandler(async (req, res) => {
   const account = req.account!;
-  const ent = entitlementsFor(account.tier);
+  const ent = entitlementsFor(await effectiveTierForAccount(account.id));
   if (!ent.aiEnabled) throw new AppError(402, 'ai_not_entitled', 'Diff mode requires a paid tier');
   if (!allow(account.id, config.aiRatePerMin)) throw new AppError(429, 'rate_limited', 'Too many AI requests');
 
