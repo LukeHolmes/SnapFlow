@@ -57,6 +57,18 @@ Tests live in `tests/` and `backend/tests/`. They cover the desktop history engi
 PII detection, entitlements, pipeline, sync and diff logic, plus backend auth, vault,
 AI, delivery, OAuth, sync and entitlement behavior.
 
+## Continuous integration
+
+GitHub Actions workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on
+every pull request and on pushes to `main`. It installs the root Electron app and the
+sibling `backend/` package (separate `npm ci` + lockfile caches), then runs `npm run
+typecheck` and `npm test` in each. Root tests use `pretest` to rebuild `better-sqlite3`
+for Node; the backend job runs `npm rebuild better-sqlite3` after install. Hosted
+`ubuntu-latest` runners only — no matrix of OS images.
+
+The [Web preview (GitHub Pages)](../.github/workflows/web-preview-pages.yml) workflow is
+unchanged and still deploys the browser UI preview from `main`.
+
 ## Branching strategy
 
 SnapFlow uses **trunk-based development on `main`**. There is no long-lived `develop`
