@@ -2,12 +2,12 @@ import { BrowserWindow, clipboard, ipcMain, nativeImage, shell, type IpcMainInvo
 import { unlink } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { CH } from '../shared/channels';
-import { listSources, captureSource, captureScrollingSource, captureScrollingPreview, persistDataUrl, persistRedactedImage, type RawCapture, type RedactionBox } from './capture';
+import { listSources, captureSource, captureScrollingSource, captureScrollingPreview, persistDataUrl, persistRedactedImage, type RawCapture } from './capture';
 import { getDestination } from './integrations/registry';
 import { contextualise } from './pipeline';
-import { detectPii } from './ai/pii';
+import { boxesForDetections, locatePiiInOcr } from './ai/pii-locate';
 import { aiProxyFromEnv } from './ai/proxy-client';
-import { runOcr, type OcrResult } from './ocr';
+import { runOcr } from './ocr';
 import { computeDiff } from './diff';
 import { diffsDir } from './paths';
 import { pinCapture } from './pin';
@@ -54,11 +54,28 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     return saveRawCapture(persistDataUrl(args.dataUrl, `${original.filename} annotated`));
   });
 
-  ipcMain.handle(CH.captureSaveRedacted, async (_e, id: string) => {
+  ipcMain.handle(CH.capturePiiScan, async (_e, id: string) => {
     const original = history.get(WS, id);
     if (!original?.imagePath) throw new Error('Capture not found');
     const ocr = await runOcr(original.imagePath);
-    const boxes = piiBoxes(ocr);
+    const detections = locatePiiInOcr(ocr);
+    let imageDataUrl: string | null = null;
+    try {
+      imageDataUrl = 'data:image/png;base64,' + readFileSync(original.imagePath).toString('base64');
+    } catch { /* ok */ }
+    if (!imageDataUrl) throw new Error('Capture image is unavailable');
+    return { imageDataUrl, detections };
+  });
+
+  ipcMain.handle(CH.captureSaveRedacted, async (_e, args: string | { id: string; selectedIds?: string[] }) => {
+    const id = typeof args === 'string' ? args : args.id;
+    const selectedIds = typeof args === 'string' ? undefined : args.selectedIds;
+    const original = history.get(WS, id);
+    if (!original?.imagePath) throw new Error('Capture not found');
+    const ocr = await runOcr(original.imagePath);
+    const detections = locatePiiInOcr(ocr);
+    const ids = selectedIds?.length ? selectedIds : detections.map(d => d.id);
+    const boxes = boxesForDetections(detections, ids);
     return saveRawCapture(persistRedactedImage(original.imagePath, boxes, `${original.filename} redacted`));
   });
 
@@ -263,53 +280,6 @@ function isHttpsUrl(value: string): boolean {
   }
 }
 
-function piiBoxes(ocr: OcrResult): RedactionBox[] {
-  const hits = detectPii(ocr.text).map(hit => normalise(hit.value)).filter(Boolean);
-  if (!hits.length) return [];
-
-  const words = ocr.words
-    .filter(word => word.text?.trim() && word.bbox)
-    .map(word => ({ ...word, norm: normalise(word.text) }))
-    .filter(word => word.norm);
-
-  const boxes: RedactionBox[] = [];
-  for (let start = 0; start < words.length; start += 1) {
-    let joined = '';
-    let box: RedactionBox | null = null;
-    for (let end = start; end < Math.min(words.length, start + 8); end += 1) {
-      const word = words[end];
-      joined += word.norm;
-      box = mergeBox(box, word.bbox);
-      if (hits.some(hit => joined.includes(hit) || hit.includes(joined))) {
-        if (box) boxes.push(box);
-        break;
-      }
-      if (joined.length > 64) break;
-    }
-  }
-
-  return dedupeBoxes(boxes);
-}
-
-function normalise(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9+]/g, '');
-}
-
-function mergeBox(a: RedactionBox | null, b: RedactionBox): RedactionBox {
-  return a
-    ? { x0: Math.min(a.x0, b.x0), y0: Math.min(a.y0, b.y0), x1: Math.max(a.x1, b.x1), y1: Math.max(a.y1, b.y1) }
-    : { x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1 };
-}
-
-function dedupeBoxes(boxes: RedactionBox[]): RedactionBox[] {
-  const seen = new Set<string>();
-  return boxes.filter(box => {
-    const key = `${Math.round(box.x0)}:${Math.round(box.y0)}:${Math.round(box.x1)}:${Math.round(box.y1)}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
 
 async function withHiddenSenderWindow<T>(event: IpcMainInvokeEvent, fn: () => Promise<T>): Promise<T> {
   const win = BrowserWindow.fromWebContents(event.sender);

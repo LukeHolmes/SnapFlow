@@ -7,6 +7,7 @@ export const CH = {
   captureScrollSave:  'capture:scrollSave',
   captureSaveAnnotated:'capture:saveAnnotated',
   captureSaveRedacted:'capture:saveRedacted',
+  capturePiiScan:       'capture:piiScan',
   captureAnnotationsGet:'capture:annotations:get',
   captureAnnotationsSave:'capture:annotations:save',
   captureCopyImage:   'capture:copyImage',

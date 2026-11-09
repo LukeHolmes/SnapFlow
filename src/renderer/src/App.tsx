@@ -16,7 +16,9 @@ import Account      from './screens/Account';
 import Diff           from './screens/Diff';
 import Integrations from './screens/Integrations';
 import AnnotationEditor from './components/AnnotationEditor';
+import PiiRedactModal from './components/PiiRedactModal';
 import Guides from './screens/Guides';
+import type { PiiScanResult } from '../../shared/types';
 
 const NAV = [
   { label: 'CAPTURE',  items: [['Dashboard','Dashboard',LayoutDashboard], ['History','History',History], ['Search Library','Search Library',Library], ['Diff Mode','Diff Mode',GitCompare], ['Guides','Guides',ClipboardList]] },
@@ -44,6 +46,7 @@ export default function App() {
   const [scrollPreview, setScrollPreview] = useState<ScrollCapturePreview | null>(null);
   const [quickCapture, setQuickCapture] = useState<Capture | null>(null);
   const [editorCapture, setEditorCapture] = useState<Capture | null>(null);
+  const [piiRedact, setPiiRedact] = useState<{ capture: Capture; scan: PiiScanResult } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const flash = useCallback((text: string, ok = true) => {
@@ -201,8 +204,22 @@ export default function App() {
   const redactCapture = async (capture: Capture) => {
     setCapturing(true);
     try {
-      const redacted = await api.capture.saveRedacted(capture.id);
+      const scan = await api.capture.piiScan(capture.id);
+      setPiiRedact({ capture, scan });
+    } catch (e) {
+      flash(e instanceof Error ? e.message : 'Could not scan capture for PII', false);
+    } finally {
+      setCapturing(false);
+    }
+  };
+
+  const applyPiiRedaction = async (selectedIds: string[]) => {
+    if (!piiRedact) return;
+    setCapturing(true);
+    try {
+      const redacted = await api.capture.saveRedacted(piiRedact.capture.id, selectedIds);
       rememberCapture(redacted);
+      setPiiRedact(null);
       flash('Redacted copy saved');
     } catch (e) {
       flash(e instanceof Error ? e.message : 'Could not create redacted copy', false);
@@ -466,6 +483,16 @@ export default function App() {
           flash={flash}
           onClose={() => setEditorCapture(null)}
           onSaved={(capture) => rememberCapture(capture)}
+        />
+      )}
+
+      {piiRedact && (
+        <PiiRedactModal
+          capture={piiRedact.capture}
+          scan={piiRedact.scan}
+          busy={capturing}
+          onClose={() => setPiiRedact(null)}
+          onApply={applyPiiRedaction}
         />
       )}
 

@@ -43,7 +43,7 @@ export async function contextualise(
 
   // Always emit the tag event — even captures with no readable text are still tagged.
   events.append(capture.workspaceId, 'tag', `Auto-tagged as '${tag}'`);
-  if (hasPii) events.append(capture.workspaceId, 'pii', `PII detected and redacted (${pii[0].type})`);
+  if (hasPii) events.append(capture.workspaceId, 'pii', `PII detected (${pii[0].type}) — review in PII Redaction`);
 
   return { ...capture, ocrText, tag, hasPii };
 }

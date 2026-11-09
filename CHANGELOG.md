@@ -4,6 +4,7 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 
 ## [0.6.1] — Unreleased — Project health
 ### Added
+- **PII name detection** — on-device dictionary/heuristic name matching alongside email/phone; optional card (Luhn), IBAN, and IPv4 checks; OCR bounding boxes with a toggleable redact review modal before saving a blurred copy.
 - **Destination integrations (v1.0)** — OAuth connect/disconnect for Slack, Jira, Notion, Gmail, and GitHub; `snapflow://` deep-link callbacks in the desktop app; clearer delivery/auth error messages; `docs/DESTINATION_SETUP.md` and expanded `backend/.env.example`.
 - README **v1.0 MVP status** table (done / partial / not started) aligned with the code on `main`.
 - Shared TypeScript contract file (`src/shared/types.ts`) restored so IPC, stores, tests,
