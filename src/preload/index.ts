@@ -99,6 +99,13 @@ const api = {
     getEnabled: (): Promise<{ enabled: boolean }> => ipcRenderer.invoke(CH.syncPrefGet),
     setEnabled: (enabled: boolean): Promise<{ enabled: boolean }> => ipcRenderer.invoke(CH.syncPrefSet, enabled),
   },
+  team: {
+    me: () => ipcRenderer.invoke(CH.teamMe),
+    create: (name: string) => ipcRenderer.invoke(CH.teamCreate, name),
+    invite: (args: { teamId: string; email: string; role?: 'admin' | 'member' }) => ipcRenderer.invoke(CH.teamInvite, args),
+    leave: (teamId: string) => ipcRenderer.invoke(CH.teamLeave, teamId),
+    shareCapture: (captureId: string) => ipcRenderer.invoke(CH.teamShareCapture, captureId),
+  },
 
   /** Subscribe to the ⌘⇧5 global shortcut opening the window picker. Returns an unsubscribe fn. */
   onOpenWindowPicker: (cb: () => void): (() => void) => {

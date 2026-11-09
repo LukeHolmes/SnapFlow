@@ -2,8 +2,9 @@
 
 All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisition readiness).
 
-## [1.1.0] — Unreleased — Focus Blur & Screen Recording
+## [1.1.0] — Unreleased — Focus Blur, Screen Recording & Team tier
 ### Added
+- **Team tier (foundation)** — backend teams with roles (owner/admin/member), email invites via single-use HMAC tokens (invite link returned, no outbound email), seat limits, effective Team entitlements for members, shared team library with member-gated signed capture URLs, Account → Team panel, and History **Share to team**. Billing remains a documented stub (`POST /v1/billing/team/checkout-stub`). See `docs/TEAM_TIER.md`.
 - **Focus Blur** — post-capture editor with drawable focus regions (rounded rects), blur strength, dim, invert, live canvas preview, non-destructive params on the annotation layer, undo/redo, and quick actions **Focus window** / **Focus region**.
 - **Focus Blur preset automation (Pro+)** — `config.focusBlurAuto` on output presets; deliver path renders focus blur then PII boxes (`src/main/capture/delivery-image.ts`).
 - **Pure-JS blur pipeline** — shared mask/compose for renderer export and main-process PNG (`src/focus-blur/*`); no paid image libs.

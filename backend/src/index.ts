@@ -12,6 +12,7 @@ import { syncRouter } from './sync/routes';
 import { deliverRouter } from './deliver/routes';
 import { oauthRouter } from './oauth/routes';
 import { integrationsRouter } from './integrations/routes';
+import { teamsRouter } from './teams/routes';
 import { initDb } from './store';
 
 export function createApp() {
@@ -29,6 +30,7 @@ export function createApp() {
   app.use(deliverRouter);
   app.use(oauthRouter);
   app.use(integrationsRouter);
+  app.use(teamsRouter);
 
   app.use(errorMiddleware);
   return app;

@@ -68,6 +68,11 @@ export const CH = {
   diffSave:           'diff:save',       // diff path + source IDs → history row tagged diff
   diffFindPrevious:   'diff:findPrevious', // captureId → previous same-window capture id
   captureGetImage:    'capture:getImage',// capture ID → base64 data URL for rendering in the renderer
+  teamMe:             'team:me',
+  teamCreate:         'team:create',
+  teamInvite:         'team:invite',
+  teamLeave:          'team:leave',
+  teamShareCapture:   'team:shareCapture',
   captureGetMedia:    'capture:getMedia',// recording → file path for playback
   recordingStart:     'recording:start',
   recordingStop:      'recording:stop',

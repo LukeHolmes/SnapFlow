@@ -10,25 +10,25 @@ import type { DestinationId, Entitlements, Tier } from '../../shared/types';
 
 const TABLE: Record<Tier, Omit<Entitlements, 'tier'>> = {
   free: {
-    historyWindowDays: 30, maxPresets: 1, aiEnabled: false, cloudSync: false, diffAdvanced: false,
+    historyWindowDays: 30, maxPresets: 1, aiEnabled: false, cloudSync: false, sharedLibrary: false, diffAdvanced: false,
     focusBlurMaxRegions: 1, focusBlurPresetAutomation: false,
     maxRecordingDurationSec: 5 * 60,
     recordingSystemAudio: false, recordingMicrophone: false, recordingGifExport: false,
   },
   pro: {
-    historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: true, diffAdvanced: true,
+    historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: true, sharedLibrary: false, diffAdvanced: true,
     focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
     maxRecordingDurationSec: 60 * 60,
     recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
   },
   team: {
-    historyWindowDays: null, maxPresets: null, aiEnabled: true, cloudSync: true, diffAdvanced: true,
+    historyWindowDays: null, maxPresets: null, aiEnabled: true, cloudSync: true, sharedLibrary: true, diffAdvanced: true,
     focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
     maxRecordingDurationSec: 2 * 60 * 60,
     recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
   },
   perpetual: {
-    historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: false, diffAdvanced: true,
+    historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: false, sharedLibrary: false, diffAdvanced: true,
     focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
     maxRecordingDurationSec: 60 * 60,
     recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,

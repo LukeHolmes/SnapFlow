@@ -3,6 +3,7 @@ import { config } from '../config';
 import { requireAuth } from '../auth/middleware';
 import { AppError, asyncHandler } from '../errors';
 import { entitlementsFor } from '../entitlements';
+import { effectiveTierForAccount } from '../entitlements/resolve';
 import { getDestinationProvider } from '../oauth/destination-providers';
 import { withDestinationAccessToken, readDestinationToken } from '../oauth/destination-tokens';
 import { oauthState } from '../oauth/state';
@@ -124,7 +125,8 @@ integrationsRouter.get('/v1/integrations/github/repos', requireAuth, asyncHandle
 }));
 
 integrationsRouter.get('/v1/integrations/capture-url/:captureId', requireAuth, asyncHandler(async (req, res) => {
-  if (!entitlementsFor(req.account!.tier).cloudSync) {
+  const tier = await effectiveTierForAccount(req.account!.id);
+  if (!entitlementsFor(tier).cloudSync) {
     throw new AppError(402, 'sync_not_entitled', 'Cloud sync requires a Pro or Team plan');
   }
   if (!(await sync.blobAvailable(req.account!.id, req.params.captureId))) {

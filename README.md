@@ -49,8 +49,10 @@ integrations only implement `deliver(capture, config)`; AI is tier-gated and pro
 | **Cloud sync** — metadata-first, LWW, tombstones, lazy blobs (Pro/Team) | ✅ working |
 | **Diff mode (v1.1)** — pixel diff, multi-view UI, History export & Deliver; AI summary Pro+ | ✅ working & unit-tested |
 | **Annotations** — editor, persistence, guide-oriented types | ✅ working & unit-tested |
+| **Team tier (v1.1.0 foundation)** — teams, invites, seats, shared library, Account/History UI | ✅ backend + desktop foundation (`docs/TEAM_TIER.md`) |
 | **Team server-side search** over the shared workspace library | ✅ backend implemented |
-| Native capture sidecar, auto-scroll capture, Team admin/library UI polish | ⬜ next layers |
+| Real Team billing (Stripe), email invites, ownership transfer, dedicated library browser | ⬜ deferred |
+| Native capture sidecar, auto-scroll capture | ⬜ next layers |
 
 Headless unit tests: desktop `npm test`, backend `cd backend && npm test` (counts grow with each release — see CI output).
 

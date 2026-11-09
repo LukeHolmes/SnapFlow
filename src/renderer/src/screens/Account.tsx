@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Camera, ScanText, Send, Shield, ArrowUpRight } from 'lucide-react';
 import { api } from '../api';
+import TeamPanel from '../components/TeamPanel';
 import { STAT_META } from '../components/shared';
 import type { Stats, Entitlements } from '../components/shared';
 
@@ -85,6 +86,8 @@ export default function Account({ flash }: Props) {
           ))}
         </div>
       </div>
+
+      <TeamPanel flash={flash} teamEligible={Boolean(ent?.sharedLibrary || ent?.tier === 'team')} />
 
       {ent?.cloudSync && (
         <div className="card" style={{ marginTop: 16 }}>

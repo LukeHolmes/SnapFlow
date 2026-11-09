@@ -4,6 +4,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { requireAuth } from '../auth/middleware';
 import { entitlementsFor } from '../entitlements/index';
+import { effectiveTierForAccount } from '../entitlements/resolve';
 import { sync, type SyncRecord } from './store';
 import { AppError, asyncHandler } from '../errors';
 import { config } from '../config';
@@ -11,14 +12,16 @@ import { buildCaptureUrl, verifyCaptureSignature, defaultCaptureExpiry } from '.
 
 export const syncRouter = Router();
 
-function requireCloudSync(req: Request, _res: Response, next: NextFunction): void {
-  if (!entitlementsFor(req.account!.tier).cloudSync) throw new AppError(402, 'sync_not_entitled', 'Cloud sync requires a Pro or Team plan');
+const requireCloudSync = asyncHandler(async (req: Request, _res: Response, next: NextFunction) => {
+  const tier = await effectiveTierForAccount(req.account!.id);
+  if (!entitlementsFor(tier).cloudSync) throw new AppError(402, 'sync_not_entitled', 'Cloud sync requires a Pro or Team plan');
   next();
-}
-function requireSharedLibrary(req: Request, _res: Response, next: NextFunction): void {
-  if (!entitlementsFor(req.account!.tier).sharedLibrary) throw new AppError(402, 'search_not_entitled', 'Server-side search requires a Team plan');
+});
+const requireSharedLibrary = asyncHandler(async (req: Request, _res: Response, next: NextFunction) => {
+  const tier = await effectiveTierForAccount(req.account!.id);
+  if (!entitlementsFor(tier).sharedLibrary) throw new AppError(402, 'search_not_entitled', 'Server-side search requires a Team plan');
   next();
-}
+});
 
 syncRouter.post('/v1/sync/push', requireAuth, requireCloudSync, asyncHandler(async (req, res) => {
   const records = (req.body?.records ?? []) as SyncRecord[];

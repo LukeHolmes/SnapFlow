@@ -23,11 +23,13 @@ import { connectGoogleDrive, disconnectGoogleDrive, getGoogleDriveStatus } from 
 import type { Engine } from './engine';
 import type { SyncAgent } from './sync/agent';
 import { isCloudSyncOptIn, setCloudSyncOptIn } from './sync/prefs';
+import { teamClientFromEnv } from './team/client';
 import type { AnnotationDocument, Capture, ColorFormat, DestinationId, Guide, GuideType, IntegrationStatus } from '../shared/types';
 
 export function registerIpc(engine: Engine, sync: SyncAgent): void {
   const { history, colors, presets, events, ent, workspace: WS } = engine;
   const proxy = aiProxyFromEnv();
+  const teamApi = teamClientFromEnv();
   const integrations = integrationBackendClientFromEnv();
 
   ipcMain.handle(CH.captureListSources, () => listSources());
@@ -210,6 +212,59 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     const markdown = renderGuideMarkdown(guide);
     clipboard.writeText(markdown);
     return { ok: true, detail: 'Guide Markdown copied to clipboard', markdown };
+  });
+
+  ipcMain.handle(CH.teamMe, async () => {
+    if (!teamApi.configured) return { configured: false as const, team: null };
+    try {
+      const data = await teamApi.me();
+      return { configured: true as const, ...data };
+    } catch (err) {
+      return { configured: true as const, team: null, error: err instanceof Error ? err.message : 'Team request failed' };
+    }
+  });
+  ipcMain.handle(CH.teamCreate, async (_e, name: string) => {
+    if (!ent().sharedLibrary) return { ok: false, detail: 'Team plan required' };
+    if (!teamApi.configured) return { ok: false, detail: 'Backend not configured' };
+    try {
+      const data = await teamApi.createTeam(name);
+      return { ok: true, detail: 'Team created', ...data };
+    } catch (err) {
+      return { ok: false, detail: err instanceof Error ? err.message : 'Create failed' };
+    }
+  });
+  ipcMain.handle(CH.teamInvite, async (_e, args: { teamId: string; email: string; role?: 'admin' | 'member' }) => {
+    if (!ent().sharedLibrary) return { ok: false, detail: 'Team plan required' };
+    if (!teamApi.configured) return { ok: false, detail: 'Backend not configured' };
+    try {
+      const inv = await teamApi.invite(args.teamId, args.email, args.role ?? 'member');
+      return { ok: true, detail: 'Invite created', inviteUrl: inv.inviteUrl, expiresAt: inv.expiresAt };
+    } catch (err) {
+      return { ok: false, detail: err instanceof Error ? err.message : 'Invite failed' };
+    }
+  });
+  ipcMain.handle(CH.teamLeave, async (_e, teamId: string) => {
+    if (!teamApi.configured) return { ok: false, detail: 'Backend not configured' };
+    try {
+      return await teamApi.leave(teamId);
+    } catch (err) {
+      return { ok: false, detail: err instanceof Error ? err.message : 'Leave failed' };
+    }
+  });
+  ipcMain.handle(CH.teamShareCapture, async (_e, captureId: string) => {
+    if (!ent().sharedLibrary || !ent().cloudSync) return { ok: false, detail: 'Team plan and cloud sync required' };
+    if (!teamApi.configured) return { ok: false, detail: 'Backend not configured' };
+    const capture = history.get(WS, captureId);
+    if (!capture) return { ok: false, detail: 'Capture not found' };
+    try {
+      const me = await teamApi.me();
+      if (!me.team) return { ok: false, detail: 'Join or create a team first' };
+      const result = await teamApi.shareCapture(me.team.id, capture);
+      events.append(WS, 'delivered', `Shared “${capture.filename}” with team library`);
+      return result;
+    } catch (err) {
+      return { ok: false, detail: err instanceof Error ? err.message : 'Share failed' };
+    }
   });
 
   ipcMain.handle(CH.entitlementsGet, () => ent());
