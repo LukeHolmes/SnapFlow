@@ -25,6 +25,10 @@ function migrate(db: Db): void {
   if (!cols.includes('updated_at')) db.exec(`ALTER TABLE captures ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0`);
   if (!cols.includes('deleted'))    db.exec(`ALTER TABLE captures ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0`);
   if (!cols.includes('dirty'))      db.exec(`ALTER TABLE captures ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0`);
+  if (!cols.includes('kind'))       db.exec(`ALTER TABLE captures ADD COLUMN kind TEXT NOT NULL DEFAULT 'screenshot'`);
+  if (!cols.includes('media_path')) db.exec(`ALTER TABLE captures ADD COLUMN media_path TEXT`);
+  if (!cols.includes('duration_ms')) db.exec(`ALTER TABLE captures ADD COLUMN duration_ms INTEGER`);
+  if (!cols.includes('byte_size'))  db.exec(`ALTER TABLE captures ADD COLUMN byte_size INTEGER`);
   db.exec(`UPDATE captures SET updated_at = created_at WHERE updated_at = 0`);
 }
 

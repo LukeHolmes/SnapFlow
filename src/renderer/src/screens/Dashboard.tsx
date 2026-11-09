@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Send, ArrowUpRight, Crop, AppWindow, ScrollText, Timer, Pipette } from 'lucide-react';
+import { Send, ArrowUpRight, Crop, AppWindow, ScrollText, Timer, Pipette, Video } from 'lucide-react';
 import type { ColorFormat, PickedColor } from '../../../shared/types';
 import { api } from '../api';
 import { TAGS, PRESET_ICONS, PRESET_BG, DOT, STAT_META, CaptureThumb, rel } from '../components/shared';
@@ -14,9 +14,11 @@ interface Props {
   startScroll: () => void;
   startDelay: () => void;
   startColour: () => void;
+  startRecording: () => void;
+  ent: Entitlements | null;
 }
 
-export default function Dashboard({ flash, refreshKey, setActive, startRegion, openPicker, startScroll, startDelay, startColour }: Props) {
+export default function Dashboard({ flash, refreshKey, setActive, startRegion, openPicker, startScroll, startDelay, startColour, startRecording, ent }: Props) {
   const [stats, setStats] = useState<Stats>({ total: 0, ocrIndexed: 0, sent: 0, piiRedacted: 0 });
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -50,6 +52,7 @@ export default function Dashboard({ flash, refreshKey, setActive, startRegion, o
     if (label === 'Scroll') return startScroll();
     if (label === 'Delay') return startDelay();
     if (label === 'Colour') return startColour();
+    if (label === 'Record') return startRecording();
     flash(`${label} capture is coming in a later build`);
   };
 
@@ -83,7 +86,7 @@ export default function Dashboard({ flash, refreshKey, setActive, startRegion, o
 
       {/* Quick capture */}
       <section className="quick-row">
-        {([['Region','⌘⇧4',Crop],['Window','⌘⇧5',AppWindow],['Scroll','⌘⇧6',ScrollText],['Colour','⌘⇧7',Pipette],['Delay','2s / 5s',Timer]] as const).map(([l,c,Icon]: any) => (
+        {([['Region','⌘⇧4',Crop],['Window','⌘⇧5',AppWindow],['Scroll','⌘⇧6',ScrollText],['Record','⌘⇧8',Video],['Colour','⌘⇧7',Pipette],['Delay','2s / 5s',Timer]] as const).map(([l,c,Icon]: any) => (
           <button className="quick-btn" key={l} onClick={() => onQuick(l)}>
             <Icon size={15} strokeWidth={1.9} color="#666" />
             <span className="quick-label">{l}</span>

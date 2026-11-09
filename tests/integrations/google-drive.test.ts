@@ -76,6 +76,7 @@ function capture(overrides: Partial<Capture> = {}): Capture {
     workspaceId: 'ws_local',
     filename: 'Bug.png',
     imagePath: pngPath,
+    kind: 'screenshot',
     tag: 'ui',
     ocrText: 'Submit',
     hasPii: false,

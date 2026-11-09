@@ -15,7 +15,7 @@ function freshStore() {
 }
 const cap = (over: Partial<Capture>): Capture => ({
   id: randomUUID(), workspaceId: 'ws_a', filename: 'shot', imagePath: '/x.png',
-  tag: 'ui', ocrText: '', hasPii: false, createdAt: Date.now(), ...over,
+  kind: 'screenshot', tag: 'ui', ocrText: '', hasPii: false, createdAt: Date.now(), ...over,
 });
 
 test('insert + FTS5 search finds by OCR text', () => {

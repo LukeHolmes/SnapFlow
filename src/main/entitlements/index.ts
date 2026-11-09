@@ -9,11 +9,30 @@
 import type { DestinationId, Entitlements, Tier } from '../../shared/types';
 
 const TABLE: Record<Tier, Omit<Entitlements, 'tier'>> = {
-  free:      { historyWindowDays: 30,   maxPresets: 1,    aiEnabled: false, cloudSync: false, sharedLibrary: false, diffAdvanced: false, focusBlurMaxRegions: 1, focusBlurPresetAutomation: false },
-  pro:       { historyWindowDays: null, maxPresets: 5,    aiEnabled: true,  cloudSync: true,  sharedLibrary: false, diffAdvanced: true,  focusBlurMaxRegions: null, focusBlurPresetAutomation: true },
-  team:      { historyWindowDays: null, maxPresets: null, aiEnabled: true,  cloudSync: true,  sharedLibrary: true,  diffAdvanced: true,  focusBlurMaxRegions: null, focusBlurPresetAutomation: true },
-  // Perpetual: paid, non-recurring, AI-enabled, local (resolves the §11 contradiction).
-  perpetual: { historyWindowDays: null, maxPresets: 5,    aiEnabled: true,  cloudSync: false, sharedLibrary: false, diffAdvanced: true,  focusBlurMaxRegions: null, focusBlurPresetAutomation: true },
+  free: {
+    historyWindowDays: 30, maxPresets: 1, aiEnabled: false, cloudSync: false, sharedLibrary: false, diffAdvanced: false,
+    focusBlurMaxRegions: 1, focusBlurPresetAutomation: false,
+    maxRecordingDurationSec: 5 * 60,
+    recordingSystemAudio: false, recordingMicrophone: false, recordingGifExport: false,
+  },
+  pro: {
+    historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: true, sharedLibrary: false, diffAdvanced: true,
+    focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
+    maxRecordingDurationSec: 60 * 60,
+    recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
+  },
+  team: {
+    historyWindowDays: null, maxPresets: null, aiEnabled: true, cloudSync: true, sharedLibrary: true, diffAdvanced: true,
+    focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
+    maxRecordingDurationSec: 2 * 60 * 60,
+    recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
+  },
+  perpetual: {
+    historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: false, sharedLibrary: false, diffAdvanced: true,
+    focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
+    maxRecordingDurationSec: 60 * 60,
+    recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
+  },
 };
 
 export function entitlementsFor(tier: Tier): Entitlements {
@@ -33,6 +52,16 @@ export function canAddPreset(ent: Entitlements, currentCount: number): boolean {
 export function canUseDestination(ent: Entitlements, destination: DestinationId): boolean {
   if (destination === 'clipboard' || destination === 'google-drive') return true;
   return ent.tier !== 'free';
+}
+
+export function canRecordWithAudio(ent: Entitlements, opts: { mic?: boolean; system?: boolean }): boolean {
+  if (opts.mic && !ent.recordingMicrophone) return false;
+  if (opts.system && !ent.recordingSystemAudio) return false;
+  return true;
+}
+
+export function canExportRecordingGif(ent: Entitlements): boolean {
+  return ent.recordingGifExport;
 }
 
 export function canAddFocusBlurRegion(ent: Entitlements, currentCount: number): boolean {

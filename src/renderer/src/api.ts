@@ -7,9 +7,10 @@ declare global { interface Window { snapflow?: SnapFlowApi } }
 
 const now = Date.now();
 let mockCaptures: Capture[] = [
-  { id: 'c1', workspaceId: 'ws_local', filename: 'Login page regression', imagePath: '', tag: 'ui', ocrText: 'Sign in invalid credentials 401', hasPii: true, createdAt: now - 120_000 },
-  { id: 'c2', workspaceId: 'ws_local', filename: 'API error log', imagePath: '', tag: 'code', ocrText: 'TypeError cannot read property id of undefined', hasPii: false, createdAt: now - 840_000 },
-  { id: 'c3', workspaceId: 'ws_local', filename: 'Q3 revenue chart', imagePath: '', tag: 'chart', ocrText: 'Q3 revenue up 18% YoY', hasPii: false, createdAt: now - 3_600_000 },
+  { id: 'c1', workspaceId: 'ws_local', filename: 'Login page regression', imagePath: '', kind: 'screenshot', tag: 'ui', ocrText: 'Sign in invalid credentials 401', hasPii: true, createdAt: now - 120_000 },
+  { id: 'c2', workspaceId: 'ws_local', filename: 'API error log', imagePath: '', kind: 'screenshot', tag: 'code', ocrText: 'TypeError cannot read property id of undefined', hasPii: false, createdAt: now - 840_000 },
+  { id: 'c3', workspaceId: 'ws_local', filename: 'Q3 revenue chart', imagePath: '', kind: 'screenshot', tag: 'chart', ocrText: 'Q3 revenue up 18% YoY', hasPii: false, createdAt: now - 3_600_000 },
+  { id: 'c4', workspaceId: 'ws_local', filename: 'Onboarding walkthrough', imagePath: '', kind: 'recording', tag: 'recording', ocrText: 'Screen recording (42s)', hasPii: false, createdAt: now - 500_000, durationMs: 42_000, byteSize: 2_400_000 },
 ];
 let mockPresets: Preset[] = [
   { id: 'p1', workspaceId: 'ws_local', destination: 'slack', name: 'Slack', target: '#qa-bugs', config: {}, createdAt: now },
@@ -30,7 +31,7 @@ const mockAnnotationDocs = new Map<string, AnnotationDocument>();
 let mockGuides: Guide[] = [];
 
 function mockNewCapture(): Capture {
-  const c: Capture = { id: 'c' + Math.random().toString(36).slice(2, 7), workspaceId: 'ws_local', filename: 'Region capture', imagePath: '', tag: 'ui', ocrText: 'demo capture', hasPii: false, createdAt: Date.now() };
+  const c: Capture = { id: 'c' + Math.random().toString(36).slice(2, 7), workspaceId: 'ws_local', filename: 'Region capture', imagePath: '', kind: 'screenshot', tag: 'ui', ocrText: 'demo capture', hasPii: false, createdAt: Date.now() };
   mockCaptures = [c, ...mockCaptures];
   mockEvents = [{ id: 'ev' + c.id, workspaceId: 'ws_local', kind: 'capture', text: `${c.filename} captured`, createdAt: c.createdAt }, ...mockEvents];
   return c;
@@ -87,6 +88,14 @@ const mock: SnapFlowApi = {
     copyOcr: async (_id: string): Promise<DeliverResult> => ({ ok: true, detail: 'Copied OCR text to clipboard' }),
     pin: async (_id: string): Promise<DeliverResult> => ({ ok: true, detail: 'Pinned capture on screen' }),
     getImageDataUrl: async (_id: string): Promise<string | null> => null,
+    getMediaDataUrl: async (_id: string): Promise<string | null> => null,
+  },
+  recording: {
+    start: async () => ({ ok: false, detail: 'Recording requires Electron (npm run dev)' }),
+    stop: async () => ({ ok: false }),
+    pause: async () => ({ ok: false }),
+    resume: async () => ({ ok: false }),
+    status: async () => ({ phase: 'idle' as const, elapsedMs: 0, maxDurationSec: 300, paused: false }),
   },
   region: {
     start: async () => { const c = mockNewCapture(); setTimeout(() => addedListener?.(c), 350); return { started: true }; },
@@ -178,6 +187,7 @@ const mock: SnapFlowApi = {
   entitlements: { get: async (): Promise<Entitlements> => ({
     tier: 'pro', historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: true, diffAdvanced: true,
     focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
+    maxRecordingDurationSec: 3600, recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
   }) },
   stats: { get: async (): Promise<Stats> => ({ total: mockCaptures.length, ocrIndexed: mockCaptures.length, sent: 1, piiRedacted: mockCaptures.filter(c => c.hasPii).length }) },
   events: { recent: async (limit = 8) => mockEvents.slice(0, limit) },
@@ -220,6 +230,9 @@ const mock: SnapFlowApi = {
   onCaptureAdded: (cb) => { addedListener = cb; return () => { addedListener = null; }; },
   onCaptureError: () => () => {},
   onOpenWindowPicker: () => () => {},
+  onOpenRecordingPicker: () => () => {},
+  onOpenRecordWindowPicker: () => () => {},
+  onRecordingStatus: () => () => {},
   onColourPicked: () => () => {},
   onIntegrationConnected: () => () => {},
   onIntegrationError: () => () => {},

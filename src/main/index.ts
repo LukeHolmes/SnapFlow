@@ -7,6 +7,7 @@ import { createEngine } from './engine';
 import { registerIpc } from './ipc';
 import { registerRegion, startRegionCapture } from './region';
 import { registerColourPicker, startColourPicker } from './colour-picker';
+import { registerRecordingManager, startRecording } from './recording/manager';
 import { installTray, disposeTray } from './tray';
 import { createSyncAgent } from './sync/agent';
 import { registerBuiltins } from './integrations/registry';
@@ -107,6 +108,7 @@ app.whenReady().then(() => {
   registerIpc(engine, sync);
   registerRegion(engine, () => win);
   registerColourPicker(engine, () => win);
+  registerRecordingManager(engine, () => win);
   createWindow();
   installTray(() => win);
 
@@ -141,6 +143,18 @@ app.whenReady().then(() => {
         win?.show();
         win?.focus();
         win?.webContents.send(CH.captureError, err instanceof Error ? err.message : 'Colour picker failed');
+      });
+    });
+  } catch { /* non-fatal */ }
+  // Screen recording (⌘⇧8) — full display, countdown from tray/dashboard.
+  try {
+    globalShortcut.register('CommandOrControl+Shift+8', () => {
+      void startRecording({ mode: 'screen', countdownSec: 2 }).then(res => {
+        if (!res.ok) {
+          win?.show();
+          win?.focus();
+          win?.webContents.send(CH.captureError, res.detail);
+        }
       });
     });
   } catch { /* non-fatal */ }

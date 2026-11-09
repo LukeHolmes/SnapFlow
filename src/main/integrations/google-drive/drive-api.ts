@@ -102,9 +102,10 @@ export async function uploadPngFile(
   description: string,
   fetchImpl: FetchFn = fetch,
 ): Promise<UploadResult> {
-  const name = basename(imagePath).endsWith('.png') ? basename(imagePath) : `${basename(imagePath, '.png') || 'capture'}.png`;
+  const base = basename(imagePath);
+  const name = base.includes('.') ? base : `${base || 'capture'}.png`;
   const size = statSync(imagePath).size;
-  const mimeType = 'image/png';
+  const mimeType = name.endsWith('.webm') ? 'video/webm' : 'image/png';
 
   const initRes = await fetchImpl(`${DRIVE_UPLOAD_BASE}/files?uploadType=resumable`, {
     method: 'POST',

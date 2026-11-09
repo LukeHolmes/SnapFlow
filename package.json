@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
+    "gifenc": "^1.0.3",
     "lucide-react": "^0.383.0",
     "pixelmatch": "^7.2.0",
     "pngjs": "^7.0.0",

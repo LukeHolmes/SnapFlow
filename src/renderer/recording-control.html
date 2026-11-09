@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Recording</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: rgba(15, 23, 42, 0.92);
+      color: #f8fafc;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 10px 12px;
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+    .row { display: flex; align-items: center; gap: 8px; -webkit-app-region: no-drag; }
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      background: #334155;
+      color: #f1f5f9;
+    }
+    button.primary { background: #ef4444; color: #fff; }
+    .time { font-variant-numeric: tabular-nums; font-size: 12px; opacity: 0.9; min-width: 72px; }
+  </style>
+</head>
+<body>
+  <div class="row">
+    <span class="time" id="time">0:00</span>
+    <button type="button" id="pause">Pause</button>
+    <button type="button" class="primary" id="stop">Stop</button>
+  </div>
+  <script type="module" src="./recording-control.ts"></script>
+</body>
+</html>
