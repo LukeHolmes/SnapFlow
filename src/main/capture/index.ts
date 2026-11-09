@@ -9,17 +9,10 @@ import { randomUUID } from 'node:crypto';
 import { PNG } from 'pngjs';
 import { imagesDir } from '../paths';
 import type { CaptureSource, ScrollCapturePreview } from '../../shared/types';
+import { stitchScrollFrames } from './stitch';
 
 export interface RawCapture { id: string; imagePath: string; filename: string; }
 export interface RedactionBox { x0: number; y0: number; x1: number; y1: number; }
-interface StitchResult {
-  image: Electron.NativeImage;
-  confidence: number;
-  frameCount: number;
-  width: number;
-  height: number;
-  warnings: string[];
-}
 
 export interface Frame {
   image: Electron.NativeImage;  // full-resolution screenshot (device pixels)
@@ -81,9 +74,13 @@ export async function captureScrollingPreview(options: { sourceId?: string; fram
     if (i < count - 1) await sleep(intervalMs);
   }
 
-  const stitched = stitchPanorama(images);
+  const pngs = images
+    .map(img => PNG.sync.read(img.toPNG()))
+    .filter(png => png.width > 0 && png.height > 0);
+  const stitched = stitchScrollFrames(pngs);
+  const image = nativeImage.createFromBuffer(PNG.sync.write(stitched.png));
   return {
-    dataUrl: stitched.image.toDataURL(),
+    dataUrl: image.toDataURL(),
     filename: `${sourceName} scroll`,
     confidence: stitched.confidence,
     frameCount: stitched.frameCount,
@@ -167,102 +164,4 @@ export function persistRedactedImage(imagePath: string, boxes: RedactionBox[], f
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
-}
-
-function stitchPanorama(images: Electron.NativeImage[]): StitchResult {
-  const pngs = images
-    .map(img => PNG.sync.read(img.toPNG()))
-    .filter(png => png.width > 0 && png.height > 0);
-  if (!pngs.length) throw new Error('No frames captured for scrolling capture');
-
-  const warnings: string[] = [];
-  const width = Math.min(...pngs.map(png => png.width));
-  const overlapResults: Array<{ overlap: number; score: number; reliable: boolean }> = [];
-  for (let i = 1; i < pngs.length; i += 1) {
-    const result = findOverlap(pngs[i - 1], pngs[i], width);
-    overlapResults.push(result);
-    if (!result.reliable) warnings.push(`Low-confidence alignment between frames ${i} and ${i + 1}; appended with minimal dedupe.`);
-  }
-
-  const height = pngs[0].height + pngs.slice(1).reduce((sum, png, idx) => sum + Math.max(1, png.height - overlapResults[idx].overlap), 0);
-  const out = new PNG({ width, height, colorType: 6 });
-  out.data.fill(255);
-
-  let yOffset = 0;
-  copyRows(pngs[0], out, 0, yOffset, pngs[0].height, width);
-  yOffset += pngs[0].height;
-
-  for (let i = 1; i < pngs.length; i += 1) {
-    const overlap = overlapResults[i - 1].overlap;
-    const copyHeight = Math.max(1, pngs[i].height - overlap);
-    copyRows(pngs[i], out, overlap, yOffset, copyHeight, width);
-    yOffset += copyHeight;
-  }
-
-  const reliable = overlapResults.filter(r => r.reliable);
-  const confidence = overlapResults.length
-    ? Math.round((overlapResults.reduce((sum, r) => sum + scoreToConfidence(r.score, r.reliable), 0) / overlapResults.length) * 100) / 100
-    : 1;
-  if (!reliable.length && pngs.length > 1) warnings.push('No strong overlaps found; result may include duplicate bands.');
-
-  return {
-    image: nativeImage.createFromBuffer(PNG.sync.write(out)),
-    confidence,
-    frameCount: pngs.length,
-    width,
-    height,
-    warnings,
-  };
-}
-
-function copyRows(src: PNG, dest: PNG, srcY: number, destY: number, height: number, width: number): void {
-  for (let y = 0; y < height; y += 1) {
-    const srcStart = ((srcY + y) * src.width) * 4;
-    const destStart = ((destY + y) * dest.width) * 4;
-    src.data.copy(dest.data, destStart, srcStart, srcStart + width * 4);
-  }
-}
-
-function findOverlap(prev: PNG, next: PNG, width: number): { overlap: number; score: number; reliable: boolean } {
-  const maxOverlap = Math.max(24, Math.floor(Math.min(prev.height, next.height) * 0.75));
-  const minOverlap = Math.min(maxOverlap, Math.max(24, Math.floor(Math.min(prev.height, next.height) * 0.06)));
-  let best = { overlap: 0, score: Number.POSITIVE_INFINITY, reliable: false };
-
-  for (let overlap = minOverlap; overlap <= maxOverlap; overlap += 8) {
-    const score = bandDiff(prev, next, width, overlap);
-    if (score < best.score) best = { overlap, score, reliable: score < 24 };
-  }
-
-  if (!best.reliable) {
-    return { overlap: Math.min(32, Math.floor(Math.min(prev.height, next.height) * 0.05)), score: best.score, reliable: false };
-  }
-
-  return best;
-}
-
-function bandDiff(prev: PNG, next: PNG, width: number, overlap: number): number {
-  const stepX = Math.max(4, Math.floor(width / 160));
-  const stepY = Math.max(4, Math.floor(overlap / 80));
-  let diff = 0;
-  let samples = 0;
-  const prevStartY = prev.height - overlap;
-
-  for (let y = 0; y < overlap; y += stepY) {
-    for (let x = 0; x < width; x += stepX) {
-      const a = ((prevStartY + y) * prev.width + x) * 4;
-      const b = (y * next.width + x) * 4;
-      diff += Math.abs(prev.data[a] - next.data[b]);
-      diff += Math.abs(prev.data[a + 1] - next.data[b + 1]);
-      diff += Math.abs(prev.data[a + 2] - next.data[b + 2]);
-      samples += 3;
-    }
-  }
-
-  return samples ? diff / samples : Number.POSITIVE_INFINITY;
-}
-
-function scoreToConfidence(score: number, reliable: boolean): number {
-  if (!Number.isFinite(score)) return 0;
-  const raw = Math.max(0, Math.min(1, 1 - score / 64));
-  return reliable ? raw : raw * 0.45;
 }
