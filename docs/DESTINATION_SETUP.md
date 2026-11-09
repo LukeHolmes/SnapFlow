@@ -1,6 +1,8 @@
 # Destination OAuth setup (v1.0)
 
-SnapFlow stores provider tokens **only on the backend** in the encrypted vault (`backend/src/vault/`). The desktop app never persists OAuth secrets; it opens the authorize URL and listens for a `snapflow://` deep link when `APP_REDIRECT_URL` is set.
+SnapFlow stores most provider tokens **only on the backend** in the encrypted vault (`backend/src/vault/`). The desktop app opens the authorize URL and listens for a `snapflow://` deep link when `APP_REDIRECT_URL` is set.
+
+**Exception — Google Drive:** manual “Send to Google Drive” uploads **directly from the desktop** to the Google Drive API (`drive.file` scope). OAuth tokens for Drive live on the device (OS keychain via Electron `safeStorage` when available), not in the backend vault.
 
 ## Prerequisites
 
@@ -21,6 +23,7 @@ Every provider uses the same callback pattern:
 | Gmail | `google` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
 | GitHub | `github` | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` |
 | Jira | `jira` | `JIRA_CLIENT_ID`, `JIRA_CLIENT_SECRET` |
+| Google Drive (desktop) | — | `GOOGLE_DRIVE_CLIENT_ID` on the **desktop** `.env` only |
 
 ## Slack (free workspace)
 
@@ -41,6 +44,25 @@ Delivery uploads the PNG via Slack’s external upload API and posts to the sele
 5. Connect in SnapFlow, search/select the page, save preset.
 
 Notion delivery appends an image block (signed capture URL) and a callout with metadata. **Pro/Team cloud sync** must upload the capture blob so the public signed URL works.
+
+## Google Drive — desktop upload (free manual send)
+
+Use this when you want captures in your own Google Drive without routing images through the SnapFlow backend. **Manual send is free**; auto-upload / per-folder rules are reserved for Pro/Team later.
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → create or select a project.
+2. **APIs & Services → Library** → enable **Google Drive API**.
+3. **OAuth consent screen** → External (or Internal for Workspace) → add test users while in “Testing”.
+4. **Credentials → Create credentials → OAuth client ID**:
+   - **Desktop app** (recommended): SnapFlow uses PKCE with loopback redirect `http://127.0.0.1:47823/oauth2callback` by default.
+   - Or **Web application** with authorized redirect URI `snapflow://oauth/callback` if you set `GOOGLE_DRIVE_OAUTH_REDIRECT_URI=snapflow://oauth/callback` in the desktop `.env` (requires the app to handle the deep link).
+5. Copy **only the Client ID** into the desktop `.env` as `GOOGLE_DRIVE_CLIENT_ID=` (no client secret on the desktop; PKCE public client).
+6. Restart the desktop app → **Output Presets** → **Google Drive** → **Connect Google Drive**, optional folder name (default `SnapFlow`), **Save preset**.
+
+Scope requested: `https://www.googleapis.com/auth/drive.file` (files the app creates/opens only).
+
+Upload uses a resumable Drive upload from the desktop. On success, the file’s `webViewLink` is copied to the clipboard and shown in the activity toast. **Disconnect** revokes the refresh token at Google and deletes local encrypted tokens.
+
+Until Luke registers the live OAuth app, leaving `GOOGLE_DRIVE_CLIENT_ID` unset disables the integration gracefully (status explains what to configure).
 
 ## Gmail (Google free tier)
 
