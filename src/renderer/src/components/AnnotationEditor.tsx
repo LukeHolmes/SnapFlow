@@ -508,9 +508,10 @@ function drawCallout(ctx: CanvasRenderingContext2D, shape: CaptureAnnotation): v
   ctx.strokeStyle = shape.style?.strokeColor ?? shape.color;
   ctx.lineWidth = shape.style?.strokeWidth ?? Math.max(3, Math.round(ctx.canvas.width / 420));
   roundRect(ctx, x, y, width, height, 12);
-  const fillOpacity = shape.style?.fillOpacity ?? 0;
-  if (fillOpacity > 0) {
-    ctx.fillStyle = hexToRgba(shape.style?.fillColor ?? '#ffffff', fillOpacity);
+  const fillColor = shape.style?.fillColor ?? '#ffffff';
+  const fillOpacity = shape.style?.fillOpacity ?? (fillColor === 'transparent' ? 0 : 0.92);
+  if (fillOpacity > 0 && fillColor !== 'transparent') {
+    ctx.fillStyle = hexToRgba(fillColor, fillOpacity);
     ctx.fill();
   }
   ctx.stroke();
