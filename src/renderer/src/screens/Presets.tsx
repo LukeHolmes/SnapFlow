@@ -15,6 +15,7 @@ const DESTINATIONS: { id: DestinationId; label: string; sub: string }[] = [
   { id: 'gmail', label: 'Gmail', sub: 'Send as an email attachment' },
   { id: 'github', label: 'GitHub Issues', sub: 'Create an issue or comment with the capture' },
   { id: 'zapier', label: 'Zapier Webhook', sub: 'POST capture metadata to any HTTPS webhook' },
+  { id: 'google-drive', label: 'Google Drive', sub: 'Upload to a Drive folder (free; tokens on this device)' },
 ];
 
 const EMAIL_RE = /^(?:[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+)$/i;
@@ -32,6 +33,7 @@ export default function Presets({ flash, refreshKey }: Props) {
   const [gmail, setGmail] = useState({ recipients: '', account_email: '' });
   const [github, setGithub] = useState({ owner: '', repo: '', mode: 'create' as 'create' | 'comment', issue_number: '', scope: 'repo' });
   const [zapier, setZapier] = useState({ webhook_url: '', secret: '' });
+  const [googleDrive, setGoogleDrive] = useState({ folder_name: 'SnapFlow' });
 
   const load = useCallback(async () => {
     const [p, e, s] = await Promise.all([api.presets.list(), api.entitlements.get(), api.integrations.statuses()]);
@@ -45,6 +47,7 @@ export default function Presets({ flash, refreshKey }: Props) {
     const gmailPreset = p.find(item => item.destination === 'gmail');
     const githubPreset = p.find(item => item.destination === 'github');
     const zapierPreset = p.find(item => item.destination === 'zapier');
+    const drivePreset = p.find(item => item.destination === 'google-drive');
 
     setSlack({
       channel_id: String(slackPreset?.config.channel_id ?? ''),
@@ -78,6 +81,9 @@ export default function Presets({ flash, refreshKey }: Props) {
     setZapier({
       webhook_url: String(zapierPreset?.config.webhook_url ?? ''),
       secret: String(zapierPreset?.config.secret ?? ''),
+    });
+    setGoogleDrive({
+      folder_name: String(drivePreset?.config.folder_name ?? 'SnapFlow'),
     });
   }, []);
 
@@ -409,6 +415,33 @@ export default function Presets({ flash, refreshKey }: Props) {
                         mode: github.mode,
                         issue_number: github.mode === 'comment' ? Number(github.issue_number) : undefined,
                       });
+                    }}>Save preset</button>
+                  </div>
+                </div>
+              )}
+
+              {destination.id === 'google-drive' && (
+                <div className="preset-config-body">
+                  <p className="integration-hint">
+                    Manual upload is included on the free plan. Tokens are encrypted with the OS keychain when available and never sent to the SnapFlow backend.
+                    Auto-upload rules per folder are a Pro/Team feature (coming soon).
+                  </p>
+                  <div className="form-row">
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">Target folder</label>
+                      <input
+                        className="form-input"
+                        placeholder="SnapFlow"
+                        value={googleDrive.folder_name}
+                        onChange={e => setGoogleDrive(prev => ({ ...prev, folder_name: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-actions">
+                    {oauthButtons('google-drive', 'Google Drive')}
+                    <button className="btn-primary" onClick={() => {
+                      const folder = googleDrive.folder_name.trim() || 'SnapFlow';
+                      savePreset('google-drive', 'Google Drive', folder, { folder_name: folder });
                     }}>Save preset</button>
                   </div>
                 </div>

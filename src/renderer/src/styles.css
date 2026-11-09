@@ -414,6 +414,27 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .diff-summary-text { font-size: 13.5px; color: var(--color-text-body); line-height: 1.65; }
 .diff-summary-empty { font-size: 13px; color: var(--color-text-muted); }
 
+.diff-controls-bar { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
+.diff-threshold { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--color-text-body); }
+.diff-threshold input[type="range"] { width: 160px; accent-color: var(--color-brand); }
+.diff-threshold-val { font-family: var(--mono); font-size: 12px; color: var(--color-text-muted); min-width: 2.5rem; }
+.diff-threshold-inline { margin-left: auto; }
+.diff-tier-hint { font-size: 12px; color: var(--color-text-muted); }
+.diff-view-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 10px; }
+.diff-tabs-views { flex: 1; min-width: 280px; }
+.diff-tab-locked { opacity: .45; cursor: not-allowed; }
+.diff-opacity { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-muted); }
+.diff-opacity input { width: 120px; accent-color: var(--color-brand); }
+.diff-viewer-split { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 100%; background: #000; }
+.diff-viewport { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 200px; }
+.diff-viewport-overlay { position: relative; }
+.diff-overlay-before { position: absolute; inset: 0; margin: auto; pointer-events: none; }
+.diff-region-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.diff-region-rect { fill: rgba(251, 146, 60, 0.12); stroke: #FB923C; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.diff-slot-actions { display: flex; flex-direction: column; gap: 6px; align-items: center; width: 100%; }
+.diff-export-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 14px; margin-bottom: 14px; }
+.diff-history-compare { position: absolute; top: 8px; right: 8px; z-index: 2; }
+
 /* Capture picker */
 .picker-overlay { position: fixed; inset: 0; z-index: 90; background: rgba(17,17,20,.45); display: flex; align-items: center; justify-content: center; animation: toast-in 120ms ease-out; }
 .picker-panel { width: 640px; max-width: 92vw; max-height: 70vh; overflow: auto; background: var(--color-surface-1); border: .5px solid var(--color-border); border-radius: 16px; padding: 18px 20px; box-shadow: 0 20px 60px rgba(0,0,0,.22); }

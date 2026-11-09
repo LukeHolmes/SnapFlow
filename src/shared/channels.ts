@@ -63,6 +63,9 @@ export const CH = {
   syncPrefSet:        'sync:prefSet',
   diffCompute:        'diff:compute',    // before+after capture IDs → pixel diff result + path
   diffSummarise:      'diff:summarise',  // before+after IDs → AI plain-English summary (Pro/Team)
-  captureGetImage:    'capture:getImage',// capture ID → base64 data URL for rendering in the renderer           // dashboard -> main: run a sync cycle now
+  diffGetImage:       'diff:getImage',   // diff PNG path → data URL
+  diffSave:           'diff:save',       // diff path + source IDs → history row tagged diff
+  diffFindPrevious:   'diff:findPrevious', // captureId → previous same-window capture id
+  captureGetImage:    'capture:getImage',// capture ID → base64 data URL for rendering in the renderer
 } as const;
 export type Channel = (typeof CH)[keyof typeof CH];

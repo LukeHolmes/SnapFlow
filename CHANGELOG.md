@@ -8,9 +8,11 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
   expiring HMAC capture links (`exp` + `sig`), verify/revoke APIs, and destination fallbacks
   when no public URL exists. Desktop cloud sync is **opt-in** (Account); blobs upload on
   delivery to URL-based destinations or manual Sync now; PII-tagged captures skip upload.
+- **Diff mode UI (v1.1)** — History-driven before/after workflow, compare-with-previous-same-window, side-by-side / overlay (opacity) / highlight / change-box views, percent-changed summary, sensitivity threshold (Pro+), export diff to History (`diff` tag) and Deliver via presets; pixel engine tests for bboxes and threshold.
 - **Windows CI installer** — CI job on `windows-latest` builds an unsigned NSIS `.exe`
   (`npm run dist -- --publish never`) and uploads **`snapflow-windows-installer`** as a
   workflow artifact on `main`, PRs into `main`, and `workflow_dispatch` (see README).
+- **Google Drive output preset (prototype)** — desktop-only Deliver integration (`google-drive`): PKCE OAuth with tokens in OS keychain/safeStorage, `drive.file` scope, resumable upload, optional target folder (default `SnapFlow`), free-tier manual send, PII gate before upload, disconnect/revoke; unit tests with mocked Drive API; `GOOGLE_DRIVE_CLIENT_ID` in `.env.example`.
 - **PII name detection** — on-device dictionary/heuristic name matching alongside email/phone; optional card (Luhn), IBAN, and IPv4 checks; OCR bounding boxes with a toggleable redact review modal before saving a blurred copy.
 - **Screen colour picker (v1.0 MVP)** — ⌘⇧7 / dashboard **Colour** / tray menu: multi-display overlay, magnified loupe, click-to-copy (HEX default, RGB/HSL via picker keys or dashboard setting), local recent-colour history in SQLite, Esc to cancel.
 - **Snipping suite (consolidated)** — Documents and tests for features that landed via PR #6/#7: guided scroll-stitch preview (⌘⇧6), pinned captures, guide builder, and post-capture quick actions (copy / annotate / pin / OCR / redact / send). Scroll overlap logic extracted to `src/main/capture/stitch.ts` with headless unit tests.

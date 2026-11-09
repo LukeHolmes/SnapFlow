@@ -47,6 +47,7 @@ export default function App() {
   const [quickCapture, setQuickCapture] = useState<Capture | null>(null);
   const [editorCapture, setEditorCapture] = useState<Capture | null>(null);
   const [piiRedact, setPiiRedact] = useState<{ capture: Capture; scan: PiiScanResult } | null>(null);
+  const [diffAfterId, setDiffAfterId] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const flash = useCallback((text: string, ok = true) => {
@@ -277,13 +278,26 @@ export default function App() {
   const renderScreen = () => {
     switch (active) {
       case 'Dashboard':      return <Dashboard {...screenProps} setActive={setActive} startRegion={startRegion} openPicker={openPicker} startScroll={openScrollCapture} startDelay={() => setDelayOpen(true)} startColour={startColour} />;
-      case 'History':        return <HistoryScreen {...screenProps} onAnnotate={setEditorCapture} />;
+      case 'History':        return (
+        <HistoryScreen
+          {...screenProps}
+          onAnnotate={setEditorCapture}
+          onCompare={c => { setDiffAfterId(c.id); setActive('Diff Mode'); }}
+        />
+      );
       case 'Search Library': return <SearchLibrary {...screenProps} initialQuery={active === 'Search Library' ? topbarQuery : ''} />;
       case 'Output Presets': return <Presets {...screenProps} />;
       case 'PII Redaction':  return <PiiRedaction {...screenProps} />;
       case 'Account':        return <Account flash={flash} />;
       case 'Integrations':   return <Integrations flash={flash} setActive={setActive} />;
-      case 'Diff Mode':      return <Diff flash={flash} refreshKey={refreshKey} />;
+      case 'Diff Mode':      return (
+        <Diff
+          flash={flash}
+          refreshKey={refreshKey}
+          initialAfterId={diffAfterId}
+          onSaved={() => setRefreshKey(k => k + 1)}
+        />
+      );
       case 'Guides':         return <Guides {...screenProps} />;
       default:               return <Dashboard {...screenProps} setActive={setActive} startRegion={startRegion} openPicker={openPicker} startScroll={openScrollCapture} startDelay={() => setDelayOpen(true)} startColour={startColour} />;
     }

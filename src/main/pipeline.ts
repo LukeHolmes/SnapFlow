@@ -17,6 +17,7 @@ export async function contextualise(
   events: EventLog,
   // Injectable for testing; defaults to the real on-device OCR engine.
   ocrFn: (path: string) => Promise<{ text: string }> = runOcr,
+  opts?: { fixedTag?: ContentTag },
 ): Promise<Capture> {
   events.append(capture.workspaceId, 'capture', `${capture.filename} captured`);
 
@@ -30,9 +31,8 @@ export async function contextualise(
   const pii = detectPii(ocrText);
   const hasPii = pii.length > 0;
 
-  // Prefer the metered AI proxy when entitled + configured; fall back to the local heuristic.
-  let tag: ContentTag = heuristicTag(ocrText);
-  if (ent.aiEnabled) {
+  let tag: ContentTag = opts?.fixedTag ?? heuristicTag(ocrText);
+  if (!opts?.fixedTag && ent.aiEnabled) {
     try {
       const aiTag = await proxy.autoTag(readFileSync(capture.imagePath), ent);
       if (aiTag) tag = aiTag;
