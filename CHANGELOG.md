@@ -31,6 +31,7 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
   language data on first use; the file was not referenced anywhere in the tree.
 
 ### Changed
+- **Electron 42** — Desktop runtime upgraded from Electron 39 to **42.11.x** (`electron-vite` 6). No app code changes required for APIs in use (`desktopCapturer`, `safeStorage`, `globalShortcut`, `snapflow://` protocol); macOS packaging adds `NSAudioCaptureUsageDescription` for `desktopCapturer` on macOS 14.2+.
 - **Capture public URLs** — `GET /v1/public/captures/...` requires a non-expired `exp` and `sig`;
   legacy non-expiring signatures are rejected with HTTP 403.
 - Root `package.json` **version set to 0.6.1** to match this changelog track (was stuck at 0.5.0).
