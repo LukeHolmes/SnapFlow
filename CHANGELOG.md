@@ -4,6 +4,7 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 
 ## [0.6.1] — Unreleased — Project health
 ### Added
+- **Destination integrations (v1.0)** — OAuth connect/disconnect for Slack, Jira, Notion, Gmail, and GitHub; `snapflow://` deep-link callbacks in the desktop app; clearer delivery/auth error messages; `docs/DESTINATION_SETUP.md` and expanded `backend/.env.example`.
 - README **v1.0 MVP status** table (done / partial / not started) aligned with the code on `main`.
 - Shared TypeScript contract file (`src/shared/types.ts`) restored so IPC, stores, tests,
   and renderer code compile against one source of truth.
@@ -26,7 +27,7 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 - **Server-side Team search** (§5.6): `GET /v1/search` over the shared workspace library
   (filename + OCR text, spans team members), gated on a new `sharedLibrary` entitlement (Team).
 - **Server-side delivery via the vault** (§5.2): `POST /v1/deliver` reveals the encrypted
-  OAuth token server-side and delivers (Slack live; Jira/Notion/email stubbed). The token
+  OAuth token server-side and delivers to Slack, Jira, Notion, Gmail, and GitHub. The token
   never reaches the client; the desktop sends only the image + target.
 - **Real OAuth login** (§5.1): `GET /auth/oauth/:provider/{start,callback}` authorization-code
   flow with single-use CSRF state and Google/GitHub presets. New users start on Free.

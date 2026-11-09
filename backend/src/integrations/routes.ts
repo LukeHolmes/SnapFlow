@@ -8,6 +8,7 @@ import { getDestinationProvider } from '../oauth/destination-providers';
 import { withDestinationAccessToken, readDestinationToken } from '../oauth/destination-tokens';
 import { oauthState } from '../oauth/state';
 import { sync } from '../sync/store';
+import { vault } from '../vault/store';
 
 const DESTINATIONS = ['slack', 'notion', 'gmail', 'github', 'jira'] as const;
 
@@ -31,6 +32,15 @@ integrationsRouter.get('/v1/integrations/statuses', requireAuth, asyncHandler(as
         };
   }));
   res.json(statuses);
+}));
+
+integrationsRouter.delete('/v1/integrations/:destination', requireAuth, asyncHandler(async (req, res) => {
+  const destination = req.params.destination;
+  if (!DESTINATIONS.includes(destination as typeof DESTINATIONS[number])) {
+    throw new AppError(404, 'unknown_destination', `No integration '${destination}'`);
+  }
+  await vault.remove(req.account!.id, destination);
+  res.json({ ok: true, destination });
 }));
 
 integrationsRouter.post('/v1/integrations/:destination/oauth-url', requireAuth, asyncHandler(async (req, res) => {

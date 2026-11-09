@@ -84,6 +84,18 @@ export default function Presets({ flash, refreshKey }: Props) {
   useEffect(() => { load(); }, [load, refreshKey]);
 
   useEffect(() => {
+    const offConnected = api.onIntegrationConnected?.(destination => {
+      flash(`Connected ${destination}`);
+      load();
+    });
+    const offError = api.onIntegrationError?.((destination, message) => {
+      flash(destination === 'unknown' ? message : `${destination}: ${message}`, false);
+      load();
+    });
+    return () => { offConnected?.(); offError?.(); };
+  }, [flash, load]);
+
+  useEffect(() => {
     if (statuses.slack?.connected) {
       api.integrations.slackChannels().then(setChannels).catch(() => setChannels([]));
     }
@@ -117,6 +129,24 @@ export default function Presets({ flash, refreshKey }: Props) {
   const connect = async (destination: DestinationId, params?: Record<string, string>) => {
     const result = await api.integrations.connect(destination, params);
     flash(result.detail, result.ok);
+  };
+
+  const disconnect = async (destination: DestinationId) => {
+    const result = await api.integrations.disconnect(destination);
+    flash(result.detail, result.ok);
+    load();
+  };
+
+  const oauthButtons = (destination: DestinationId, label: string, params?: Record<string, string>) => {
+    const connected = !!statuses[destination]?.connected;
+    return (
+      <>
+        {connected && <button type="button" className="btn-ghost" onClick={() => disconnect(destination)}>Disconnect</button>}
+        <button type="button" className="btn-ghost" onClick={() => connect(destination, params)}>
+          {connected ? `Reconnect ${label}` : `Connect ${label}`}
+        </button>
+      </>
+    );
   };
 
   const savePreset = async (destination: DestinationId, name: string, target: string, config: Record<string, unknown>) => {
@@ -162,6 +192,7 @@ export default function Presets({ flash, refreshKey }: Props) {
                 ? '#F87171'
                 : '#FBBF24';
           const secondary = preset?.target || status?.label || destination.sub;
+          const statusHint = !status?.connected && status?.message ? status.message : undefined;
           return (
             <div className="card preset-config-card" key={destination.id}>
               <div className="preset-config-head">
@@ -170,6 +201,7 @@ export default function Presets({ flash, refreshKey }: Props) {
                   <div className="preset-meta">
                     <span className="preset-name">{destination.label}</span>
                     <span className="preset-dest">{secondary}</span>
+                    {statusHint && <span className="integration-hint">{statusHint}</span>}
                   </div>
                 </div>
                 <div className="preset-config-actions">
@@ -205,7 +237,7 @@ export default function Presets({ flash, refreshKey }: Props) {
                     </div>
                   </div>
                   <div className="form-actions">
-                    <button className="btn-ghost" onClick={() => connect('slack')}>Connect Slack</button>
+                    {oauthButtons('slack', 'Slack')}
                     <button className="btn-primary" onClick={() => {
                       if (!slack.channel_id) { flash('Select a Slack channel', false); return; }
                       savePreset('slack', 'Slack', slack.channel_name || slack.channel_id, slack);
@@ -237,7 +269,7 @@ export default function Presets({ flash, refreshKey }: Props) {
                     <textarea className="form-input" placeholder="Context for this capture" value={jira.issue_description} onChange={e => setJira(prev => ({ ...prev, issue_description: e.target.value }))} />
                   </div>
                   <div className="form-actions">
-                    <button className="btn-ghost" onClick={() => connect('jira')}>Connect Jira</button>
+                    {oauthButtons('jira', 'Jira')}
                     <button className="btn-primary" onClick={() => {
                       const trimmedIssueKey = jira.issue_key.trim();
                       const trimmedProjectKey = jira.project_key.trim();
@@ -279,7 +311,7 @@ export default function Presets({ flash, refreshKey }: Props) {
                     </select>
                   </div>
                   <div className="form-actions">
-                    <button className="btn-ghost" onClick={() => connect('notion')}>Connect Notion</button>
+                    {oauthButtons('notion', 'Notion')}
                     <button className="btn-primary" onClick={() => {
                       if (!notion.page_id) { flash('Select a Notion page', false); return; }
                       savePreset('notion', 'Notion', notion.page_title || notion.page_id, { page_id: notion.page_id, page_title: notion.page_title });
@@ -301,7 +333,7 @@ export default function Presets({ flash, refreshKey }: Props) {
                     </div>
                   </div>
                   <div className="form-actions">
-                    <button className="btn-ghost" onClick={() => connect('gmail')}>Connect Gmail</button>
+                    {oauthButtons('gmail', 'Gmail')}
                     <button className="btn-primary" onClick={() => {
                       const recipients = gmail.recipients.split(',').map(item => item.trim()).filter(Boolean);
                       if (!recipients.length || recipients.some(email => !EMAIL_RE.test(email))) {
@@ -364,7 +396,7 @@ export default function Presets({ flash, refreshKey }: Props) {
                     )}
                   </div>
                   <div className="form-actions">
-                    <button className="btn-ghost" onClick={() => connect('github', { scope: github.scope })}>Connect GitHub</button>
+                    {oauthButtons('github', 'GitHub', { scope: github.scope })}
                     <button className="btn-primary" onClick={() => {
                       if (!github.owner || !github.repo) { flash('Select a GitHub repository', false); return; }
                       if (github.mode === 'comment' && (!Number.isInteger(Number(github.issue_number)) || Number(github.issue_number) <= 0)) {

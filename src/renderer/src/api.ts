@@ -114,6 +114,7 @@ const mock: SnapFlowApi = {
       { destination: 'zapier', connected: true, state: 'connected', label: 'hooks.zapier.com', secondary: 'Webhook configured' },
     ]),
     connect: async (_destination, _params) => ({ ok: true, detail: 'Opened OAuth provider' }),
+    disconnect: async (_destination) => ({ ok: true, detail: 'Disconnected' }),
     slackChannels: async () => ([{ id: 'C1', label: '#qa-bugs' }, { id: 'C2', label: '#design-reviews' }]),
     notionPages: async (query: string) => ([{ id: 'page_1', label: query ? `Result for ${query}` : 'Release Notes', secondary: 'Share this page with SnapFlow' }]),
     gmailProfile: async () => ({ email: 'luke@snapflow.app' }),
@@ -174,6 +175,8 @@ const mock: SnapFlowApi = {
   onCaptureAdded: (cb) => { addedListener = cb; return () => { addedListener = null; }; },
   onCaptureError: () => () => {},
   onOpenWindowPicker: () => () => {},
+  onIntegrationConnected: () => () => {},
+  onIntegrationError: () => () => {},
 };
 
 export const api: SnapFlowApi = window.snapflow ?? mock;

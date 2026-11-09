@@ -46,13 +46,22 @@ oauthRouter.get('/auth/oauth/:provider/callback', asyncHandler(async (req, res) 
       throw new AppError(400, 'invalid_state', 'Destination OAuth state is missing destination metadata');
     }
     if (!accountId) throw new AppError(400, 'invalid_state', 'Destination OAuth state is missing account metadata');
-    const token = await provider.exchangeCode(code, callbackUri(provider.providerId));
-    const profile = await provider.describe(token);
-    await storeDestinationToken(accountId, provider.destination, token, profile);
-    if (config.appRedirectUrl) {
-      res.redirect(`${config.appRedirectUrl}?oauth=connected&destination=${encodeURIComponent(provider.destination)}`);
-    } else {
-      res.json({ ok: true, destination: provider.destination, profile });
+    try {
+      const token = await provider.exchangeCode(code, callbackUri(provider.providerId));
+      const profile = await provider.describe(token);
+      await storeDestinationToken(accountId, provider.destination, token, profile);
+      if (config.appRedirectUrl) {
+        res.redirect(`${config.appRedirectUrl}?oauth=connected&destination=${encodeURIComponent(provider.destination)}`);
+      } else {
+        res.json({ ok: true, destination: provider.destination, profile });
+      }
+    } catch (err) {
+      const message = err instanceof AppError ? err.message : err instanceof Error ? err.message : 'OAuth failed';
+      if (config.appRedirectUrl) {
+        res.redirect(`${config.appRedirectUrl}?oauth=error&destination=${encodeURIComponent(provider.destination)}&error=${encodeURIComponent(message)}`);
+      } else {
+        throw err;
+      }
     }
     return;
   }

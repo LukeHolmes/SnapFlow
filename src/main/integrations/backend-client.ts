@@ -3,6 +3,19 @@ import type { Capture, DeliverResult, DestinationId, IntegrationOption, Integrat
 
 type JsonRecord = Record<string, unknown>;
 
+const INTEGRATION_ERROR_HINTS: Record<string, string> = {
+  not_connected: 'Connect this destination from Output Presets before sending.',
+  reconnect_required: 'Your session expired. Connect again to refresh credentials.',
+  destination_auth_failed: 'The provider rejected this request. Reconnect and try again.',
+  sync_not_entitled: 'Cloud sync is required for this destination on your plan.',
+  unknown_destination: 'This destination is not supported by the backend.',
+  bad_request: 'The delivery request was invalid. Check your preset configuration.',
+};
+
+function integrationErrorMessage(code: string, fallback: string): string {
+  return INTEGRATION_ERROR_HINTS[code] ?? fallback;
+}
+
 export class IntegrationBackendClient {
   constructor(private baseUrl?: string, private token?: string) {}
 
@@ -60,6 +73,10 @@ export class IntegrationBackendClient {
     return this.request<IntegrationOption[]>(`/v1/integrations/github/repos?q=${encodeURIComponent(query)}`);
   }
 
+  async disconnect(destination: DestinationId): Promise<void> {
+    await this.request<{ ok: boolean }>(`/v1/integrations/${encodeURIComponent(destination)}`, { method: 'DELETE' });
+  }
+
   async getCaptureUrl(captureId: string): Promise<string | null> {
     try {
       const json = await this.request<{ url?: string }>(`/v1/integrations/capture-url/${encodeURIComponent(captureId)}`);
@@ -81,7 +98,12 @@ export class IntegrationBackendClient {
       body: init.body ? JSON.stringify(init.body) : undefined,
     });
     const json = (await res.json().catch(() => ({}))) as JsonRecord;
-    if (!res.ok) throw new Error(String(json.message ?? json.detail ?? `Request failed (${res.status})`));
+    if (!res.ok) {
+      const code = typeof json.error === 'string' ? json.error : '';
+      const fallback = String(json.message ?? json.detail ?? `Request failed (${res.status})`);
+      if (res.status === 429) throw new Error('Rate limited by the provider. Wait a moment and try again.');
+      throw new Error(integrationErrorMessage(code, fallback));
+    }
     return json as T;
   }
 }

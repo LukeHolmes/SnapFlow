@@ -22,7 +22,7 @@ Legend: **Done** ships in `main` and is usable locally with default/dev setup.
 | Scrolling capture | **Partial** | Guided scroll-stitch MVP: sample frames while the user scrolls, vertical stitch with overlap de-dupe (`src/main/capture/index.ts`, ⌘⇧6 UI). No native auto-scroll or sidecar yet. |
 | OCR + FTS5 history search | **Done** | Tesseract via `tesseract.js` (WASM); SQLite FTS5 in `src/main/history/` |
 | Auto-tagging | **Done** | Metered `/v1/ai/tag` when configured; local heuristic fallback |
-| Output presets (clipboard, Slack, Jira, Notion, Gmail, GitHub, Zapier) | **Partial** | Desktop `OutputDestination` plugins call `POST /v1/deliver`; server implementations live in `backend/src/deliver/destinations.ts` (Slack/Jira/Notion/Gmail/GitHub — not stubs). End-to-end delivery still needs vault OAuth tokens and preset config per destination. Clipboard is fully local. |
+| Output presets (clipboard, Slack, Jira, Notion, Gmail, GitHub, Zapier) | **Done** (config required) | Desktop plugins call `POST /v1/deliver`; server handlers in `backend/src/deliver/destinations.ts`. OAuth connect/disconnect, vault storage, refresh, and `snapflow://` callbacks are wired. You still need provider apps + `backend/.env` (see `docs/DESTINATION_SETUP.md`). Clipboard stays fully local. |
 | PII handling | **Partial** | On-device regex detect (email/phone) flags captures and feeds events; manual redacted copy + annotation redact/blur tools. Pipeline does **not** auto-burn pixels on detect. |
 | Delay timer (2s / 5s) | **Done** | Full-screen delayed capture from the dashboard |
 | Colour picker | **Partial** | Annotation stroke colour via `<input type="color">` in the editor (`AnnotationEditor.tsx`). No screen eyedropper / system colour sampler. |
@@ -46,7 +46,7 @@ integrations only implement `deliver(capture, config)`; AI is tier-gated and pro
 | **Team server-side search** over the shared workspace library | ✅ backend implemented |
 | Native capture sidecar, auto-scroll capture, Team admin/library UI polish | ⬜ next layers |
 
-**85 headless unit tests** — 45 desktop (`npm test`) + 40 backend (`cd backend && npm test`).
+Headless unit tests: desktop `npm test`, backend `cd backend && npm test` (counts grow with each release — see CI output).
 
 ---
 
@@ -85,6 +85,8 @@ can still fail on Linux with `ERR_REQUIRE_ESM` when the main bundle `require()`s
 
 Copy `.env.example` to `.env` to configure local desktop runs. Set the tier for local
 testing with `SNAPFLOW_TIER=free npm run dev` (default `pro`).
+
+For Slack/Jira/Notion/Gmail/GitHub delivery, configure the backend per `docs/DESTINATION_SETUP.md`.
 
 ---
 
@@ -137,9 +139,7 @@ the dashboard refreshes via `capture:added`.
 
 ## Roadmap (remaining layers)
 
-1. **Destination UX** — OAuth connect flows, preset wizards, and error surfacing so
-   server-side delivery is one-click for Pro users.
-2. **Team product surface** — shared-library admin, membership/SSO, richer client UI.
+1. **Team product surface** — shared-library admin, membership/SSO, richer client UI.
 3. **Scrolling capture v2** — native sidecar with auto-scroll and robust overlap detection.
 4. **Screen recording** and deeper collaboration workflows.
 

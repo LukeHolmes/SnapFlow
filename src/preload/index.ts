@@ -37,6 +37,7 @@ const api = {
   integrations: {
     statuses: (): Promise<IntegrationStatus[]> => ipcRenderer.invoke(CH.integrationsStatuses),
     connect: (destination: DestinationId, params?: Record<string, string>): Promise<{ ok: boolean; detail: string }> => ipcRenderer.invoke(CH.integrationsConnect, { destination, params }),
+    disconnect: (destination: DestinationId): Promise<{ ok: boolean; detail: string }> => ipcRenderer.invoke(CH.integrationsDisconnect, destination),
     slackChannels: (): Promise<IntegrationOption[]> => ipcRenderer.invoke(CH.integrationsSlackChannels),
     notionPages: (query: string): Promise<IntegrationOption[]> => ipcRenderer.invoke(CH.integrationsNotionPages, query),
     gmailProfile: (): Promise<{ email: string }> => ipcRenderer.invoke(CH.integrationsGmailProfile),
@@ -79,6 +80,17 @@ const api = {
     const handler = () => cb();
     ipcRenderer.on(CH.openWindowPicker, handler);
     return () => ipcRenderer.removeListener(CH.openWindowPicker, handler);
+  },
+
+  onIntegrationConnected: (cb: (destination: DestinationId) => void): (() => void) => {
+    const handler = (_e: unknown, destination: DestinationId) => cb(destination);
+    ipcRenderer.on(CH.integrationConnected, handler);
+    return () => ipcRenderer.removeListener(CH.integrationConnected, handler);
+  },
+  onIntegrationError: (cb: (destination: DestinationId | 'unknown', message: string) => void): (() => void) => {
+    const handler = (_e: unknown, destination: DestinationId | 'unknown', message: string) => cb(destination, message);
+    ipcRenderer.on(CH.integrationError, handler);
+    return () => ipcRenderer.removeListener(CH.integrationError, handler);
   },
 };
 

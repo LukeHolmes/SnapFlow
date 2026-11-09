@@ -188,9 +188,23 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   });
   ipcMain.handle(CH.integrationsConnect, async (_e, args: { destination: DestinationId; params?: Record<string, string> }) => {
     if (args.destination === 'clipboard' || args.destination === 'zapier') return { ok: false, detail: 'This destination does not use OAuth' };
-    const url = await integrations.getOAuthUrl(args.destination, args.params ?? {});
-    await shell.openExternal(url);
-    return { ok: true, detail: `Opening ${args.destination} connection` };
+    try {
+      const url = await integrations.getOAuthUrl(args.destination, args.params ?? {});
+      await shell.openExternal(url);
+      return { ok: true, detail: `Opening ${args.destination} connection` };
+    } catch (err) {
+      return { ok: false, detail: err instanceof Error ? err.message : 'Unable to start OAuth' };
+    }
+  });
+  ipcMain.handle(CH.integrationsDisconnect, async (_e, destination: DestinationId) => {
+    if (destination === 'clipboard' || destination === 'zapier') return { ok: false, detail: 'This destination does not use OAuth' };
+    if (!integrations.configured) return { ok: false, detail: 'SnapFlow backend is not configured' };
+    try {
+      await integrations.disconnect(destination);
+      return { ok: true, detail: `Disconnected ${destination}` };
+    } catch (err) {
+      return { ok: false, detail: err instanceof Error ? err.message : 'Disconnect failed' };
+    }
   });
   ipcMain.handle(CH.integrationsSlackChannels, () => integrations.getSlackChannels());
   ipcMain.handle(CH.integrationsNotionPages, (_e, query: string) => integrations.searchNotionPages(query));
