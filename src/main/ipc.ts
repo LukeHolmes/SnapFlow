@@ -30,7 +30,10 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   ipcMain.handle(CH.captureListSources, () => listSources());
 
   const saveRawCapture = async (raw: RawCapture): Promise<Capture> => {
-    const capture: Capture = { id: raw.id, workspaceId: WS, filename: raw.filename, imagePath: raw.imagePath, tag: null, ocrText: '', hasPii: false, createdAt: Date.now() };
+    const capture: Capture = {
+      id: raw.id, workspaceId: WS, filename: raw.filename, imagePath: raw.imagePath,
+      kind: 'screenshot', tag: null, ocrText: '', hasPii: false, createdAt: Date.now(),
+    };
     history.insert(capture);
     return contextualise(capture, ent(), history, events);
   };
@@ -117,8 +120,10 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   ipcMain.handle(CH.historyList, (_e, limit = 50) => history.list(WS, { limit, sinceDays: ent().historyWindowDays }));
   ipcMain.handle(CH.historySearch, (_e, query: string) => history.search(WS, query));
   ipcMain.handle(CH.historyDelete, async (_e, id: string) => {
+    const existing = history.get(WS, id);
     const imagePath = history.delete(WS, id);
-    if (imagePath) unlink(imagePath).catch(() => {}); // best-effort; file may already be gone
+    if (imagePath) unlink(imagePath).catch(() => {});
+    if (existing?.mediaPath) unlink(existing.mediaPath).catch(() => {});
     return { ok: true };
   });
 
@@ -317,6 +322,16 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     if (!capture?.imagePath) return null;
     try { return 'data:image/png;base64,' + readFileSync(capture.imagePath).toString('base64'); }
     catch { return null; }
+  });
+
+  ipcMain.handle(CH.captureGetMedia, (_e, id: string) => {
+    const capture = history.get(WS, id);
+    if (!capture?.mediaPath) return null;
+    try {
+      return `data:video/webm;base64,${readFileSync(capture.mediaPath).toString('base64')}`;
+    } catch {
+      return null;
+    }
   });
 
   ipcMain.handle(CH.colourFormatGet, () => colors.getFormat());

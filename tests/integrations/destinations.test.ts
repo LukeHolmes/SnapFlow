@@ -45,6 +45,7 @@ function capture(id = 'cap_1'): Capture {
     workspaceId: 'ws_local',
     filename: 'Login bug',
     imagePath: pngPath,
+    kind: 'screenshot',
     tag: 'ui',
     ocrText: 'Submit button missing',
     hasPii: false,

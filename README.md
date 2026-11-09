@@ -31,6 +31,7 @@ Legend: **Done** ships in `main` and is usable locally with default/dev setup.
 | PII handling | **Partial** | On-device detect for email, phone, names (dictionary/heuristic), Luhn cards, IBAN, and IPv4; OCR word boxes drive a toggleable redact modal before pixel blur. Pipeline flags hits but does **not** auto-burn pixels on capture. |
 | Delay timer (2s / 5s) | **Done** | Full-screen delayed capture from the dashboard |
 | Colour picker (⌘⇧7) | **Done** | Screen eyedropper with magnified loupe, HEX/RGB/HSL clipboard formats, recent-colour history (`src/main/colour-picker.ts`). Annotation editor still has a local stroke colour input. |
+| Screen recording (⌘⇧8) | **Done** | WebM/VP9 recorder: screen/window/region, countdown, floating controls, tier limits, History playback, optional GIF export (Pro). See `docs/SCREEN_RECORDING.md`. |
 
 Core architecture rules still hold: capture/OCR/history never import concrete integrations;
 integrations only implement `deliver(capture, config)`; AI is tier-gated and proxy-metered.

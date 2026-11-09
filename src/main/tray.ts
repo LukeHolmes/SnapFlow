@@ -2,6 +2,7 @@ import { Menu, Tray, nativeImage, type BrowserWindow } from 'electron';
 import { CH } from '../shared/channels';
 import { startRegionCapture } from './region';
 import { startColourPicker } from './colour-picker';
+import { startRecording, stopRecording } from './recording/manager';
 
 let tray: Tray | null = null;
 
@@ -67,6 +68,17 @@ export function installTray(getMainWindow: () => BrowserWindow | null): void {
         showMain();
         getMainWindow()?.webContents.send(CH.openWindowPicker);
       },
+    },
+    {
+      label: 'Screen recording (⌘⇧8)',
+      click: () => {
+        void startRecording({ mode: 'screen', countdownSec: 2 }).catch(sendError);
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Stop recording',
+      click: () => { void stopRecording(); },
     },
   ]));
 

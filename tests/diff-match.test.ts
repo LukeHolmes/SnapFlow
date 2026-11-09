@@ -8,6 +8,7 @@ const cap = (id: string, filename: string, age: number): Capture => ({
   workspaceId: 'ws',
   filename,
   imagePath: `/tmp/${id}.png`,
+  kind: 'screenshot',
   tag: 'ui',
   ocrText: '',
   hasPii: false,

@@ -4,6 +4,7 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 
 ## [0.6.1] — Unreleased — Project health
 ### Added
+- **Screen recording (v1.1)** — VP9/WebM via `desktopCapturer` + `MediaRecorder`: full screen, window, or region; optional mic/system audio (tier-gated); countdown; tray, **⌘⇧8**, and floating stop/pause; max-duration safeguard; local History (`kind: recording`, tag `recording`); clipboard path + Google Drive `.webm` deliver; optional Pro GIF export (`gifenc`); `docs/SCREEN_RECORDING.md`; tests in `tests/recording.test.ts`.
 - **Cloud sync signed URLs** — pluggable blob storage (`local` + S3-compatible/R2/Supabase),
   expiring HMAC capture links (`exp` + `sig`), verify/revoke APIs, and destination fallbacks
   when no public URL exists. Desktop cloud sync is **opt-in** (Account); blobs upload on

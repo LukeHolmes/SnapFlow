@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Camera, Bell, Search, History, Library, LayoutDashboard, EyeOff,
   User, Cable, Send, Monitor, AppWindow, X, RefreshCw, GitCompare,
-  Copy, Edit3, FileText, Timer, ScrollText, Pin, Shield, ClipboardList,
+  Copy, Edit3, FileText, Timer, ScrollText, Pin, Shield, ClipboardList, Video,
 } from 'lucide-react';
+import type { RecordingStartOptions } from '../../shared/types';
 import { api, isLive } from './api';
 import type { Capture, Entitlements, CaptureSource, ScrollCapturePreview } from '../../shared/types';
 
@@ -40,6 +41,8 @@ export default function App() {
   const [refreshKey, setRefreshKey]   = useState(0);
   const [picker, setPicker]     = useState<{ open: boolean; loading: boolean; sources: CaptureSource[] }>({ open: false, loading: false, sources: [] });
   const [delayOpen, setDelayOpen] = useState(false);
+  const [recordingOpen, setRecordingOpen] = useState(false);
+  const [recordingOpts, setRecordingOpts] = useState<RecordingStartOptions>({ mode: 'screen', countdownSec: 2 });
   const [scrollOpen, setScrollOpen] = useState(false);
   const [scrollStatus, setScrollStatus] = useState<'idle' | 'countdown' | 'capturing' | 'preview'>('idle');
   const [scrollCountdown, setScrollCountdown] = useState(3);
@@ -61,7 +64,7 @@ export default function App() {
   useEffect(() => api.onCaptureAdded((capture) => {
     setRefreshKey(k => k + 1);
     setQuickCapture(capture);
-    flash('Capture saved & indexed');
+    flash(capture.kind === 'recording' ? 'Recording saved to History' : 'Capture saved & indexed');
   }), [flash]);
   useEffect(() => api.onCaptureError((message) => {
     flash(message || 'Capture failed', false);
@@ -79,6 +82,10 @@ export default function App() {
     }
   }, [flash]);
   useEffect(() => api.onOpenWindowPicker(openPicker), [openPicker]);
+  useEffect(() => {
+    const open = () => setRecordingOpen(true);
+    return api.onOpenRecordingPicker(open);
+  }, []);
 
   // Escape closes whichever capture modal is active.
   useEffect(() => {
@@ -122,6 +129,28 @@ export default function App() {
   const rememberCapture = (capture: Capture) => {
     setQuickCapture(capture);
     setRefreshKey(k => k + 1);
+  };
+
+  const startScreenRecording = async () => {
+    setRecordingOpen(false);
+    let opts = { ...recordingOpts };
+    if (opts.mode === 'window') {
+      try {
+        const sources = await api.capture.listSources();
+        const windows = sources.filter(s => s.kind === 'window');
+        if (!windows.length) {
+          flash('No windows available to record', false);
+          return;
+        }
+        opts = { ...opts, sourceId: windows[0].id };
+      } catch (e) {
+        flash(e instanceof Error ? e.message : 'Could not list sources', false);
+        return;
+      }
+    }
+    const res = await api.recording.start(opts);
+    flash(res.detail, res.ok);
+    if (res.ok) flash('Recording in progress — floating control, ⌘⇧8, or tray to manage', true);
   };
 
   const openScrollCapture = () => {
@@ -277,10 +306,11 @@ export default function App() {
 
   const renderScreen = () => {
     switch (active) {
-      case 'Dashboard':      return <Dashboard {...screenProps} setActive={setActive} startRegion={startRegion} openPicker={openPicker} startScroll={openScrollCapture} startDelay={() => setDelayOpen(true)} startColour={startColour} />;
+      case 'Dashboard':      return <Dashboard {...screenProps} setActive={setActive} startRegion={startRegion} openPicker={openPicker} startScroll={openScrollCapture} startDelay={() => setDelayOpen(true)} startColour={startColour} startRecording={() => setRecordingOpen(true)} ent={ent} />;
       case 'History':        return (
         <HistoryScreen
           {...screenProps}
+          ent={ent}
           onAnnotate={setEditorCapture}
           onCompare={c => { setDiffAfterId(c.id); setActive('Diff Mode'); }}
         />
@@ -299,7 +329,7 @@ export default function App() {
         />
       );
       case 'Guides':         return <Guides {...screenProps} />;
-      default:               return <Dashboard {...screenProps} setActive={setActive} startRegion={startRegion} openPicker={openPicker} startScroll={openScrollCapture} startDelay={() => setDelayOpen(true)} startColour={startColour} />;
+      default:               return <Dashboard {...screenProps} setActive={setActive} startRegion={startRegion} openPicker={openPicker} startScroll={openScrollCapture} startDelay={() => setDelayOpen(true)} startColour={startColour} startRecording={() => setRecordingOpen(true)} ent={ent} />;
     }
   };
 
@@ -416,6 +446,66 @@ export default function App() {
               </button>
               <button className="mode-card" onClick={() => startDelayedCapture(5)}>
                 <Timer size={18} /><span>Capture in 5 seconds</span><small>More time to arrange state</small>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Screen recording modal */}
+      {recordingOpen && (
+        <div className="modal-scrim" onClick={() => setRecordingOpen(false)}>
+          <div className="modal capture-mode-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h2 className="section-title">Screen recording</h2>
+              <button className="icon-btn" onClick={() => setRecordingOpen(false)} aria-label="Close"><X size={16} /></button>
+            </div>
+            <p className="mode-copy">VP9/WebM via MediaRecorder — stays on device until you deliver. A red indicator and floating controls appear while recording.</p>
+            <div className="mode-actions">
+              {([
+                ['screen', 'Full screen', 'Primary display'],
+                ['window', 'Window', 'Pick from source list next'],
+                ['region', 'Region', 'Drag a crop after countdown'],
+              ] as const).map(([mode, label, sub]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  className={`mode-card${recordingOpts.mode === mode ? ' mode-card-active' : ''}`}
+                  onClick={() => setRecordingOpts(o => ({ ...o, mode }))}
+                >
+                  <Video size={18} /><span>{label}</span><small>{sub}</small>
+                </button>
+              ))}
+            </div>
+            <label className="mode-copy" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              Countdown
+              <select
+                value={recordingOpts.countdownSec ?? 0}
+                onChange={e => setRecordingOpts(o => ({ ...o, countdownSec: Number(e.target.value) }))}
+              >
+                <option value={0}>None</option>
+                <option value={2}>2s</option>
+                <option value={5}>5s</option>
+              </select>
+            </label>
+            {ent && ent.recordingMicrophone && (
+              <label className="mode-copy" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input type="checkbox" checked={!!recordingOpts.includeMic} onChange={e => setRecordingOpts(o => ({ ...o, includeMic: e.target.checked }))} />
+                Include microphone
+              </label>
+            )}
+            {ent && ent.recordingSystemAudio && (
+              <label className="mode-copy" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input type="checkbox" checked={!!recordingOpts.includeSystemAudio} onChange={e => setRecordingOpts(o => ({ ...o, includeSystemAudio: e.target.checked }))} />
+                Include system audio (OS-dependent; loopback on Windows when supported)
+              </label>
+            )}
+            {ent && (
+              <p className="mode-copy">Plan limit: up to {Math.round(ent.maxRecordingDurationSec / 60)} min per clip.</p>
+            )}
+            <div className="mode-actions" style={{ marginTop: 12 }}>
+              <button className="btn-primary" type="button" onClick={() => void startScreenRecording()} disabled={!isLive}>
+                Start recording
               </button>
             </div>
           </div>

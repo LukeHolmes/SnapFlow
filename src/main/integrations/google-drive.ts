@@ -57,9 +57,10 @@ async function deliverToDrive(
 
   const accessToken = await getValidAccessToken(tokens, updateGoogleDriveTokens, fetchImpl);
   const folderId = await ensureFolderId(accessToken, folderName, fetchImpl);
+  const filePath = capture.kind === 'recording' && capture.mediaPath ? capture.mediaPath : capture.imagePath;
   const upload = await uploadPngFile(
     accessToken,
-    capture.imagePath,
+    filePath,
     folderId,
     metadataComment(capture),
     fetchImpl,

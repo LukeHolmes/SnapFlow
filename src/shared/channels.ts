@@ -67,5 +67,21 @@ export const CH = {
   diffSave:           'diff:save',       // diff path + source IDs → history row tagged diff
   diffFindPrevious:   'diff:findPrevious', // captureId → previous same-window capture id
   captureGetImage:    'capture:getImage',// capture ID → base64 data URL for rendering in the renderer
+  captureGetMedia:    'capture:getMedia',// recording → file path for playback
+  recordingStart:     'recording:start',
+  recordingStop:      'recording:stop',
+  recordingPause:     'recording:pause',
+  recordingResume:    'recording:resume',
+  recordingStatusGet: 'recording:status',
+  recordingExportGif: 'recording:exportGif',
+  openRecordingPicker:'window:openRecordingPicker',
+  recordingStatus:    'recording:statusPush',
+  recWorkerStart:     'recording:workerStart',
+  recWorkerChunk:     'recording:workerChunk',
+  recWorkerDone:      'recording:workerDone',
+  recWorkerError:     'recording:workerError',
+  recControlStop:     'recording:controlStop',
+  recControlPause:    'recording:controlPause',
+  recControlResume:   'recording:controlResume',
 } as const;
 export type Channel = (typeof CH)[keyof typeof CH];

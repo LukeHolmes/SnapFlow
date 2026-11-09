@@ -17,3 +17,9 @@ export function diffsDir(): string {
   mkdirSync(d, { recursive: true });
   return d;
 }
+
+export function recordingsDir(): string {
+  const d = join(dataDir(), 'recordings');
+  mkdirSync(d, { recursive: true });
+  return d;
+}

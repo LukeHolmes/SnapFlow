@@ -7,6 +7,10 @@ export const clipboardDestination: OutputDestination = {
   label: 'Clipboard',
   requiresAuth: false,
   async deliver(capture) {
+    if (capture.kind === 'recording' && capture.mediaPath) {
+      clipboard.writeText(capture.mediaPath);
+      return { ok: true, detail: 'Recording file path copied to clipboard' };
+    }
     clipboard.writeImage(nativeImage.createFromPath(capture.imagePath));
     return { ok: true, detail: 'Copied to clipboard' };
   },

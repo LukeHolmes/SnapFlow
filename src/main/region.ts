@@ -21,6 +21,21 @@ interface SelectionRect { x: number; y: number; width: number; height: number; }
 interface Session { win: BrowserWindow; frame: Frame; rect: SelectionRect | null; }
 const sessions = new Map<number, Session>();   // keyed by webContents.id
 let latestSelectionSender: number | null = null;
+let pendingRegionPick: ((rect: SelectionRect | null, frame: Frame | null) => void) | null = null;
+
+/** Region overlay for screen recording (no screenshot saved). */
+export function pickRegionRect(): Promise<{ rect: SelectionRect; frame: Frame }> {
+  return new Promise((resolve, reject) => {
+    pendingRegionPick = (rect, frame) => {
+      if (!rect || !frame) {
+        reject(new Error('Region selection cancelled'));
+        return;
+      }
+      resolve({ rect, frame });
+    };
+    void startRegionCapture().catch(reject);
+  });
+}
 
 export function registerRegion(engine: Engine, mainWindowGetter: () => BrowserWindow | null): void {
   engineRef = engine;
@@ -43,10 +58,21 @@ export function registerRegion(engine: Engine, mainWindowGetter: () => BrowserWi
       emitCaptureError('Select a larger region to capture.');
       return;
     }
+  const pick = pendingRegionPick;
+    pendingRegionPick = null;
     closeAll();
+    if (pick) {
+      pick(rect, s?.frame ?? null);
+      return;
+    }
     if (s) void finish(s.frame, rect);
   });
-  ipcMain.on(CH.overlayCancel, () => closeAll());
+  ipcMain.on(CH.overlayCancel, () => {
+    const pick = pendingRegionPick;
+    pendingRegionPick = null;
+    if (pick) pick(null, null);
+    closeAll();
+  });
 }
 
 /** Public entry — called by the IPC handler and by the ⌘⇧4 global shortcut. */
@@ -143,6 +169,7 @@ async function finish(frame: Frame, rect: { x: number; y: number; width: number;
   const raw = cropFrame(frame, rect);
   const capture: Capture = {
     id: raw.id, workspaceId: engine.workspace, filename: raw.filename, imagePath: raw.imagePath,
+    kind: 'screenshot',
     tag: null, ocrText: '', hasPii: false, createdAt: Date.now(),
   };
   engine.history.insert(capture);
@@ -194,7 +221,13 @@ function confirmLatestSelection(): void {
     return;
   }
   const { frame, rect } = session;
+  const pick = pendingRegionPick;
+  pendingRegionPick = null;
   closeAll();
+  if (pick) {
+    pick(rect, frame);
+    return;
+  }
   void finish(frame, rect);
 }
 

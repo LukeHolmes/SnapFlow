@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS captures (
   ocr_text     TEXT NOT NULL DEFAULT '',
   has_pii      INTEGER NOT NULL DEFAULT 0,
   created_at   INTEGER NOT NULL,
+  kind         TEXT NOT NULL DEFAULT 'screenshot',
+  media_path   TEXT,
+  duration_ms  INTEGER,
+  byte_size    INTEGER,
   -- sync metadata (cloud sync, architecture §6): metadata-first, last-write-wins, tombstones
   updated_at   INTEGER NOT NULL DEFAULT 0,
   deleted      INTEGER NOT NULL DEFAULT 0,

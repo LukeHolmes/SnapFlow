@@ -8,6 +8,8 @@ test('free tier: 30-day history, 1 preset, no AI, basic diff only', () => {
   assert.equal(e.maxPresets, 1);
   assert.equal(e.aiEnabled, false);
   assert.equal(e.diffAdvanced, false);
+  assert.equal(e.maxRecordingDurationSec, 5 * 60);
+  assert.equal(e.recordingGifExport, false);
 });
 
 test('pro tier: unlimited history, 5 presets, AI on, advanced diff', () => {

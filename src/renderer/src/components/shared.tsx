@@ -10,6 +10,7 @@ export const TAGS: Record<string, { bg: string; fg: string }> = {
   document: { bg: '#F0FDF4', fg: '#166534' },
   web:      { bg: '#F0F9FF', fg: '#0369A1' },
   diff:     { bg: '#FFF7ED', fg: '#EA580C' },
+  recording:{ bg: '#FEF2F2', fg: '#B91C1C' },
 };
 export const PRESET_ICONS: Record<string, React.ComponentType<any>> = {
   slack: MessageSquare, notion: FileText, gmail: Mail, github: Github, zapier: Webhook, clipboard: Crop, jira: Layers,
@@ -61,6 +62,13 @@ export function CaptureThumb({ tag, size = 'md' }: { tag: string | null; size?: 
     <div className={`${cls} thumb-web`}>
       <div className="th-web-chrome"><span /><span /><span /></div>
       {[65, 85, 50, 75].map((w, i) => <span key={i} className="th-wline" style={{ width: `${w}%` }} />)}
+    </div>
+  );
+  if (tag === 'recording') return (
+    <div className={`${cls} thumb-recording`}>
+      <span className="th-rec-dot" />
+      <span className="th-rec-bar" />
+      <span className="th-rec-bar" style={{ width: '70%' }} />
     </div>
   );
   return (
