@@ -6,6 +6,7 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 ### Hardening (pre-release)
 - Shared entitlement matrix (`shared/entitlements-matrix.ts`) for desktop + backend; matrix parity tests.
 - Team invite accept uses `BEGIN IMMEDIATE` transaction with in-tx seat check (race-safe).
+- Team invites bind to the invited email on accept (`403 invite_email_mismatch`); desktop maps codes via `shared/team-invite.ts`.
 - Team authz tests: removed member and non-member library access → 403; leave endpoint requires membership.
 - `docs/RELEASE_CHECKLIST_1.1.md`; README v1.1 tier table; backend `npm audit fix` (express/body-parser/proxy-addr).
 - Deferred: `qs` moderate advisories via nested Express dependency until upstream ships patched range.
