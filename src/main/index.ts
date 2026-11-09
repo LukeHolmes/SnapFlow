@@ -11,8 +11,53 @@ import { registerBuiltins } from './integrations/registry';
 import { configureIntegrationRuntime } from './integrations/runtime';
 import { disposeOcr } from './ocr';
 import { closePinnedCaptures } from './pin';
+import { parseDeepLinkUrl } from './deep-link';
 
 let win: BrowserWindow | null = null;
+
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('snapflow', process.execPath, [process.argv[1]]);
+  }
+} else {
+  app.setAsDefaultProtocolClient('snapflow');
+}
+
+function handleDeepLink(url: string): void {
+  const result = parseDeepLinkUrl(url);
+  if (!result) return;
+
+  if (win && !win.isDestroyed()) {
+    win.show();
+    win.focus();
+  }
+
+  if (result.kind === 'connected' && result.destination) {
+    win?.webContents.send(CH.integrationConnected, result.destination);
+  } else if (result.kind === 'error') {
+    const message = result.message || 'OAuth connection failed';
+    win?.webContents.send(CH.integrationError, result.destination ?? 'unknown', message);
+  }
+}
+
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  handleDeepLink(url);
+});
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (_event, argv) => {
+    const url = argv.find(arg => arg.startsWith('snapflow://'));
+    if (url) handleDeepLink(url);
+    if (win && !win.isDestroyed()) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+    }
+  });
+}
 
 function createWindow(): void {
   win = new BrowserWindow({
@@ -35,6 +80,11 @@ app.whenReady().then(() => {
   registerIpc(engine, sync);
   registerRegion(engine, () => win);
   createWindow();
+
+  const deepLinkArg = process.argv.find(arg => arg.startsWith('snapflow://'));
+  if (deepLinkArg) {
+    win?.webContents.once('did-finish-load', () => handleDeepLink(deepLinkArg));
+  }
 
   // Cloud sync: a first pass shortly after launch, then periodically. No-op on
   // tiers without cloud sync, or when no backend is configured.

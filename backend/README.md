@@ -32,6 +32,7 @@ current store/rate-limit ports.
 | POST | `/v1/deliver` | ✅ | Server-side delivery using vault OAuth tokens (Slack, Jira, Notion, Gmail, GitHub) |
 | GET  | `/v1/entitlements` | ✅ | Server-authoritative tier capabilities |
 | POST | `/v1/ai/tag` | ✅ | Metered, tier-gated auto-tagging (Free rejected with 402) |
+| GET/POST/DELETE | `/v1/integrations/*` | ✅ | Destination OAuth URL, status, Slack/Notion/GitHub helpers, disconnect |
 | PUT/GET/DELETE | `/v1/vault/:destination` | ✅ | Encrypted OAuth credential store (GET returns metadata only) |
 | POST | `/v1/billing/webhook` | — | Paddle/Stripe stub → tier update (verify signature in prod) |
 | POST | `/v1/sync/push` | ✅ | Upsert capture metadata (LWW); returns the new cursor |

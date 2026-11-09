@@ -14,6 +14,8 @@ process.env.GOOGLE_CLIENT_ID = 'google-client';
 process.env.GOOGLE_CLIENT_SECRET = 'google-secret';
 process.env.GITHUB_CLIENT_ID = 'github-client';
 process.env.GITHUB_CLIENT_SECRET = 'github-secret';
+process.env.JIRA_CLIENT_ID = 'jira-client';
+process.env.JIRA_CLIENT_SECRET = 'jira-secret';
 process.env.APP_REDIRECT_URL = '';
 
 const { initDb } = await import('../src/store');
@@ -161,6 +163,46 @@ for (const c of cases) {
     assert.equal(stored.profile.label, c.expectedLabel);
   });
 }
+
+test('jira OAuth flow stores token metadata including cloudId', async () => {
+  const account = await accounts.getOrCreate('jira@example.com', 'pro');
+  const token = issueToken(account.id);
+
+  mockFetch((url) => {
+    if (url === 'https://auth.atlassian.com/oauth/token') {
+      return json({ access_token: 'jira-token', refresh_token: 'jira-refresh', expires_in: 3600 });
+    }
+    if (url.includes('/oauth/token/accessible-resources')) {
+      return json([{ id: 'cloud-1', name: 'Acme Jira', url: 'https://acme.atlassian.net' }]);
+    }
+    throw new Error(`Unexpected fetch ${url}`);
+  });
+
+  const start = await request.post('/v1/integrations/jira/oauth-url').set('authorization', `Bearer ${token}`).send({});
+  assert.equal(start.status, 200);
+  assert.match(start.body.url, /auth\.atlassian\.com\/authorize/);
+  const state = new URL(start.body.url).searchParams.get('state');
+  assert.ok(state);
+
+  const callback = await request.get(`/auth/oauth/jira/callback?code=auth-code-jira&state=${state}`);
+  assert.equal(callback.status, 200);
+  assert.equal(callback.body.ok, true);
+
+  const stored = JSON.parse((await vault.reveal(account.id, 'jira')) ?? '{}');
+  assert.equal(stored.accessToken, 'jira-token');
+  assert.equal(stored.profile.label, 'Acme Jira');
+  assert.equal(stored.profile.meta.cloudId, 'cloud-1');
+});
+
+test('DELETE /v1/integrations/:destination removes vault credentials', async () => {
+  const account = await accounts.getOrCreate('disconnect@example.com', 'pro');
+  const token = issueToken(account.id);
+  await vault.put(account.id, 'slack', JSON.stringify({ accessToken: 'xoxb-test' }));
+  const response = await request.delete('/v1/integrations/slack').set('authorization', `Bearer ${token}`);
+  assert.equal(response.status, 200);
+  assert.equal(response.body.ok, true);
+  assert.equal(await vault.reveal(account.id, 'slack'), null);
+});
 
 test('legacy raw vault tokens still read as access tokens', async () => {
   const account = await accounts.getOrCreate('legacy-token@example.com', 'pro');
