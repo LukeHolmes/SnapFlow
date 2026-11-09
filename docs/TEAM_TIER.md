@@ -20,8 +20,8 @@ Schema is applied idempotently on boot (`CREATE TABLE IF NOT EXISTS`). No separa
 | `POST` | `/v1/teams` | Team plan on **account** required; one team per creator in this foundation. |
 | `GET` | `/v1/teams/me` | Team, role, members, seat usage. |
 | `PATCH` | `/v1/teams/:id` | Rename (owner/admin). |
-| `POST` | `/v1/teams/:id/invites` | Returns `inviteUrl` (no email). |
-| `POST` | `/v1/teams/invites/accept` | Body `{ token }`; enforces seats + single-use + expiry. |
+| `POST` | `/v1/teams/:id/invites` | Body `{ email, role? }`; returns single-use `inviteUrl` (no outbound email). |
+| `POST` | `/v1/teams/invites/accept` | Body `{ token }`; bearer account email must match invite email (trim, case-insensitive) or `403 invite_email_mismatch`; enforces seats + single-use + expiry. |
 | `DELETE` | `/v1/teams/:id/members/me` | Leave (owner must transfer first — not implemented). |
 | `DELETE` | `/v1/teams/:id/members/:accountId` | owner/admin remove member. |
 | `GET` | `/v1/teams/:id/library` | List shared captures. |

@@ -91,6 +91,9 @@ teamsRouter.post('/v1/teams/invites/accept', requireAuth, asyncHandler(async (re
     if (msg === 'invite_not_found') throw new AppError(404, 'not_found', 'Invite not found');
     if (msg === 'invite_used') throw new AppError(410, 'invite_used', 'Invite already used');
     if (msg === 'invite_expired') throw new AppError(410, 'invite_expired', 'Invite expired');
+    if (msg === 'invite_email_mismatch') {
+      throw new AppError(403, 'invite_email_mismatch', 'Sign in with the email this invite was sent to');
+    }
     if (msg === 'seat_limit') throw new AppError(403, 'seat_limit', 'Team seat limit reached');
     throw e;
   }

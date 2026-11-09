@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { db } from '../store';
 import { accounts } from '../accounts/store';
 import { config } from '../config';
-import { hashInviteToken, inviteExpiresAt, mintInviteToken } from './invites';
+import { hashInviteToken, inviteExpiresAt, mintInviteToken, normalizeInviteEmail } from './invites';
 import type { Team, TeamLibraryItem, TeamMember, TeamRole } from './types';
 import { sync } from '../sync/store';
 
@@ -127,7 +127,7 @@ export const teams = {
     const normalizedRole: TeamRole = role === 'owner' ? 'member' : role;
     await db().run(
       `INSERT INTO team_invites (id, team_id, email, role, token_hash, expires_at, created_by, created_at) VALUES (?,?,?,?,?,?,?,?)`,
-      [id, teamId, email.trim().toLowerCase(), normalizedRole, hashInviteToken(token), expiresAt, createdBy, createdAt],
+      [id, teamId, normalizeInviteEmail(email), normalizedRole, hashInviteToken(token), expiresAt, createdBy, createdAt],
     );
     return { token, inviteId: id, expiresAt };
   },
@@ -139,6 +139,15 @@ export const teams = {
       if (!invite) throw new Error('invite_not_found');
       if (invite.used_at != null) throw new Error('invite_used');
       if (Number(invite.expires_at) < Date.now()) throw new Error('invite_expired');
+
+      const boundEmail = String(invite.email ?? '').trim();
+      if (boundEmail) {
+        const account = await accounts.get(accountId);
+        if (!account) throw new Error('account_not_found');
+        if (normalizeInviteEmail(account.email) !== normalizeInviteEmail(boundEmail)) {
+          throw new Error('invite_email_mismatch');
+        }
+      }
 
       const teamId = invite.team_id as string;
       const row = await d.get(`SELECT * FROM teams WHERE id = ?`, [teamId]);

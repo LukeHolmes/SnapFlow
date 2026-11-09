@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { Capture, DeliverResult } from '../../shared/types';
+import { teamInviteErrorMessage } from '../../shared/team-invite';
 
 export type TeamRole = 'owner' | 'admin' | 'member';
 
@@ -46,7 +47,9 @@ export class TeamBackendClient {
     });
     const json = await res.json().catch(() => ({})) as T & { error?: string; message?: string };
     if (!res.ok) {
-      const detail = (json as { message?: string }).message ?? (json as { error?: string }).error ?? `HTTP ${res.status}`;
+      const code = (json as { error?: string }).error;
+      const serverMessage = (json as { message?: string }).message;
+      const detail = code ? teamInviteErrorMessage(code, serverMessage) : serverMessage ?? `HTTP ${res.status}`;
       throw new Error(detail);
     }
     return json as T;
@@ -64,6 +67,13 @@ export class TeamBackendClient {
     return this.request(`/v1/teams/${encodeURIComponent(teamId)}/invites`, {
       method: 'POST',
       body: JSON.stringify({ email, role }),
+    });
+  }
+
+  async acceptInvite(token: string): Promise<{ ok: true; team: TeamSummary; role?: TeamRole }> {
+    return this.request(`/v1/teams/invites/accept`, {
+      method: 'POST',
+      body: JSON.stringify({ token }),
     });
   }
 

@@ -94,6 +94,30 @@ test('seat limit blocks invite accept', async () => {
   await assert.rejects(() => teams.acceptInvite(pending.token, overflowUser.id), /seat_limit/);
 });
 
+test('invite accept requires matching account email (case-insensitive)', async () => {
+  const owner = await bearer('bind-owner@team.test', 'team');
+  const teamRes = await request(app).post('/v1/teams').set('Authorization', `Bearer ${owner.token}`).send({ name: 'Bind' });
+  const teamId = teamRes.body.team.id as string;
+  const ownerId = (await accounts.getOrCreate('bind-owner@team.test', 'team')).id;
+  const inv = await teams.createInvite(teamId, 'Colleague@Company.COM', 'member', ownerId);
+
+  const wrongUser = await bearer('wrong@team.test', 'pro');
+  const mismatch = await request(app)
+    .post('/v1/teams/invites/accept')
+    .set('Authorization', `Bearer ${wrongUser.token}`)
+    .send({ token: inv.token });
+  assert.equal(mismatch.status, 403);
+  assert.equal(mismatch.body.error, 'invite_email_mismatch');
+
+  const rightUser = await bearer('colleague@company.com', 'pro');
+  const accept = await request(app)
+    .post('/v1/teams/invites/accept')
+    .set('Authorization', `Bearer ${rightUser.token}`)
+    .send({ token: inv.token });
+  assert.equal(accept.status, 200);
+  assert.equal(accept.body.team.id, teamId);
+});
+
 test('invite token is single-use and expires', async () => {
   const owner = await bearer('invite-owner@team.test', 'team');
   const teamRes = await request(app).post('/v1/teams').set('Authorization', `Bearer ${owner.token}`).send({ name: 'Invites' });
