@@ -8,6 +8,30 @@ export type GuideType = 'sop' | 'bug_report' | 'training' | 'validation' | 'walk
 export type AnnotationTool = 'arrow' | 'rect' | 'ellipse' | 'highlight' | 'text' | 'redact' | 'step' | 'callout' | 'blur';
 export type PiiType = 'email' | 'phone' | 'name' | 'credit_card' | 'iban' | 'ip';
 
+export interface RedactionBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+export interface FocusBlurRegion {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  cornerRadius?: number;
+}
+
+/** Non-destructive focus blur params stored on the capture annotation layer. */
+export interface FocusBlurEffect {
+  regions: FocusBlurRegion[];
+  blurRadius: number;
+  dimAmount: number;
+  invert: boolean;
+}
+
 export interface PiiDetection {
   id: string;
   type: PiiType;
@@ -64,6 +88,7 @@ export interface AnnotationDocument {
   annotations: CaptureAnnotation[];
   effects: AnnotationEffects;
   crop: AnnotationCrop | null;
+  focusBlur?: FocusBlurEffect | null;
 }
 
 export interface Capture {
@@ -140,6 +165,10 @@ export interface Entitlements {
   sharedLibrary?: boolean;           // backend Team search capability; optional for older desktop mirrors
   /** Sensitivity slider + changed-region boxes (local diff; free tier gets pixel diff + views). */
   diffAdvanced?: boolean;
+  /** Free: one focus region; Pro/Team/Perpetual: unlimited. */
+  focusBlurMaxRegions: number | null;
+  /** Pro+ may auto-apply Focus Blur from output presets on deliver. */
+  focusBlurPresetAutomation: boolean;
 }
 
 export interface DeliverResult {

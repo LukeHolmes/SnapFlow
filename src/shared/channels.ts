@@ -6,6 +6,7 @@ export const CH = {
   captureScrollPreview:'capture:scrollPreview',
   captureScrollSave:  'capture:scrollSave',
   captureSaveAnnotated:'capture:saveAnnotated',
+  captureSaveFocusBlur:'capture:saveFocusBlur',
   captureSaveRedacted:'capture:saveRedacted',
   capturePiiScan:       'capture:piiScan',
   captureAnnotationsGet:'capture:annotations:get',

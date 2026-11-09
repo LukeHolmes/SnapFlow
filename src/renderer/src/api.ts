@@ -60,6 +60,11 @@ const mock: SnapFlowApi = {
       c.filename = `${c.filename} annotated`;
       return c;
     },
+    saveFocusBlur: async (_id: string, _dataUrl: string): Promise<Capture> => {
+      const c = mockNewCapture();
+      c.filename = `${c.filename} focus`;
+      return c;
+    },
     piiScan: async (_id: string) => ({
       imageDataUrl: '',
       detections: [
@@ -170,7 +175,10 @@ const mock: SnapFlowApi = {
       return { ok: !!guide, detail: guide ? 'Guide Markdown copied to clipboard' : 'Guide not found', markdown: guide ? `# ${guide.title}` : undefined };
     },
   },
-  entitlements: { get: async (): Promise<Entitlements> => ({ tier: 'pro', historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: true, diffAdvanced: true }) },
+  entitlements: { get: async (): Promise<Entitlements> => ({
+    tier: 'pro', historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: true, diffAdvanced: true,
+    focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
+  }) },
   stats: { get: async (): Promise<Stats> => ({ total: mockCaptures.length, ocrIndexed: mockCaptures.length, sent: 1, piiRedacted: mockCaptures.filter(c => c.hasPii).length }) },
   events: { recent: async (limit = 8) => mockEvents.slice(0, limit) },
   diff: {

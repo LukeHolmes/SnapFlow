@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Camera, Bell, Search, History, Library, LayoutDashboard, EyeOff,
   User, Cable, Send, Monitor, AppWindow, X, RefreshCw, GitCompare,
-  Copy, Edit3, FileText, Timer, ScrollText, Pin, Shield, ClipboardList,
+  Copy, Edit3, FileText, Timer, ScrollText, Pin, Shield, ClipboardList, Focus, Scan,
 } from 'lucide-react';
 import { api, isLive } from './api';
 import type { Capture, Entitlements, CaptureSource, ScrollCapturePreview } from '../../shared/types';
@@ -16,6 +16,7 @@ import Account      from './screens/Account';
 import Diff           from './screens/Diff';
 import Integrations from './screens/Integrations';
 import AnnotationEditor from './components/AnnotationEditor';
+import FocusBlurEditor from './components/FocusBlurEditor';
 import PiiRedactModal from './components/PiiRedactModal';
 import Guides from './screens/Guides';
 import type { PiiScanResult } from '../../shared/types';
@@ -46,6 +47,7 @@ export default function App() {
   const [scrollPreview, setScrollPreview] = useState<ScrollCapturePreview | null>(null);
   const [quickCapture, setQuickCapture] = useState<Capture | null>(null);
   const [editorCapture, setEditorCapture] = useState<Capture | null>(null);
+  const [focusBlurCapture, setFocusBlurCapture] = useState<{ capture: Capture; seedWindowFocus?: boolean } | null>(null);
   const [piiRedact, setPiiRedact] = useState<{ capture: Capture; scan: PiiScanResult } | null>(null);
   const [diffAfterId, setDiffAfterId] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -310,7 +312,7 @@ export default function App() {
         <div className="brand">
           <span className="logo-mark"><Camera size={15} color="#fff" strokeWidth={2.2} /></span>
           <span className="wordmark">SnapFlow</span>
-          <span className="version-badge">v0.6</span>
+          <span className="version-badge">v1.1</span>
         </div>
         <nav className="nav">
           {NAV.map(sec => (
@@ -498,6 +500,8 @@ export default function App() {
           <button className="quick-action-btn" onClick={() => setEditorCapture(quickCapture)}><Edit3 size={14} />Annotate</button>
           <button className="quick-action-btn" onClick={() => pinCapture(quickCapture)}><Pin size={14} />Pin</button>
           <button className="quick-action-btn" onClick={() => copyCaptureOcr(quickCapture)}><FileText size={14} />OCR</button>
+          <button className="quick-action-btn" onClick={() => setFocusBlurCapture({ capture: quickCapture, seedWindowFocus: true })} title="Inset window focus region"><Focus size={14} />Focus window</button>
+          <button className="quick-action-btn" onClick={() => setFocusBlurCapture({ capture: quickCapture })} title="Draw your own focus regions"><Scan size={14} />Focus region</button>
           <button className="quick-action-btn" onClick={() => redactCapture(quickCapture)}><Shield size={14} />Redact</button>
           <button className="quick-action-btn" onClick={() => sendCapture(quickCapture)}><Send size={14} />Send</button>
           <button className="quick-action-close" onClick={() => setQuickCapture(null)} aria-label="Dismiss"><X size={14} /></button>
@@ -509,6 +513,16 @@ export default function App() {
           capture={editorCapture}
           flash={flash}
           onClose={() => setEditorCapture(null)}
+          onSaved={(capture) => rememberCapture(capture)}
+        />
+      )}
+
+      {focusBlurCapture && (
+        <FocusBlurEditor
+          capture={focusBlurCapture.capture}
+          seedWindowFocus={focusBlurCapture.seedWindowFocus}
+          flash={flash}
+          onClose={() => setFocusBlurCapture(null)}
           onSaved={(capture) => rememberCapture(capture)}
         />
       )}
