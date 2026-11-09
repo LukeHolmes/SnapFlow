@@ -1,5 +1,7 @@
 # SnapFlow
 
+[![CI](https://github.com/LukeHolmes/SnapFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/LukeHolmes/SnapFlow/actions/workflows/ci.yml)
+
 **Capture → Context → Deliver.** A local-first, cross-platform screen-capture utility.
 This repository is a real, runnable Electron desktop app plus a thin Node backend.
 The codebase is on the **v0.6.1 unreleased** track (`package.json` and `CHANGELOG.md`
