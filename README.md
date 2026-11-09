@@ -25,7 +25,7 @@ Legend: **Done** ships in `main` and is usable locally with default/dev setup.
 | Output presets (clipboard, Slack, Jira, Notion, Gmail, GitHub, Zapier) | **Done** (config required) | Desktop plugins call `POST /v1/deliver`; server handlers in `backend/src/deliver/destinations.ts`. OAuth connect/disconnect, vault storage, refresh, and `snapflow://` callbacks are wired. You still need provider apps + `backend/.env` (see `docs/DESTINATION_SETUP.md`). Clipboard stays fully local. |
 | PII handling | **Partial** | On-device regex detect (email/phone) flags captures and feeds events; manual redacted copy + annotation redact/blur tools. Pipeline does **not** auto-burn pixels on detect. |
 | Delay timer (2s / 5s) | **Done** | Full-screen delayed capture from the dashboard |
-| Colour picker | **Partial** | Annotation stroke colour via `<input type="color">` in the editor (`AnnotationEditor.tsx`). No screen eyedropper / system colour sampler. |
+| Colour picker (⌘⇧7) | **Done** | Screen eyedropper with magnified loupe, HEX/RGB/HSL clipboard formats, recent-colour history (`src/main/colour-picker.ts`). Annotation editor still has a local stroke colour input. |
 
 Core architecture rules still hold: capture/OCR/history never import concrete integrations;
 integrations only implement `deliver(capture, config)`; AI is tier-gated and proxy-metered.

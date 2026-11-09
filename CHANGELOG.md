@@ -4,6 +4,7 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 
 ## [0.6.1] — Unreleased — Project health
 ### Added
+- **Screen colour picker (v1.0 MVP)** — ⌘⇧7 / dashboard **Colour** / tray menu: multi-display overlay, magnified loupe, click-to-copy (HEX default, RGB/HSL via picker keys or dashboard setting), local recent-colour history in SQLite, Esc to cancel.
 - **Destination integrations (v1.0)** — OAuth connect/disconnect for Slack, Jira, Notion, Gmail, and GitHub; `snapflow://` deep-link callbacks in the desktop app; clearer delivery/auth error messages; `docs/DESTINATION_SETUP.md` and expanded `backend/.env.example`.
 - README **v1.0 MVP status** table (done / partial / not started) aligned with the code on `main`.
 - Shared TypeScript contract file (`src/shared/types.ts`) restored so IPC, stores, tests,

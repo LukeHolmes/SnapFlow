@@ -1,6 +1,7 @@
 // Shared domain types — the single contract between main, preload and renderer.
 
 export type Tier = 'free' | 'pro' | 'team' | 'perpetual';
+export type ColorFormat = 'hex' | 'rgb' | 'hsl';
 export type ContentTag = 'code' | 'ui' | 'chart' | 'document' | 'web';
 export type DestinationId = 'clipboard' | 'slack' | 'notion' | 'gmail' | 'github' | 'zapier' | 'jira';
 export type GuideType = 'sop' | 'bug_report' | 'training' | 'validation' | 'walkthrough';
@@ -95,8 +96,18 @@ export interface Preset {
 export interface ActivityEvent {
   id: string;
   workspaceId: string;
-  kind: 'capture' | 'delivered' | 'delivery_failed' | 'delivery_queued' | 'pii' | 'tag';
+  kind: 'capture' | 'delivered' | 'delivery_failed' | 'delivery_queued' | 'pii' | 'tag' | 'color';
   text: string;
+  createdAt: number;
+}
+
+export interface PickedColor {
+  id: string;
+  workspaceId: string;
+  hex: string;
+  r: number;
+  g: number;
+  b: number;
   createdAt: number;
 }
 

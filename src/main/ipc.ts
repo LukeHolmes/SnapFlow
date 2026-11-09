@@ -16,10 +16,10 @@ import { integrationBackendClientFromEnv } from './integrations/backend-client';
 import { testZapierWebhook } from './integrations/zapier';
 import type { Engine } from './engine';
 import type { SyncAgent } from './sync/agent';
-import type { AnnotationDocument, Capture, DestinationId, Guide, GuideType, IntegrationStatus } from '../shared/types';
+import type { AnnotationDocument, Capture, ColorFormat, DestinationId, Guide, GuideType, IntegrationStatus } from '../shared/types';
 
 export function registerIpc(engine: Engine, sync: SyncAgent): void {
-  const { history, presets, events, ent, workspace: WS } = engine;
+  const { history, colors, presets, events, ent, workspace: WS } = engine;
   const proxy = aiProxyFromEnv();
   const integrations = integrationBackendClientFromEnv();
 
@@ -252,6 +252,14 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     try { return 'data:image/png;base64,' + readFileSync(capture.imagePath).toString('base64'); }
     catch { return null; }
   });
+
+  ipcMain.handle(CH.colourFormatGet, () => colors.getFormat());
+  ipcMain.handle(CH.colourFormatSet, (_e, format: ColorFormat) => {
+    if (format !== 'hex' && format !== 'rgb' && format !== 'hsl') return colors.getFormat();
+    colors.setFormat(format);
+    return colors.getFormat();
+  });
+  ipcMain.handle(CH.colourRecentList, (_e, limit = 24) => colors.list(WS, limit));
 }
 
 function isHttpsUrl(value: string): boolean {
