@@ -170,19 +170,32 @@ const mock: SnapFlowApi = {
       return { ok: !!guide, detail: guide ? 'Guide Markdown copied to clipboard' : 'Guide not found', markdown: guide ? `# ${guide.title}` : undefined };
     },
   },
-  entitlements: { get: async (): Promise<Entitlements> => ({ tier: 'pro', historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: true }) },
+  entitlements: { get: async (): Promise<Entitlements> => ({ tier: 'pro', historyWindowDays: null, maxPresets: 5, aiEnabled: true, cloudSync: true, diffAdvanced: true }) },
   stats: { get: async (): Promise<Stats> => ({ total: mockCaptures.length, ocrIndexed: mockCaptures.length, sent: 1, piiRedacted: mockCaptures.filter(c => c.hasPii).length }) },
   events: { recent: async (limit = 8) => mockEvents.slice(0, limit) },
   diff: {
-    compute: async (_beforeId: string, _afterId: string) => ({
-      ok: true, changedPixels: 12480, totalPixels: 921600,
-      changePercent: 1.35, width: 1280, height: 720,
-      diffImagePath: '', // no real path in browser mode
+    compute: async (_beforeId: string, _afterId: string, _options?: { threshold?: number }) => ({
+      ok: true as const, changedPixels: 12480, totalPixels: 921600,
+      changePercent: 1.35, width: 1280, height: 720, threshold: 0.1,
+      diffImagePath: 'mock-diff.png',
+      regions: [{ x: 400, y: 120, width: 180, height: 48 }, { x: 820, y: 300, width: 96, height: 96 }],
     }),
     summarise: async (_beforeId: string, _afterId: string) => ({
       ok: true,
       summary: 'The "Login" button label changed to "Sign in" and moved from the header to the hero section. A new "Try for free" secondary button was added beside it. The top navigation now shows the user avatar instead of account settings text.',
     }),
+    getImage: async () => null,
+    save: async (_path: string, _b: string, _a: string) => {
+      const c = mockNewCapture();
+      c.tag = 'diff';
+      c.filename = 'Diff · Login page regression → API error log';
+      return { ok: true, capture: c };
+    },
+    findPrevious: async (captureId: string) => {
+      const idx = mockCaptures.findIndex(c => c.id === captureId);
+      if (idx < 0 || idx >= mockCaptures.length - 1) return { ok: false };
+      return { ok: true, captureId: mockCaptures[idx + 1].id };
+    },
   },
   sync: { now: async () => ({ pushed: 0, pulled: 0 }) },
   onCaptureAdded: (cb) => { addedListener = cb; return () => { addedListener = null; }; },

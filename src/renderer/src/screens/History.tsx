@@ -1,10 +1,15 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Trash2, Filter, Pencil } from 'lucide-react';
+import { Trash2, Filter, Pencil, GitCompare } from 'lucide-react';
 import { api } from '../api';
 import { TAGS, CaptureThumb, rel } from '../components/shared';
 import type { Capture } from '../components/shared';
 
-interface Props { flash: (text: string, ok?: boolean) => void; refreshKey: number; onAnnotate?: (capture: Capture) => void; }
+interface Props {
+  flash: (text: string, ok?: boolean) => void;
+  refreshKey: number;
+  onAnnotate?: (capture: Capture) => void;
+  onCompare?: (capture: Capture) => void;
+}
 
 const TAG_FILTERS = ['all', 'ui', 'code', 'chart', 'document', 'web'] as const;
 const DATE_FILTERS = [
@@ -14,7 +19,7 @@ const DATE_FILTERS = [
   { id: 'month', label: 'This month',ms: 30 * 86_400_000 },
 ] as const;
 
-export default function History({ flash, refreshKey, onAnnotate }: Props) {
+export default function History({ flash, refreshKey, onAnnotate, onCompare }: Props) {
   const [all, setAll] = useState<Capture[]>([]);
   const [loading, setLoading] = useState(true);
   const [tag, setTag] = useState<string>('all');
@@ -110,6 +115,15 @@ export default function History({ flash, refreshKey, onAnnotate }: Props) {
                     <span className="annotation-badge" title="Annotation layer present">
                       <Pencil size={10} strokeWidth={2.4} />
                     </span>
+                  )}
+                  {onCompare && (
+                    <button
+                      className="diff-history-compare icon-btn"
+                      title="Compare with previous capture of same window"
+                      onClick={e => { e.stopPropagation(); onCompare(c); }}
+                    >
+                      <GitCompare size={13} strokeWidth={2} />
+                    </button>
                   )}
                 </div>
                 <div className="capture-info">

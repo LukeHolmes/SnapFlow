@@ -46,7 +46,7 @@ integrations only implement `deliver(capture, config)`; AI is tier-gated and pro
 | **Local PII detection** (email, phone, names, card/IBAN/IP) | ✅ working & unit-tested |
 | **Backend** — auth, entitlements, metered AI proxy, OAuth vault, billing, sync | ✅ working (`backend/`) |
 | **Cloud sync** — metadata-first, LWW, tombstones, lazy blobs (Pro/Team) | ✅ working |
-| **Diff mode** — pixel diff + AI summary path | ✅ working & unit-tested |
+| **Diff mode (v1.1)** — pixel diff, multi-view UI, History export & Deliver; AI summary Pro+ | ✅ working & unit-tested |
 | **Annotations** — editor, persistence, guide-oriented types | ✅ working & unit-tested |
 | **Team server-side search** over the shared workspace library | ✅ backend implemented |
 | Native capture sidecar, auto-scroll capture, Team admin/library UI polish | ⬜ next layers |
