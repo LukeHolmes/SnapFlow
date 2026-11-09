@@ -260,7 +260,7 @@ export default function App() {
     try {
       const r = await api.sync.now();
       if (r.error) flash(`Sync error: ${r.error}`, false);
-      else if (r.skipped) flash('Cloud sync is available on Pro and Team');
+      else if (r.skipped) flash(r.detail ?? 'Enable cloud sync in Account settings (Pro/Team)');
       else { setRefreshKey(k => k + 1); flash(`Synced — ${r.pushed ?? 0} up, ${r.pulled ?? 0} down`); }
     } finally { setSyncing(false); }
   };

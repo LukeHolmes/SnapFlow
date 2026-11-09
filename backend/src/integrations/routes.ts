@@ -9,6 +9,7 @@ import { withDestinationAccessToken, readDestinationToken } from '../oauth/desti
 import { oauthState } from '../oauth/state';
 import { sync } from '../sync/store';
 import { vault } from '../vault/store';
+import { buildCaptureUrl, verifyCaptureSignature } from '../storage/signed-url';
 
 const DESTINATIONS = ['slack', 'notion', 'gmail', 'github', 'jira'] as const;
 
@@ -127,25 +128,41 @@ integrationsRouter.get('/v1/integrations/capture-url/:captureId', requireAuth, a
   if (!entitlementsFor(req.account!.tier).cloudSync) {
     throw new AppError(402, 'sync_not_entitled', 'Cloud sync requires a Pro or Team plan');
   }
-  const path = await sync.getBlobPath(req.account!.id, req.params.captureId);
-  if (!path) throw new AppError(404, 'not_found', 'Capture blob not found');
-  res.json({ url: captureUrl(req.account!.id, req.params.captureId) });
+  if (!(await sync.blobAvailable(req.account!.id, req.params.captureId))) {
+    throw new AppError(404, 'not_found', 'Capture blob not found');
+  }
+  res.json({ url: buildCaptureUrl(req.account!.id, req.params.captureId) });
 }));
 
 integrationsRouter.get('/v1/public/captures/:accountId/:captureId.png', asyncHandler(async (req, res) => {
-  const expected = signature(req.params.accountId, req.params.captureId);
-  const actual = String(req.query.sig ?? '');
-  if (!safeEqual(expected, actual)) throw new AppError(403, 'forbidden', 'Invalid capture signature');
+  const sig = String(req.query.sig ?? '');
+  const expRaw = req.query.exp;
+  if (expRaw !== undefined && String(expRaw).length > 0) {
+    const verdict = verifyCaptureSignature(req.params.accountId, req.params.captureId, Number(expRaw), sig);
+    if (!verdict.ok) throw new AppError(403, 'forbidden', `Invalid capture signature (${verdict.reason})`);
+  } else if (sig) {
+    const expected = legacySignature(req.params.accountId, req.params.captureId);
+    if (!safeEqual(expected, sig)) throw new AppError(403, 'forbidden', 'Invalid capture signature');
+  } else {
+    throw new AppError(403, 'forbidden', 'Invalid capture signature');
+  }
+
+  const bytes = await sync.readBlobBytes(req.params.accountId, req.params.captureId);
+  if (!bytes) throw new AppError(404, 'not_found', 'Capture blob not found');
   const path = await sync.getBlobPath(req.params.accountId, req.params.captureId);
-  if (!path) throw new AppError(404, 'not_found', 'Capture blob not found');
-  res.type('png').sendFile(path);
+  if (path) {
+    res.type('png').sendFile(path);
+    return;
+  }
+  res.type('png').send(bytes);
 }));
 
-export function captureUrl(accountId: string, captureId: string): string {
-  return `${config.publicBaseUrl}/v1/public/captures/${encodeURIComponent(accountId)}/${encodeURIComponent(captureId)}.png?sig=${encodeURIComponent(signature(accountId, captureId))}`;
+export async function captureUrl(accountId: string, captureId: string): Promise<string | null> {
+  if (!(await sync.blobAvailable(accountId, captureId))) return null;
+  return buildCaptureUrl(accountId, captureId);
 }
 
-function signature(accountId: string, captureId: string): string {
+function legacySignature(accountId: string, captureId: string): string {
   return createHmac('sha256', config.authSecret).update(`${accountId}:${captureId}`).digest('hex');
 }
 

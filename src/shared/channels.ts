@@ -59,6 +59,8 @@ export const CH = {
   colourFormatGet:    'colour:formatGet',
   colourFormatSet:    'colour:formatSet',
   syncNow:            'sync:now',
+  syncPrefGet:        'sync:prefGet',
+  syncPrefSet:        'sync:prefSet',
   diffCompute:        'diff:compute',    // before+after capture IDs → pixel diff result + path
   diffSummarise:      'diff:summarise',  // before+after IDs → AI plain-English summary (Pro/Team)
   captureGetImage:    'capture:getImage',// capture ID → base64 data URL for rendering in the renderer           // dashboard -> main: run a sync cycle now

@@ -17,9 +17,14 @@ const TIER_PRICE: Record<string, string> = { free: 'Free forever', pro: '€9 / 
 export default function Account({ flash }: Props) {
   const [stats, setStats] = useState<Stats>({ total: 0, ocrIndexed: 0, sent: 0, piiRedacted: 0 });
   const [ent, setEnt] = useState<Entitlements | null>(null);
+  const [cloudSync, setCloudSync] = useState(false);
 
   useEffect(() => {
-    Promise.all([api.stats.get(), api.entitlements.get()]).then(([s, e]) => { setStats(s); setEnt(e); });
+    Promise.all([api.stats.get(), api.entitlements.get(), api.sync.getEnabled()]).then(([s, e, syncPref]) => {
+      setStats(s);
+      setEnt(e);
+      setCloudSync(syncPref.enabled);
+    });
   }, []);
 
   const tier = ent?.tier ?? 'pro';
@@ -80,6 +85,32 @@ export default function Account({ flash }: Props) {
           ))}
         </div>
       </div>
+
+      {ent?.cloudSync && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="plan-feature-row" style={{ alignItems: 'center' }}>
+            <div>
+              <span className="plan-feature-key">Cloud sync</span>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#666' }}>
+                Off by default. When enabled, metadata syncs in the background; images upload when you send to Notion, GitHub, or Jira, or when you tap Sync now. PII-tagged captures are not uploaded until redacted.
+              </p>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={cloudSync}
+                onChange={async e => {
+                  const enabled = e.target.checked;
+                  setCloudSync(enabled);
+                  await api.sync.setEnabled(enabled);
+                  flash(enabled ? 'Cloud sync enabled' : 'Cloud sync disabled');
+                }}
+              />
+              <span>{cloudSync ? 'On' : 'Off'}</span>
+            </label>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

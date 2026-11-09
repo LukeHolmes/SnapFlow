@@ -16,6 +16,7 @@ import { integrationBackendClientFromEnv } from './integrations/backend-client';
 import { testZapierWebhook } from './integrations/zapier';
 import type { Engine } from './engine';
 import type { SyncAgent } from './sync/agent';
+import { isCloudSyncOptIn, setCloudSyncOptIn } from './sync/prefs';
 import type { AnnotationDocument, Capture, ColorFormat, DestinationId, Guide, GuideType, IntegrationStatus } from '../shared/types';
 
 export function registerIpc(engine: Engine, sync: SyncAgent): void {
@@ -233,7 +234,12 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     return testZapierWebhook(config as any, capture);
   });
 
-  ipcMain.handle(CH.syncNow, () => sync.run());
+  ipcMain.handle(CH.syncNow, () => sync.run({ uploadBlobs: true }));
+  ipcMain.handle(CH.syncPrefGet, () => ({ enabled: isCloudSyncOptIn(engine.db) }));
+  ipcMain.handle(CH.syncPrefSet, (_e, enabled: boolean) => {
+    setCloudSyncOptIn(engine.db, !!enabled);
+    return { enabled: !!enabled };
+  });
 
   // ── Diff mode (v1.1) ────────────────────────────────────────────────────────
   ipcMain.handle(CH.diffCompute, async (_e, args: { beforeId: string; afterId: string }) => {

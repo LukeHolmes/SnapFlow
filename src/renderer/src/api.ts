@@ -184,7 +184,11 @@ const mock: SnapFlowApi = {
       summary: 'The "Login" button label changed to "Sign in" and moved from the header to the hero section. A new "Try for free" secondary button was added beside it. The top navigation now shows the user avatar instead of account settings text.',
     }),
   },
-  sync: { now: async () => ({ pushed: 0, pulled: 0 }) },
+  sync: {
+    now: async () => ({ pushed: 0, pulled: 0 }),
+    getEnabled: async () => ({ enabled: false }),
+    setEnabled: async (enabled: boolean) => ({ enabled }),
+  },
   onCaptureAdded: (cb) => { addedListener = cb; return () => { addedListener = null; }; },
   onCaptureError: () => () => {},
   onOpenWindowPicker: () => () => {},

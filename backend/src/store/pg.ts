@@ -59,6 +59,13 @@ export class PostgresDb extends PgQueries implements Db {
   async init(): Promise<void> {
     await this.pool.query(buildSchema('BIGINT'));
     await this.pool.query(`ALTER TABLE IF EXISTS oauth_state ADD COLUMN IF NOT EXISTS data_json TEXT NOT NULL DEFAULT '{}'`);
+    await this.pool.query(`ALTER TABLE IF EXISTS blobs ADD COLUMN IF NOT EXISTS revoked_at BIGINT`);
+    const legacyPath = await this.pool.query(
+      `SELECT 1 FROM information_schema.columns WHERE table_name = 'blobs' AND column_name = 'path' LIMIT 1`,
+    );
+    if (legacyPath.rowCount) {
+      await this.pool.query(`ALTER TABLE blobs RENAME COLUMN path TO storage_key`);
+    }
   }
   async close(): Promise<void> {
     await this.pool.end();

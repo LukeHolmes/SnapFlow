@@ -78,7 +78,7 @@ app.whenReady().then(() => {
   const engine = createEngine(openDb(dbPath()));
   const sync = createSyncAgent(engine);
   registerBuiltins();
-  configureIntegrationRuntime({ sync });
+  configureIntegrationRuntime({ sync, engine });
   registerIpc(engine, sync);
   registerRegion(engine, () => win);
   registerColourPicker(engine, () => win);
@@ -90,10 +90,10 @@ app.whenReady().then(() => {
     win?.webContents.once('did-finish-load', () => handleDeepLink(deepLinkArg));
   }
 
-  // Cloud sync: a first pass shortly after launch, then periodically. No-op on
-  // tiers without cloud sync, or when no backend is configured.
-  setTimeout(() => void sync.run(), 4000);
-  setInterval(() => void sync.run(), 45_000);
+  // Metadata-only sync when opted in: no automatic blob upload (blobs upload on delivery or manual sync).
+  const periodicSync = () => void sync.run({ uploadBlobs: false });
+  setTimeout(periodicSync, 4000);
+  setInterval(periodicSync, 45_000);
 
   // Global region-capture shortcut (design guide: ⌘⇧4).
   try {

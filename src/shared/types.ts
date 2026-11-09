@@ -214,6 +214,7 @@ export interface SyncRecord {
 
 export interface SyncResult {
   skipped?: boolean;          // tier without cloudSync
+  detail?: string;
   error?: string;
   pushed?: number;
   pulled?: number;

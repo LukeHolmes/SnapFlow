@@ -113,13 +113,37 @@ Desktop integrations (`src/main/integrations/*.ts`) send image bytes and preset 
 `backend/src/deliver/destinations.ts`, reveals the OAuth token from the vault server-side,
 and talks to Slack/Jira/Notion/Gmail/GitHub APIs. The bearer token never reaches the client.
 
-## Cloud sync (Pro/Team)
+## Cloud sync (Pro/Team, opt-in)
 
 Metadata-first, last-write-wins, soft-delete tombstones, lazy image blobs. The
-desktop agent pushes dirty rows (+ blobs), pulls changes since a per-account
-monotonic `seq` cursor, and reconciles into the local SQLite via `upsertRemote`
-(LWW on `updated_at`). Images are fetched only when a row has metadata but no
-local file. Free/Perpetual tiers do not sync (gated server-side).
+desktop setting **Cloud sync** is **off by default** (`app_prefs.cloud_sync_enabled`);
+Pro/Team tiers may enable it in **Account**. When enabled, the agent pushes dirty
+metadata and pulls changes since a per-account monotonic `seq` cursor, reconciling
+into local SQLite via `upsertRemote` (LWW on `updated_at`). **Image blobs are not
+uploaded on every capture** — only on explicit **Sync now** (full metadata + blobs)
+or when delivering to destinations that need a public image URL (Notion, GitHub,
+Jira). Captures flagged with detected PII are blocked from blob upload until the
+user saves a redacted copy.
+
+### Signed public image URLs
+
+Destinations that cannot accept inline bytes (Notion external images, GitHub issue
+markdown) use short-lived **HMAC-signed GET URLs** served by the backend:
+
+- `PUT/POST /v1/sync/blob/:id` — authenticated upload (tier-gated).
+- `GET /v1/sync/blob/:id/signed-url` — mint a URL (default TTL 7 days, `SIGNED_URL_TTL_MS`).
+- `GET /v1/public/captures/:accountId/:id.png?exp=&sig=` — unauthenticated fetch after verify.
+- `POST /v1/sync/signed-url/verify` — check signature, expiry, and revocation.
+- `DELETE /v1/sync/blob/:id` — revoke/delete blob and invalidate links.
+
+Blob bytes live behind a pluggable storage port (`backend/src/storage/`):
+
+| Driver | Env | Notes |
+|--------|-----|-------|
+| `local` (default) | `DATA_DIR` | Files under `<DATA_DIR>/blobs/<accountId>/` |
+| `s3` | `S3_*` | Any S3-compatible API (Cloudflare R2, MinIO, Supabase Storage) via `@aws-sdk/client-s3` |
+
+Free/Perpetual tiers do not sync (gated server-side, HTTP 402).
 
 ## Multi-tenancy
 

@@ -1,6 +1,6 @@
 import type { OutputDestination } from './types';
 import { NotConfiguredError } from './types';
-import { backendClient, ensureCaptureUrl, queuedResult } from './common';
+import { backendClient, ensureCaptureUrl } from './common';
 
 export interface GithubPresetConfig {
   owner: string;
@@ -21,8 +21,7 @@ export const githubDestination: OutputDestination = {
     }
     const backend = backendClient();
     if (!backend.configured) throw new NotConfiguredError('GitHub');
-    const url = await ensureCaptureUrl(capture);
-    if (!url) return queuedResult();
+    await ensureCaptureUrl(capture);
     return backend.deliver('github', capture, { ...cfg } as Record<string, unknown>);
   },
 };

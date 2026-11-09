@@ -4,6 +4,10 @@ All notable changes to SnapFlow. Semantic versioning (architecture §9: acquisit
 
 ## [0.6.1] — Unreleased — Project health
 ### Added
+- **Cloud sync signed URLs** — pluggable blob storage (`local` + S3-compatible/R2/Supabase),
+  expiring HMAC capture links (`exp` + `sig`), verify/revoke APIs, and destination fallbacks
+  when no public URL exists. Desktop cloud sync is **opt-in** (Account); blobs upload on
+  delivery to URL-based destinations or manual Sync now; PII-tagged captures skip upload.
 - **Windows CI installer** — CI job on `windows-latest` builds an unsigned NSIS `.exe`
   (`npm run dist -- --publish never`) and uploads **`snapflow-windows-installer`** as a
   workflow artifact on `main`, PRs into `main`, and `workflow_dispatch` (see README).

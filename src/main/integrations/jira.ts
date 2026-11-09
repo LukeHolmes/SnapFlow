@@ -1,10 +1,10 @@
 import type { OutputDestination } from './types';
 import { NotConfiguredError } from './types';
-import { backendClient, ensureCaptureUrl, queuedResult } from './common';
+import { backendClient, ensureCaptureUrl } from './common';
 
 export interface JiraPresetConfig {
-  issue_key?: string;           // Attach to existing issue
-  project_key?: string;         // Create new issue in project
+  issue_key?: string;
+  project_key?: string;
   issue_summary?: string;
   issue_description?: string;
 }
@@ -21,9 +21,7 @@ export const jiraDestination: OutputDestination = {
     const backend = backendClient();
     if (!backend.configured) throw new NotConfiguredError('Jira');
 
-    const captureUrl = await ensureCaptureUrl(capture);
-    if (!captureUrl) return queuedResult();
-
+    await ensureCaptureUrl(capture);
     return backend.deliver('jira', capture, { ...cfg });
   },
 };

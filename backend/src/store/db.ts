@@ -64,8 +64,9 @@ CREATE TABLE IF NOT EXISTS account_seq (
 CREATE TABLE IF NOT EXISTS blobs (
   account_id TEXT NOT NULL,
   capture_id TEXT NOT NULL,
-  path       TEXT NOT NULL,
-  updated_at ${intType} NOT NULL,
+  storage_key TEXT NOT NULL,
+  updated_at  ${intType} NOT NULL,
+  revoked_at  ${intType},
   PRIMARY KEY (account_id, capture_id)
 );
 

@@ -11,6 +11,7 @@ import type { Entitlements } from '../shared/types';
 export const WORKSPACE = process.env.SNAPFLOW_WORKSPACE || 'ws_local';
 
 export interface Engine {
+  db: Db;
   history: HistoryStore;
   colors: ColorHistoryStore;
   presets: PresetStore;
@@ -21,6 +22,7 @@ export interface Engine {
 
 export function createEngine(db: Db): Engine {
   return {
+    db,
     history: new HistoryStore(db),
     colors: new ColorHistoryStore(db),
     presets: new PresetStore(db),
