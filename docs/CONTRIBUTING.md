@@ -59,12 +59,19 @@ AI, delivery, OAuth, sync and entitlement behavior.
 
 ## Branching strategy
 
+SnapFlow uses **trunk-based development on `main`**. There is no long-lived `develop`
+branch.
+
 | Branch | Purpose |
 |---|---|
-| `main` | Production-ready code only |
-| `develop` | Integration branch — all features merge here first |
-| `feature/<name>` | Feature branches off `develop` |
-| `release/<version>` | Stabilisation; bug fixes only |
+| `main` | Default branch; always deployable/releasable integration point |
+| `feature/<name>` | Short-lived docs or product branches (e.g. `feature/docs-truth-up`) |
+| `cursor/<task>-<id>` | Cloud agent branches — open a PR into `main` when ready |
+| `fix/<topic>` | Focused fixes (e.g. dependency bumps) |
+| `dependabot/...` | Automated dependency PRs |
+
+Flow: branch off `main` → PR into `main` → delete the branch after merge when convenient.
+Release tags (when we start tagging) will point at `main` at the chosen commit.
 
 ## Adding a new output destination
 
