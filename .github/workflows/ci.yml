@@ -1,10 +1,12 @@
 # Typecheck and unit tests for the Electron app (repo root) and Express backend.
+# Optional Windows NSIS installer artifact (unsigned; no publish).
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -66,3 +68,41 @@ jobs:
 
       - name: Test
         run: npm test
+
+  windows-installer:
+    name: Windows (NSIS installer)
+    # Main pushes, PRs into main, and manual dispatch (not arbitrary feature-branch pushes).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'main')
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Package (NSIS, no publish)
+        run: npm run dist -- --publish never
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapflow-windows-installer
+          path: dist/*.exe
+          if-no-files-found: error
