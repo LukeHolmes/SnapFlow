@@ -122,10 +122,7 @@ function providers(): Record<DestinationOAuthId, DestinationOAuthProvider> {
           grant_type: 'refresh_token',
           refresh_token: token.refreshToken,
         });
-        return {
-          ...toStoredToken(json),
-          meta: token.meta,
-        };
+        return withRotatedRefresh(token, json);
       },
       async describe(token) {
         const json = await getJson<Record<string, unknown>>(`${config.notionApiBase}/v1/users/me`, {
@@ -225,11 +222,7 @@ function providers(): Record<DestinationOAuthId, DestinationOAuthProvider> {
           client_id: this.clientId,
           client_secret: this.clientSecret,
         }, { accept: 'application/json' });
-        return {
-          ...toStoredToken(json),
-          refreshToken: token.refreshToken,
-          meta: token.meta,
-        };
+        return withRotatedRefresh(token, json);
       },
       async describe(token) {
         const json = await getJson<Record<string, unknown>>(`${config.githubApiBase}/user`, {
@@ -273,11 +266,7 @@ function providers(): Record<DestinationOAuthId, DestinationOAuthProvider> {
           grant_type: 'refresh_token',
           refresh_token: token.refreshToken,
         });
-        return {
-          ...toStoredToken(json),
-          refreshToken: token.refreshToken,
-          meta: token.meta,
-        };
+        return withRotatedRefresh(token, json);
       },
       async describe(token) {
         const sites = await accessibleResources(token.accessToken);
@@ -358,6 +347,16 @@ function toStoredToken(json: Record<string, unknown>): StoredDestinationToken {
     refreshToken: optionalString(json.refresh_token),
     expiresAt: expiresAt(json.expires_in),
     scope: optionalString(json.scope),
+  };
+}
+
+/** Keep refresh tokens when providers omit them on refresh; adopt rotation when returned (Jira/GitHub/Notion). */
+function withRotatedRefresh(token: StoredDestinationToken, json: Record<string, unknown>): StoredDestinationToken {
+  const refreshed = toStoredToken(json);
+  return {
+    ...refreshed,
+    refreshToken: refreshed.refreshToken ?? token.refreshToken,
+    meta: token.meta,
   };
 }
 
