@@ -6,6 +6,8 @@ SnapFlow stores most provider tokens **only on the backend** in the encrypted va
 
 ## Prerequisites
 
+See also **`docs/INTEGRATION_RUNTIME_CHECKLIST.md`** for per-runtime env vars (backend vs desktop), mock vs live verification, and artifact limits.
+
 1. Backend running with `backend/.env` copied from `backend/.env.example`.
 2. Desktop `.env` with `SNAPFLOW_AI_PROXY_URL` and `SNAPFLOW_API_TOKEN` (from `POST /auth/token` in dev, or account OAuth in prod).
 3. `APP_REDIRECT_URL=snapflow://oauth/callback` on the backend so callbacks return to the Electron app.
