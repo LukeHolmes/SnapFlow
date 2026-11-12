@@ -27,7 +27,11 @@ test('electron smoke: sandboxed preload exposes window.snapflow', async (t) => {
 
   const electron = (await import('electron')).default as unknown as string;
 
-  const run = spawnSync(electron, [smokeScript], {
+  const chromeNoSandbox =
+    process.env.ELECTRON_SMOKE_NO_CHROME_SANDBOX === '1' || Boolean(process.env.CI);
+  const electronArgs = chromeNoSandbox ? ['--no-sandbox', smokeScript] : [smokeScript];
+
+  const run = spawnSync(electron, electronArgs, {
     encoding: 'utf8',
     env: { ...process.env, ELECTRON_RUN_AS_NODE: '' },
     timeout: 90_000,
