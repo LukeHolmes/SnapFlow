@@ -2,7 +2,8 @@ import { BrowserWindow, clipboard, ipcMain, nativeImage, shell, type IpcMainInvo
 import { unlink } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { CH } from '../shared/channels';
-import { listSources, captureSource, captureScrollingSource, captureScrollingPreview, persistDataUrl, persistRedactedImage, type RawCapture } from './capture';
+import { listSources, captureSource, captureFullDisplay, captureScrollingSource, captureScrollingPreview, persistDataUrl, persistRedactedImage, type RawCapture } from './capture';
+import { fetchAccountSummary } from './account/client';
 import { getDestination } from './integrations/registry';
 import { contextualise } from './pipeline';
 import { boxesForDetections, locatePiiInOcr } from './ai/pii-locate';
@@ -60,18 +61,22 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
 
   ipcMain.handle(CH.captureListSources, () => listSources());
 
-  const saveRawCapture = async (raw: RawCapture): Promise<Capture> => {
+  const saveRawCapture = async (raw: RawCapture, opts?: { piiRedactedApplied?: boolean }): Promise<Capture> => {
     const capture: Capture = {
       id: raw.id, workspaceId: WS, filename: raw.filename, imagePath: raw.imagePath,
       kind: 'screenshot', tag: null, ocrText: '', hasPii: false, createdAt: Date.now(),
+      piiRedactedApplied: opts?.piiRedactedApplied,
     };
     history.insert(capture);
     return contextualise(capture, ent(), history, events);
   };
 
-  // Full-screen capture (used by the Window quick action until a window picker lands).
-  ipcMain.handle(CH.captureScreen, async (_e, sourceId?: string) => {
-    return saveRawCapture(await captureSource(sourceId));
+  ipcMain.handle(CH.captureScreen, async (e, sourceId?: string) => {
+    const isScreen = !sourceId || sourceId.startsWith('screen:');
+    const raw = isScreen
+      ? await withHiddenSenderWindow(e, () => captureFullDisplay(sourceId, sourceId ? undefined : 'Delayed capture'))
+      : await captureSource(sourceId);
+    return saveRawCapture(raw);
   });
 
   ipcMain.handle(CH.captureScroll, async (_e, args?: { sourceId?: string; frames?: number; intervalMs?: number }) => {
@@ -120,7 +125,10 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     const detections = locatePiiInOcr(ocr);
     const ids = selectedIds?.length ? selectedIds : detections.map(d => d.id);
     const boxes = boxesForDetections(detections, ids);
-    return saveRawCapture(persistRedactedImage(original.imagePath, boxes, `${original.filename} redacted`));
+    return saveRawCapture(
+      persistRedactedImage(original.imagePath, boxes, `${original.filename} redacted`),
+      { piiRedactedApplied: true },
+    );
   });
 
   ipcMain.handle(CH.captureAnnotationsGet, (_e, id: string) =>
@@ -305,6 +313,7 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   });
 
   ipcMain.handle(CH.entitlementsGet, () => resolveEntitlements());
+  ipcMain.handle(CH.accountGet, () => fetchAccountSummary());
   ipcMain.handle(CH.statsGet, () => history.stats(WS));
   ipcMain.handle(CH.eventsRecent, (_e, limit = 8) => events.recent(WS, limit));
   ipcMain.handle(CH.integrationsStatuses, async () => {

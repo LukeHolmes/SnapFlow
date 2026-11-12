@@ -10,6 +10,7 @@ import { PNG } from 'pngjs';
 import { imagesDir } from '../paths';
 import type { CaptureSource, RedactionBox, ScrollCapturePreview } from '../../shared/types';
 import { stitchScrollFrames } from './stitch';
+import { redactBoxesOnPng } from './redact-png';
 
 export interface RawCapture { id: string; imagePath: string; filename: string; }
 export type { RedactionBox };
@@ -42,7 +43,10 @@ async function sourceImage(sourceId?: string): Promise<{ image: Electron.NativeI
   const maxW = Math.max(...displays.map(d => deviceBox(d).w));
   const maxH = Math.max(...displays.map(d => deviceBox(d).h));
   const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: maxW, height: maxH } });
-  const src = sourceId ? sources.find(s => s.id === sourceId) : sources[0];
+  let src = sourceId ? sources.find(s => s.id === sourceId) : undefined;
+  if (!src) {
+    src = sources.find(s => s.id.startsWith('screen:')) ?? sources[0];
+  }
   if (sourceId && !src) throw new Error('Capture source is no longer available. Reopen the picker and try again.');
   if (!src) throw new Error('No capture source available (check screen-recording permission)');
   if (src.thumbnail.isEmpty()) throw new Error('Capture source returned an empty frame (check screen-recording permission)');
@@ -53,6 +57,27 @@ async function sourceImage(sourceId?: string): Promise<{ image: Electron.NativeI
 export async function captureSource(sourceId?: string, filename?: string): Promise<RawCapture> {
   const src = await sourceImage(sourceId);
   return persistImage(src.image, filename || src.name || 'Capture');
+}
+
+/** Full display capture at native resolution (not a window thumbnail). */
+export async function captureFullDisplay(sourceId?: string, filename?: string): Promise<RawCapture> {
+  const displays = screen.getAllDisplays();
+  let display = screen.getPrimaryDisplay();
+  let sourceName = 'Full screen';
+  if (sourceId?.startsWith('screen:')) {
+    const { w, h } = deviceBox(display);
+    const maxW = Math.max(w, ...displays.map(d => deviceBox(d).w));
+    const maxH = Math.max(h, ...displays.map(d => deviceBox(d).h));
+    const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: maxW, height: maxH } });
+    const src = sources.find(s => s.id === sourceId);
+    if (src) {
+      sourceName = src.name || sourceName;
+      const match = displays.find(d => String(d.id) === src.display_id);
+      if (match) display = match;
+    }
+  }
+  const frame = await grabDisplayFrame(display);
+  return persistImage(frame.image, filename || sourceName);
 }
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
@@ -149,24 +174,6 @@ export function persistDataUrl(dataUrl: string, filename: string): RawCapture {
 export function persistRedactedImage(imagePath: string, boxes: RedactionBox[], filename: string): RawCapture {
   if (!boxes.length) throw new Error('No PII regions were located in the image');
   const png = PNG.sync.read(readFileSync(imagePath));
-  for (const box of boxes) {
-    const x0 = clamp(Math.floor(box.x0) - 4, 0, png.width);
-    const y0 = clamp(Math.floor(box.y0) - 4, 0, png.height);
-    const x1 = clamp(Math.ceil(box.x1) + 4, 0, png.width);
-    const y1 = clamp(Math.ceil(box.y1) + 4, 0, png.height);
-    for (let y = y0; y < y1; y += 1) {
-      for (let x = x0; x < x1; x += 1) {
-        const idx = (png.width * y + x) * 4;
-        png.data[idx] = 17;
-        png.data[idx + 1] = 17;
-        png.data[idx + 2] = 17;
-        png.data[idx + 3] = 255;
-      }
-    }
-  }
+  redactBoxesOnPng(png, boxes);
   return persistImage(nativeImage.createFromBuffer(PNG.sync.write(png)), filename);
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, n));
 }

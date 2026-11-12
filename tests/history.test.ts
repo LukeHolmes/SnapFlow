@@ -95,10 +95,10 @@ test('free-tier retention sweep returns files to unlink', () => {
   assert.equal(history.list('ws_a').length, 1);
 });
 
-test('stats count totals, OCR, and PII correctly', () => {
+test('stats count totals, OCR, and applied redactions correctly', () => {
   const { history } = freshStore();
   history.insert(cap({ ocrText: 'has text', hasPii: true }));
-  history.insert(cap({ ocrText: '', hasPii: false }));
+  history.insert(cap({ ocrText: '', hasPii: false, piiRedactedApplied: true }));
   const s = history.stats('ws_a');
   assert.equal(s.total, 2);
   assert.equal(s.ocrIndexed, 1);

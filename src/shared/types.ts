@@ -101,6 +101,8 @@ export interface Capture {
   tag: ContentTag | null;
   ocrText: string;
   hasPii: boolean;
+  /** Set when a saved redacted copy was written to disk (stats counter). */
+  piiRedactedApplied?: boolean;
   createdAt: number;          // epoch ms
   snippet?: string;           // populated by search results only
   hasAnnotations?: boolean;    // true when a non-destructive annotation layer exists
@@ -108,6 +110,13 @@ export interface Capture {
   mediaPath?: string | null;
   durationMs?: number | null;
   byteSize?: number | null;
+}
+
+export interface AccountSummary {
+  signedIn: boolean;
+  email?: string;
+  displayName?: string;
+  tier?: Tier;
 }
 
 export interface CaptureSource {

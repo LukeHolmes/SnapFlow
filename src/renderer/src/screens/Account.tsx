@@ -4,6 +4,8 @@ import { api } from '../api';
 import TeamPanel from '../components/TeamPanel';
 import { STAT_META } from '../components/shared';
 import type { Stats, Entitlements } from '../components/shared';
+import type { AccountSummary } from '../../../shared/types';
+import { initialsFromLabel } from '../accountProfile';
 
 interface Props { flash: (text: string, ok?: boolean) => void; }
 
@@ -19,16 +21,18 @@ export default function Account({ flash }: Props) {
   const [stats, setStats] = useState<Stats>({ total: 0, ocrIndexed: 0, sent: 0, piiRedacted: 0 });
   const [ent, setEnt] = useState<Entitlements | null>(null);
   const [cloudSync, setCloudSync] = useState(false);
+  const [account, setAccount] = useState<AccountSummary | null>(null);
 
   useEffect(() => {
-    Promise.all([api.stats.get(), api.entitlements.get(), api.sync.getEnabled()]).then(([s, e, syncPref]) => {
+    Promise.all([api.stats.get(), api.entitlements.get(), api.sync.getEnabled(), api.account.get()]).then(([s, e, syncPref, acct]) => {
       setStats(s);
       setEnt(e);
       setCloudSync(syncPref.enabled);
+      setAccount(acct);
     });
   }, []);
 
-  const tier = ent?.tier ?? 'pro';
+  const tier = ent?.tier ?? account?.tier ?? 'free';
   const features = TIER_FEATURES[tier] ?? TIER_FEATURES.pro;
 
   return (
@@ -39,10 +43,21 @@ export default function Account({ flash }: Props) {
 
       {/* User card */}
       <div className="card account-hero">
-        <span className="account-avatar">LH</span>
+        <span className="account-avatar">
+          {account?.signedIn && account.displayName ? initialsFromLabel(account.displayName) : '?'}
+        </span>
         <div className="account-info">
-          <span className="account-name">Luke Holmes</span>
-          <span className="account-email">luke@snapflow.app</span>
+          {account?.signedIn ? (
+            <>
+              <span className="account-name">{account.displayName ?? account.email}</span>
+              <span className="account-email">{account.email}</span>
+            </>
+          ) : (
+            <>
+              <span className="account-name">Signed out</span>
+              <span className="account-email">Configure SNAPFLOW_API_TOKEN in .env to link your account</span>
+            </>
+          )}
         </div>
         <span className="tier-badge" style={{ marginLeft: 'auto' }}>{tier}</span>
       </div>

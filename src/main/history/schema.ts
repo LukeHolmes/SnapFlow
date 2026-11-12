@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS captures (
   tag          TEXT,
   ocr_text     TEXT NOT NULL DEFAULT '',
   has_pii      INTEGER NOT NULL DEFAULT 0,
+  pii_redacted INTEGER NOT NULL DEFAULT 0,
   created_at   INTEGER NOT NULL,
   kind         TEXT NOT NULL DEFAULT 'screenshot',
   media_path   TEXT,

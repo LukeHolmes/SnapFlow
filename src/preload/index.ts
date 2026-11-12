@@ -1,7 +1,7 @@
 // The main↔renderer bridge for the dashboard window.
 import { contextBridge, ipcRenderer } from 'electron';
 import { CH } from '../shared/channels';
-import type { AnnotationDocument, Capture, CaptureSource, Preset, ActivityEvent, Stats, Entitlements, DeliverResult, DestinationId, ScrollCapturePreview, Guide, GuideExportResult, GuideListItem, GuideType, IntegrationOption, IntegrationStatus, PiiScanResult, ColorFormat, PickedColor } from '../shared/types';
+import type { AccountSummary, AnnotationDocument, Capture, CaptureSource, Preset, ActivityEvent, Stats, Entitlements, DeliverResult, DestinationId, ScrollCapturePreview, Guide, GuideExportResult, GuideListItem, GuideType, IntegrationOption, IntegrationStatus, PiiScanResult, ColorFormat, PickedColor } from '../shared/types';
 
 const api = {
   capture: {
@@ -70,6 +70,7 @@ const api = {
     exportMarkdown: (id: string): Promise<GuideExportResult> => ipcRenderer.invoke(CH.guidesExportMarkdown, id),
   },
   entitlements: { get: (): Promise<Entitlements> => ipcRenderer.invoke(CH.entitlementsGet) },
+  account: { get: (): Promise<AccountSummary> => ipcRenderer.invoke(CH.accountGet) },
   stats: { get: (): Promise<Stats> => ipcRenderer.invoke(CH.statsGet) },
   events: { recent: (limit?: number): Promise<ActivityEvent[]> => ipcRenderer.invoke(CH.eventsRecent, limit) },
 

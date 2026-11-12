@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import type { RecordingStartOptions } from '../../shared/types';
 import { api, isLive } from './api';
-import type { Capture, Entitlements, CaptureSource, ScrollCapturePreview } from '../../shared/types';
+import type { AccountSummary, Capture, Entitlements, CaptureSource, ScrollCapturePreview } from '../../shared/types';
+import { greetingName, initialsFromLabel } from './accountProfile';
 
 import Dashboard    from './screens/Dashboard';
 import HistoryScreen from './screens/History';
@@ -40,6 +41,7 @@ export default function App() {
   const [searchFocus, setSearchFocus] = useState(false);
   const [topbarQuery, setTopbarQuery] = useState('');
   const [refreshKey, setRefreshKey]   = useState(0);
+  const [account, setAccount] = useState<AccountSummary | null>(null);
   type PickerPurpose = 'capture' | 'record';
   const [picker, setPicker] = useState<{ open: boolean; loading: boolean; sources: CaptureSource[]; purpose: PickerPurpose }>({
     open: false, loading: false, sources: [], purpose: 'capture',
@@ -65,13 +67,21 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToast(null), 2400);
   }, []);
 
-  useEffect(() => { api.entitlements.get().then(setEnt); }, [refreshKey]);
+  useEffect(() => {
+    void api.entitlements.get().then(setEnt);
+    void api.account.get().then(setAccount);
+  }, [refreshKey]);
+
+  const openEditorForScreenshot = useCallback((capture: Capture) => {
+    if (capture.kind !== 'recording') setEditorCapture(capture);
+  }, []);
 
   useEffect(() => api.onCaptureAdded((capture) => {
     setRefreshKey(k => k + 1);
     setQuickCapture(capture);
+    openEditorForScreenshot(capture);
     flash(capture.kind === 'recording' ? 'Recording saved to History' : 'Capture saved & indexed');
-  }), [flash]);
+  }), [flash, openEditorForScreenshot]);
   useEffect(() => api.onCaptureError((message) => {
     flash(message || 'Capture failed', false);
   }), [flash]);
@@ -157,6 +167,7 @@ export default function App() {
   const rememberCapture = (capture: Capture) => {
     setQuickCapture(capture);
     setRefreshKey(k => k + 1);
+    openEditorForScreenshot(capture);
   };
 
   const startScreenRecording = async () => {
@@ -382,8 +393,22 @@ export default function App() {
           ))}
         </nav>
         <div className="user-card">
-          <span className="avatar">LH</span>
-          <div className="user-meta"><span className="user-name">Luke Holmes</span><span className="user-mail">luke@snapflow.app</span></div>
+          <span className="avatar">
+            {account?.signedIn && account.displayName ? initialsFromLabel(account.displayName) : '?'}
+          </span>
+          <div className="user-meta">
+            {account?.signedIn ? (
+              <>
+                <span className="user-name">{account.displayName ?? account.email}</span>
+                <span className="user-mail">{account.email}</span>
+              </>
+            ) : (
+              <>
+                <span className="user-name">Signed out</span>
+                <span className="user-mail">Set SNAPFLOW_API_TOKEN to sign in</span>
+              </>
+            )}
+          </div>
           <span className="tier-badge">{ent?.tier ?? '…'}</span>
         </div>
       </aside>
@@ -391,7 +416,7 @@ export default function App() {
       {/* Main */}
       <div className="main">
         <header className="topbar">
-          <span className="greeting">{greet()}, Luke 👋</span>
+          <span className="greeting">{greet()}, {greetingName(account)} 👋</span>
           <div className={`searchwrap${searchFocus ? ' focus' : ''}`}>
             <Search size={15} color="#aaa" strokeWidth={2} />
             <input

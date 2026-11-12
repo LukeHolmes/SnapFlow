@@ -189,6 +189,7 @@ const mock: SnapFlowApi = {
     focusBlurMaxRegions: null, focusBlurPresetAutomation: true,
     maxRecordingDurationSec: 3600, recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
   }) },
+  account: { get: async () => ({ signedIn: true, email: 'demo@snapflow.app', displayName: 'Demo User', tier: 'pro' as const }) },
   stats: { get: async (): Promise<Stats> => ({ total: mockCaptures.length, ocrIndexed: mockCaptures.length, sent: 1, piiRedacted: mockCaptures.filter(c => c.hasPii).length }) },
   events: { recent: async (limit = 8) => mockEvents.slice(0, limit) },
   diff: {
