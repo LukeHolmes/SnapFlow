@@ -190,6 +190,16 @@ const mock: SnapFlowApi = {
     maxRecordingDurationSec: 3600, recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
   }) },
   account: { get: async () => ({ signedIn: true, email: 'demo@snapflow.app', displayName: 'Demo User', tier: 'pro' as const }) },
+  app: {
+    getMeta: async () => ({
+      version: '1.1.0 (mock)',
+      licenseNotices: 'Mock third-party notices — run in Electron after npm run licenses:bundle',
+      privacyDraft: 'DRAFT privacy (mock)',
+      eulaDraft: 'DRAFT EULA (mock)',
+    }),
+    openLegal: async () => '',
+  },
+  onOpenAbout: () => () => {},
   stats: { get: async (): Promise<Stats> => ({ total: mockCaptures.length, ocrIndexed: mockCaptures.length, sent: 1, piiRedacted: mockCaptures.filter(c => c.hasPii).length }) },
   events: { recent: async (limit = 8) => mockEvents.slice(0, limit) },
   diff: {

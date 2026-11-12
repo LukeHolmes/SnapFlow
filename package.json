@@ -22,10 +22,12 @@
     "rebuild": "npm run rebuild:electron",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
     "rebuild:node": "npm rebuild better-sqlite3",
-    "predist": "npm run rebuild:electron",
-    "dist": "electron-vite build && electron-builder"
+    "predist": "npm run rebuild:electron && npm run licenses:bundle",
+    "dist": "electron-vite build && electron-builder",
+    "licenses:bundle": "node scripts/generate-third-party-licenses.mjs"
   },
   "dependencies": {
+    "electron-updater": "^6.6.2",
     "better-sqlite3": "^13.0.3",
     "gifenc": "^1.0.3",
     "lucide-react": "^0.383.0",
@@ -48,6 +50,7 @@
     "@vitejs/plugin-react": "^4.3.1",
     "electron": "^42.11.18",
     "electron-builder": "^26.15.3",
+    "license-checker": "^25.0.1",
     "electron-vite": "^6.0.0",
     "tsx": "^4.22.4",
     "typescript": "^5.5.3",
@@ -60,14 +63,40 @@
       "out/**/*",
       "package.json"
     ],
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**"
+    ],
+    "extraResources": [
+      { "from": "resources/third-party-licenses.txt", "to": "third-party-licenses.txt" },
+      { "from": "docs/PRIVACY.md", "to": "legal/PRIVACY.md" },
+      { "from": "docs/EULA.md", "to": "legal/EULA.md" }
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "LukeHolmes",
+        "repo": "SnapFlow"
+      }
+    ],
     "mac": {
       "category": "public.app-category.productivity",
+      "target": ["dmg"],
+      "identity": null,
+      "gatekeeperAssess": false,
+      "hardenedRuntime": false,
       "extendInfo": {
         "NSAudioCaptureUsageDescription": "SnapFlow captures screen content for screenshots; audio is not recorded."
       }
     },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Graphics",
+      "maintainer": "SnapFlow <hello@snapflow.app>",
+      "executableName": "snapflow"
+    },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "publish": ["github"]
     }
   }
 }

@@ -1,9 +1,11 @@
-import { BrowserWindow, clipboard, ipcMain, nativeImage, shell, type IpcMainInvokeEvent } from 'electron';
+import { BrowserWindow, app, clipboard, ipcMain, nativeImage, shell, type IpcMainInvokeEvent } from 'electron';
 import { unlink } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { CH } from '../shared/channels';
 import { listSources, captureSource, captureFullDisplay, captureScrollingSource, captureScrollingPreview, persistDataUrl, persistRedactedImage, type RawCapture } from './capture';
 import { fetchAccountSummary } from './account/client';
+import { readBundledLicenseNotices, readLegalDraft } from './app-meta';
 import { getDestination } from './integrations/registry';
 import { contextualise } from './pipeline';
 import { boxesForDetections, locatePiiInOcr } from './ai/pii-locate';
@@ -314,6 +316,19 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
 
   ipcMain.handle(CH.entitlementsGet, () => resolveEntitlements());
   ipcMain.handle(CH.accountGet, () => fetchAccountSummary());
+  ipcMain.handle(CH.appGetMeta, () => ({
+    version: app.getVersion(),
+    licenseNotices: readBundledLicenseNotices(),
+    privacyDraft: readLegalDraft('PRIVACY.md'),
+    eulaDraft: readLegalDraft('EULA.md'),
+  }));
+  ipcMain.handle(CH.appOpenLegal, (_e, doc: 'privacy' | 'eula') => {
+    const file = doc === 'privacy' ? 'PRIVACY.md' : 'EULA.md';
+    if (app.isPackaged) {
+      return shell.openPath(join(process.resourcesPath, 'legal', file));
+    }
+    return shell.openPath(join(app.getAppPath(), 'docs', file));
+  });
   ipcMain.handle(CH.statsGet, () => history.stats(WS));
   ipcMain.handle(CH.eventsRecent, (_e, limit = 8) => events.recent(WS, limit));
   ipcMain.handle(CH.integrationsStatuses, async () => {
