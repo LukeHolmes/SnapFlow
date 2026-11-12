@@ -4,9 +4,11 @@
 
 ## 1. Licence grant
 
-**TODO:** Luke must select an open-source licence for the SnapFlow **source code** (repository). This EULA governs use of the **distributed application binary** once a licence is chosen.
+SnapFlow is **proprietary software**. **Copyright (c) 2026 Luke Holmes. All rights reserved.**
 
-Until then, binaries built from this repository are provided **as-is for evaluation** only.
+Use of the application is governed by this EULA and the repository `LICENSE` file (also bundled as `legal/LICENSE` in installers). You may not redistribute, modify, or create derivative works except as expressly permitted in writing by Luke Holmes.
+
+Third-party open-source libraries included in the build remain under their own licences; see bundled third-party licence notices in the About screen.
 
 ## 2. Acceptable use
 

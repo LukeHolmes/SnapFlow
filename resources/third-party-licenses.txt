@@ -1,5 +1,5 @@
 SnapFlow — third-party open-source licences (production dependencies)
-Generated at build time; draft until project licence is chosen. Do not treat as legal advice.
+SnapFlow is proprietary; these entries cover bundled dependency licences only. Not legal advice.
 ---
 ├─ argparse@2.0.1
 │  ├─ licenses: Python-2.0
@@ -205,9 +205,9 @@ Generated at build time; draft until project licence is chosen. Do not treat as 
 ├─ snapflow@1.1.0
 │  ├─ licenses: UNLICENSED
 │  ├─ private: true
-│  ├─ publisher: SnapFlow
+│  ├─ publisher: Luke Holmes
 │  ├─ path: /agent/repos/SnapFlow
-│  └─ licenseFile: /agent/repos/SnapFlow/README.md
+│  └─ licenseFile: /agent/repos/SnapFlow/LICENSE
 ├─ tesseract.js-core@5.1.1
 │  ├─ licenses: Apache-2.0
 │  ├─ repository: https://github.com/naptha/tesseract.js-core

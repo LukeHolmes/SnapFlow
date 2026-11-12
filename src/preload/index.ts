@@ -74,7 +74,7 @@ const api = {
   app: {
     getMeta: (): Promise<{ version: string; licenseNotices: string; privacyDraft: string; eulaDraft: string }> =>
       ipcRenderer.invoke(CH.appGetMeta),
-    openLegal: (doc: 'privacy' | 'eula'): Promise<string> => ipcRenderer.invoke(CH.appOpenLegal, doc),
+    openLegal: (doc: 'privacy' | 'eula' | 'license'): Promise<string> => ipcRenderer.invoke(CH.appOpenLegal, doc),
   },
   stats: { get: (): Promise<Stats> => ipcRenderer.invoke(CH.statsGet) },
   events: { recent: (limit?: number): Promise<ActivityEvent[]> => ipcRenderer.invoke(CH.eventsRecent, limit) },

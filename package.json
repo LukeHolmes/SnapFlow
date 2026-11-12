@@ -2,7 +2,7 @@
   "name": "snapflow",
   "version": "1.1.0",
   "description": "SnapFlow — smart screen capture. Capture → Context → Deliver.",
-  "author": "SnapFlow",
+  "author": "Luke Holmes",
   "license": "UNLICENSED",
   "private": true,
   "main": "./out/main/index.js",
@@ -68,6 +68,7 @@
     ],
     "extraResources": [
       { "from": "resources/third-party-licenses.txt", "to": "third-party-licenses.txt" },
+      { "from": "LICENSE", "to": "legal/LICENSE" },
       { "from": "docs/PRIVACY.md", "to": "legal/PRIVACY.md" },
       { "from": "docs/EULA.md", "to": "legal/EULA.md" }
     ],

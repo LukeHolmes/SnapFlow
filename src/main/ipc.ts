@@ -322,11 +322,12 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     privacyDraft: readLegalDraft('PRIVACY.md'),
     eulaDraft: readLegalDraft('EULA.md'),
   }));
-  ipcMain.handle(CH.appOpenLegal, (_e, doc: 'privacy' | 'eula') => {
-    const file = doc === 'privacy' ? 'PRIVACY.md' : 'EULA.md';
+  ipcMain.handle(CH.appOpenLegal, (_e, doc: 'privacy' | 'eula' | 'license') => {
+    const file = doc === 'privacy' ? 'PRIVACY.md' : doc === 'eula' ? 'EULA.md' : 'LICENSE';
     if (app.isPackaged) {
       return shell.openPath(join(process.resourcesPath, 'legal', file));
     }
+    if (doc === 'license') return shell.openPath(join(app.getAppPath(), 'LICENSE'));
     return shell.openPath(join(app.getAppPath(), 'docs', file));
   });
   ipcMain.handle(CH.statsGet, () => history.stats(WS));

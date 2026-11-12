@@ -25,12 +25,14 @@ export default function About() {
         <div className="account-info">
           <span className="account-name">SnapFlow</span>
           <span className="account-email">Version {version}</span>
+          <span className="account-email" style={{ marginTop: 4 }}>
+            Copyright © 2026 Luke Holmes. All rights reserved. Proprietary software.
+          </span>
         </div>
       </div>
 
       <p className="integration-hint" style={{ marginTop: 12 }}>
         DRAFT — Privacy Policy and EULA below are for Luke&apos;s review only, not final legal text.
-        Open-source project licence is not yet chosen (see repository TODO).
       </p>
 
       <div className="card" style={{ marginTop: 16, padding: '14px 18px', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -39,6 +41,9 @@ export default function About() {
         </button>
         <button type="button" className="btn-secondary" onClick={() => void api.app.openLegal('eula')}>
           <FileText size={15} /> Open EULA (draft)
+        </button>
+        <button type="button" className="btn-secondary" onClick={() => void api.app.openLegal('license')}>
+          <FileText size={15} /> Proprietary licence (LICENSE)
         </button>
         <button type="button" className="btn-secondary" onClick={() => window.open('https://github.com/LukeHolmes/SnapFlow/blob/main/docs/AUTO_UPDATE.md', '_blank')}>
           <ExternalLink size={15} /> Auto-update notes

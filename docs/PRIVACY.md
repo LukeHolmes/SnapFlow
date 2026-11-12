@@ -47,4 +47,4 @@ Packaged builds may check **GitHub Releases** for newer versions. That check con
 
 ## Changes
 
-This draft will be versioned when the project licence and company entity are chosen.
+This draft will be versioned when the company entity and support contact are finalized. SnapFlow is proprietary software (see repository `LICENSE`).

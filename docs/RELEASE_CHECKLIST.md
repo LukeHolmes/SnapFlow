@@ -1,4 +1,4 @@
-# Release checklist (free / open-source readiness)
+# Release checklist (proprietary / release readiness)
 
 Companion to on-device sign-off in `docs/RELEASE_CHECKLIST_1.1.md`.
 
@@ -9,11 +9,10 @@ Companion to on-device sign-off in `docs/RELEASE_CHECKLIST_1.1.md`.
 - [ ] **Manual packaging workflow** — `.github/workflows/package-unix.yml` (`workflow_dispatch` only; **not** on push/PR).
 - [ ] **Draft legal docs** — `docs/PRIVACY.md`, `docs/EULA.md` (marked DRAFT).
 - [ ] **Third-party notices** — `npm run licenses:bundle` → `resources/third-party-licenses.txt`, bundled in installer; shown on **About** screen.
-- [ ] **About screen** — version, licence notices, links to open draft privacy/EULA.
+- [ ] **About screen** — version, copyright line, licence notices, links to open draft privacy/EULA/proprietary LICENSE.
+- [ ] **Proprietary LICENSE** — root `LICENSE` (Copyright © 2026 Luke Holmes); `package.json` `license` remains `UNLICENSED`; bundled in installers via `extraResources`.
 
 ## Still needs Luke (blockers for paid/public release)
-
-- [ ] **Project LICENSE** — repository is `UNLICENSED` / private; **choose and add a LICENSE file** before public distribution.
 - [ ] **Production backend hosting** — URL, data retention, DPA, support contact for cloud sync/AI/delivery.
 - [ ] **Code signing** — Apple Developer ID + notarization; Windows Authenticode for NSIS; document for Linux package repos if applicable.
 - [ ] **Device QA** — Windows and macOS hardware passes from `docs/RELEASE_CHECKLIST_1.1.md`.

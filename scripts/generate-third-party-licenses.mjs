@@ -24,7 +24,7 @@ if (run.status !== 0) {
 
 const banner = [
   'SnapFlow — third-party open-source licences (production dependencies)',
-  'Generated at build time; draft until project licence is chosen. Do not treat as legal advice.',
+  'SnapFlow is proprietary; these entries cover bundled dependency licences only. Not legal advice.',
   '---',
   '',
 ].join('\n');
