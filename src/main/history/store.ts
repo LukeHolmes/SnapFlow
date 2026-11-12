@@ -10,10 +10,10 @@ export class HistoryStore {
     this.db.prepare(
       `INSERT INTO captures (
          id, workspace_id, filename, image_path, kind, media_path, duration_ms, byte_size,
-         tag, ocr_text, has_pii, created_at, updated_at, deleted, dirty
+         tag, ocr_text, has_pii, pii_redacted, created_at, updated_at, deleted, dirty
        ) VALUES (
          @id, @workspaceId, @filename, @imagePath, @kind, @mediaPath, @durationMs, @byteSize,
-         @tag, @ocrText, @hasPii, @createdAt, @createdAt, 0, 1
+         @tag, @ocrText, @hasPii, @piiRedacted, @createdAt, @createdAt, 0, 1
        )`
     ).run({
       id: c.id, workspaceId: c.workspaceId, filename: c.filename, imagePath: c.imagePath,
@@ -21,7 +21,9 @@ export class HistoryStore {
       mediaPath: c.mediaPath ?? null,
       durationMs: c.durationMs ?? null,
       byteSize: c.byteSize ?? null,
-      tag: c.tag, ocrText: c.ocrText, hasPii: c.hasPii ? 1 : 0, createdAt: c.createdAt,
+      tag: c.tag, ocrText: c.ocrText, hasPii: c.hasPii ? 1 : 0,
+      piiRedacted: c.piiRedactedApplied ? 1 : 0,
+      createdAt: c.createdAt,
     });
   }
 
@@ -101,7 +103,7 @@ export class HistoryStore {
       total:       n(`SELECT COUNT(*) n FROM captures WHERE workspace_id = ? AND deleted = 0`),
       ocrIndexed:  n(`SELECT COUNT(*) n FROM captures WHERE workspace_id = ? AND deleted = 0 AND length(ocr_text) > 0`),
       sent:        n(`SELECT COUNT(*) n FROM events   WHERE workspace_id = ? AND kind IN ('sent', 'delivered')`),
-      piiRedacted: n(`SELECT COUNT(*) n FROM captures WHERE workspace_id = ? AND deleted = 0 AND has_pii = 1`),
+      piiRedacted: n(`SELECT COUNT(*) n FROM captures WHERE workspace_id = ? AND deleted = 0 AND pii_redacted = 1`),
     };
   }
 

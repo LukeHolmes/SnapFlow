@@ -5,6 +5,7 @@ import { config } from './config';
 import { errorMiddleware } from './errors';
 import { authRouter } from './auth/routes';
 import { entitlementsRouter } from './entitlements/routes';
+import './entitlements/account-route';
 import { aiRouter } from './ai/routes';
 import { vaultRouter } from './vault/routes';
 import { billingRouter } from './billing/routes';

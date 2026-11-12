@@ -36,6 +36,7 @@ export const CH = {
   guidesUpdate:       'guides:update',
   guidesExportMarkdown:'guides:exportMarkdown',
   entitlementsGet:    'entitlements:get',
+  accountGet:         'account:get',
   statsGet:           'stats:get',
   eventsRecent:       'events:recent',
   // Region-select overlay

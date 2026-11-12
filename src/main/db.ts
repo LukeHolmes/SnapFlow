@@ -29,6 +29,7 @@ function migrate(db: Db): void {
   if (!cols.includes('media_path')) db.exec(`ALTER TABLE captures ADD COLUMN media_path TEXT`);
   if (!cols.includes('duration_ms')) db.exec(`ALTER TABLE captures ADD COLUMN duration_ms INTEGER`);
   if (!cols.includes('byte_size'))  db.exec(`ALTER TABLE captures ADD COLUMN byte_size INTEGER`);
+  if (!cols.includes('pii_redacted')) db.exec(`ALTER TABLE captures ADD COLUMN pii_redacted INTEGER NOT NULL DEFAULT 0`);
   db.exec(`UPDATE captures SET updated_at = created_at WHERE updated_at = 0`);
 }
 
