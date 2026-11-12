@@ -25,7 +25,7 @@ Copy env templates once per machine (not in the update script): `cp .env.example
 
 | Service | Port | Start | Notes |
 |---------|------|-------|-------|
-| Backend API | 3001 | `cd backend && npm run dev` | Default SQLite (`DB_PATH`); `DEV_LOGIN=true` enables `POST /auth/token`. |
+| Backend API | 3001 | `cd backend && npm run dev` | Default SQLite (`DB_PATH`); set `DEV_LOGIN=true` in `backend/.env` to enable `POST /auth/token` (defaults off). |
 | Electron dev | 5173 (renderer) | `npm run dev` from root | `predev` rebuilds `better-sqlite3` for Electron. |
 | Docker (optional) | 5432 / 6379 / 9000 | `cd backend && docker compose up -d` | Postgres/Redis/MinIO only needed for `DATABASE_URL` or future infra; not required for default dev. |
 

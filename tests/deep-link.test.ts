@@ -28,3 +28,16 @@ test('parseDeepLinkUrl rejects unknown destinations on error', () => {
   assert.equal(result?.kind, 'error');
   assert.equal(result?.destination, null);
 });
+
+test('parseDeepLinkUrl rejects non-oauth paths', () => {
+  assert.equal(parseDeepLinkUrl('snapflow://evil.example/callback?destination=slack'), null);
+});
+
+test('parseGoogleDriveOAuthDeepLink requires destination=google-drive', async () => {
+  const { parseGoogleDriveOAuthDeepLink } = await import('../src/main/deep-link');
+  assert.deepEqual(
+    parseGoogleDriveOAuthDeepLink('snapflow://oauth/callback?destination=google-drive&code=abc&state=xyz'),
+    { code: 'abc', state: 'xyz' },
+  );
+  assert.equal(parseGoogleDriveOAuthDeepLink('snapflow://oauth/callback?destination=slack&code=a&state=b'), null);
+});

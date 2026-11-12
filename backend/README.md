@@ -29,12 +29,12 @@ current store/rate-limit ports.
 | GET  | `/auth/oauth/:provider/start` | — | Begin OAuth login (redirects to Google/GitHub) |
 | GET  | `/auth/oauth/:provider/callback` | — | OAuth callback: exchange code → issue bearer |
 | GET  | `/v1/search` | ✅ | Server-side Team search across the shared library (Team only) |
-| POST | `/v1/deliver` | ✅ | Server-side delivery using vault OAuth tokens (Slack, Jira, Notion, Gmail, GitHub) |
+| POST | `/v1/deliver` | ✅ | Server-side delivery using vault OAuth tokens (402 for **free** tier) |
 | GET  | `/v1/entitlements` | ✅ | Server-authoritative tier capabilities |
 | POST | `/v1/ai/tag` | ✅ | Metered, tier-gated auto-tagging (Free rejected with 402) |
 | GET/POST/DELETE | `/v1/integrations/*` | ✅ | Destination OAuth URL, status, Slack/Notion/GitHub helpers, disconnect |
 | PUT/GET/DELETE | `/v1/vault/:destination` | ✅ | Encrypted OAuth credential store (GET returns metadata only) |
-| POST | `/v1/billing/webhook` | — | Paddle/Stripe stub → tier update (verify signature in prod) |
+| POST | `/v1/billing/webhook` | HMAC | Tier update (`Snapflow-Signature: t=…,v1=…`); unsigned allowed only in dev when `DEV_LOGIN=true` and no secret |
 | POST | `/v1/sync/push` | ✅ | Upsert capture metadata (LWW); returns the new cursor |
 | GET  | `/v1/sync/pull` | ✅ | Changed records since a cursor (workspace-scoped) |
 | PUT/GET | `/v1/sync/blob/:id` | ✅ | Lazy image blob up/download |
@@ -49,7 +49,7 @@ Sync endpoints are gated on the `cloudSync` entitlement (Free/Perpetual → 402)
   `withDestinationAccessToken` reveals them only inside `POST /v1/deliver` handlers.
 - **Server-authoritative entitlements** — the desktop client mirror is UX only.
 - **OAuth login** — authorization-code flow with single-use CSRF state; Google/GitHub
-  presets from env. Dev email→token login stays available behind `DEV_LOGIN=true`.
+  presets from env. Dev email→token login: set `DEV_LOGIN=true` locally (defaults to **false**).
 - **Postgres or SQLite** — one async store port, two adapters; set `DATABASE_URL` for Postgres.
 - **Modular monolith** — clean module boundaries, no microservice overhead for a small team;
   the AI proxy is the one module clean enough to extract later if volume demands.

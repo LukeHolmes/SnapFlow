@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, globalShortcut } from 'electron';
+import { app, BrowserWindow, shell, globalShortcut, session } from 'electron';
 import { join } from 'node:path';
 import { CH } from '../shared/channels';
 import { openDb } from './db';
@@ -14,8 +14,10 @@ import { registerBuiltins } from './integrations/registry';
 import { configureIntegrationRuntime } from './integrations/runtime';
 import { disposeOcr } from './ocr';
 import { closePinnedCaptures } from './pin';
-import { parseDeepLinkUrl } from './deep-link';
+import { parseDeepLinkUrl, parseGoogleDriveOAuthDeepLink } from './deep-link';
 import { completeGoogleDriveOAuthFromDeepLink } from './integrations/google-drive/service';
+import { scheduleEntitlementsRefresh } from './entitlements';
+import { DEV_CSP, PACKAGED_CSP } from './security/csp';
 
 let win: BrowserWindow | null = null;
 
@@ -28,28 +30,20 @@ if (process.defaultApp) {
 }
 
 function handleDeepLink(url: string): void {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol === 'snapflow:' && parsed.searchParams.get('destination') === 'google-drive') {
-      const code = parsed.searchParams.get('code');
-      const state = parsed.searchParams.get('state');
-      if (code && state) {
-        void completeGoogleDriveOAuthFromDeepLink(code, state).then(result => {
-          if (win && !win.isDestroyed()) {
-            win.show();
-            win.focus();
-          }
-          if (result.ok) {
-            win?.webContents.send(CH.integrationConnected, 'google-drive');
-          } else {
-            win?.webContents.send(CH.integrationError, 'google-drive', result.detail);
-          }
-        });
-        return;
+  const google = parseGoogleDriveOAuthDeepLink(url);
+  if (google) {
+    void completeGoogleDriveOAuthFromDeepLink(google.code, google.state).then(result => {
+      if (win && !win.isDestroyed()) {
+        win.show();
+        win.focus();
       }
-    }
-  } catch {
-    /* fall through to generic parser */
+      if (result.ok) {
+        win?.webContents.send(CH.integrationConnected, 'google-drive');
+      } else {
+        win?.webContents.send(CH.integrationError, 'google-drive', result.detail);
+      }
+    });
+    return;
   }
 
   const result = parseDeepLinkUrl(url);
@@ -87,11 +81,24 @@ if (!gotTheLock) {
   });
 }
 
+function installContentSecurityPolicy(): void {
+  const policy = app.isPackaged ? PACKAGED_CSP : DEV_CSP;
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const responseHeaders = { ...details.responseHeaders, 'Content-Security-Policy': [policy] };
+    callback({ responseHeaders });
+  });
+}
+
 function createWindow(): void {
   win = new BrowserWindow({
     width: 1280, height: 820, minWidth: 1024, minHeight: 680,
     backgroundColor: '#EDEBE5', titleBarStyle: 'hiddenInset', show: false,
-    webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, nodeIntegration: false, sandbox: false },
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
   });
   win.once('ready-to-show', () => win?.show());
   win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
@@ -101,7 +108,11 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  installContentSecurityPolicy();
   const engine = createEngine(openDb(dbPath()));
+  const stopEntitlementsRefresh = scheduleEntitlementsRefresh(engine.entitlementsCache);
+  app.on('will-quit', () => stopEntitlementsRefresh());
+
   const sync = createSyncAgent(engine);
   registerBuiltins();
   configureIntegrationRuntime({ sync, engine });
