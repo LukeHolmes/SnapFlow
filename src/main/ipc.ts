@@ -16,6 +16,8 @@ import {
   readStoredApiToken,
 } from './auth/token-store';
 import { startOAuthLogin, type LoginProvider } from './auth/login';
+import { revokeBackendSession } from './auth/revoke-client';
+import { cloudAiGate } from './ai/cloud-guard';
 import { openExternalHttps } from './shell-safe';
 import { boxesForDetections, locatePiiInOcr } from './ai/pii-locate';
 import { aiProxyFromEnv } from './ai/proxy-client';
@@ -485,10 +487,11 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   });
 
   ipcMain.handle(CH.diffSummarise, async (_e, args: { beforeId: string; afterId: string }) => {
-    if (!ent().aiEnabled) return { ok: false, error: 'Diff AI summary requires Pro or Team' };
     const before = history.get(WS, args.beforeId);
     const after  = history.get(WS, args.afterId);
     if (!before?.imagePath || !after?.imagePath) return { ok: false, error: 'Capture not found' };
+    const gate = cloudAiGate(engine.db, ent(), [before, after]);
+    if (!gate.ok) return { ok: false, error: gate.error };
     try {
       const summary = await proxy.diffSummary(readFileSync(before.imagePath), readFileSync(after.imagePath), ent());
       return { ok: true, summary: summary ?? 'Unable to summarise changes.' };
@@ -528,7 +531,8 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     hasToken: !!readStoredApiToken(),
   }));
   ipcMain.handle(CH.authLoginStart, async (_e, provider: LoginProvider) => startOAuthLogin(provider));
-  ipcMain.handle(CH.authSignOut, () => {
+  ipcMain.handle(CH.authSignOut, async () => {
+    await revokeBackendSession();
     clearStoredApiToken();
     entitlementsCache.clear();
     for (const w of BrowserWindow.getAllWindows()) {

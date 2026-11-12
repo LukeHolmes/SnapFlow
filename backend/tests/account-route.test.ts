@@ -12,7 +12,7 @@ process.env.DATA_DIR = dir;
 process.env.AUTH_SECRET = 'test-account-secret';
 
 const { initDb, _resetDb } = await import('../src/store');
-const { issueToken } = await import('../src/auth/tokens');
+const { issueBearerToken } = await import('../src/auth/sessions');
 const { accounts } = await import('../src/accounts/store');
 
 await initDb();
@@ -25,7 +25,7 @@ after(async () => {
 
 test('GET /v1/account returns email and tier for bearer', async () => {
   const acct = await accounts.getOrCreate('user@example.com', 'pro');
-  const token = issueToken(acct.id);
+  const token = await issueBearerToken(acct.id);
   const res = await request(app).get('/v1/account').set('Authorization', `Bearer ${token}`);
   assert.equal(res.status, 200);
   assert.equal(res.body.email, 'user@example.com');

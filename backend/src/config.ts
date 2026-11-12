@@ -42,6 +42,11 @@ export const config = {
 
   authSecret,
 
+  /** Short-lived API access tokens (seconds). Default 15 minutes. */
+  accessTokenTtlSec: Number(process.env.ACCESS_TOKEN_TTL_SEC ?? 15 * 60),
+  /** Refresh token lifetime for desktop sessions (milliseconds). Default 30 days. */
+  refreshTokenTtlMs: Number(process.env.REFRESH_TOKEN_TTL_MS ?? 30 * 24 * 60 * 60 * 1000),
+
   // 32-byte hex key for the OAuth vault (AES-256-GCM). If empty, derived from
   // authSecret for dev only — set a real VAULT_KEY in production.
   vaultKey: process.env.VAULT_KEY ?? '',

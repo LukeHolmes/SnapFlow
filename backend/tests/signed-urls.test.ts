@@ -18,7 +18,7 @@ const { initDb, _resetDb } = await import('../src/store');
 const { _resetBlobStorage } = await import('../src/storage');
 const { sync } = await import('../src/sync/store');
 const { buildCaptureUrl, verifyCaptureSignature } = await import('../src/storage/signed-url');
-const { issueToken } = await import('../src/auth/tokens');
+const { issueBearerToken } = await import('../src/auth/sessions');
 const { accounts } = await import('../src/accounts/store');
 
 await initDb();
@@ -28,7 +28,7 @@ const app = createApp();
 
 async function bearerFor(tier: 'free' | 'pro' = 'pro'): Promise<{ token: string; accountId: string }> {
   const account = await accounts.getOrCreate(`${tier}-signed@test.local`, tier);
-  return { token: issueToken(account.id), accountId: account.id };
+  return { token: await issueBearerToken(account.id), accountId: account.id };
 }
 
 after(async () => {

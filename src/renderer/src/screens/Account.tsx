@@ -166,9 +166,9 @@ export default function Account({ flash }: Props) {
         <div className="card" style={{ marginTop: 16 }}>
           <div className="plan-feature-row" style={{ alignItems: 'center' }}>
             <div>
-              <span className="plan-feature-key">Cloud AI auto-tagging</span>
+              <span className="plan-feature-key">Cloud AI (tagging & diff summary)</span>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: '#666' }}>
-                Off by default. When enabled, capture PNGs are sent to your configured SnapFlow AI proxy for tagging. Captures with detected PII are never sent; redact first or rely on local heuristics only.
+                Off by default. When enabled, capture PNGs are sent to your configured SnapFlow AI proxy for auto-tagging and diff summaries. Captures with detected PII are never sent until pixels are redacted.
               </p>
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

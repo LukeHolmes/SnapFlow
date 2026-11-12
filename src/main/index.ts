@@ -17,7 +17,7 @@ import { configureIntegrationRuntime } from './integrations/runtime';
 import { disposeOcr } from './ocr';
 import { closePinnedCaptures } from './pin';
 import { parseAccountTokenDeepLink, parseDeepLinkUrl, parseGoogleDriveOAuthDeepLink } from './deep-link';
-import { writeStoredApiToken } from './auth/token-store';
+import { writeStoredAuthBundle } from './auth/token-store';
 import { openExternalHttps } from './shell-safe';
 import { completeGoogleDriveOAuthFromDeepLink } from './integrations/google-drive/service';
 import { scheduleEntitlementsRefresh } from './entitlements';
@@ -39,7 +39,13 @@ if (process.defaultApp) {
 function handleDeepLink(url: string): void {
   const accountToken = parseAccountTokenDeepLink(url);
   if (accountToken) {
-    writeStoredApiToken(accountToken.token);
+    writeStoredAuthBundle({
+      accessToken: accountToken.accessToken,
+      refreshToken: accountToken.refreshToken,
+      accessExpiresAt: accountToken.expiresIn
+        ? Date.now() + accountToken.expiresIn * 1000
+        : undefined,
+    });
     engineRef?.entitlementsCache.clear();
     void engineRef?.entitlementsCache.refresh();
     if (win && !win.isDestroyed()) {

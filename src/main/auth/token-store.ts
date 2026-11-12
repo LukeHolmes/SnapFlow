@@ -3,6 +3,12 @@ import { join } from 'node:path';
 
 const FALLBACK_FILE = 'auth-token.dat';
 
+export interface StoredAuthBundle {
+  accessToken: string;
+  refreshToken?: string;
+  accessExpiresAt?: number;
+}
+
 type ElectronApp = {
   isPackaged: boolean;
   getPath: (name: 'userData') => string;
@@ -29,10 +35,40 @@ function userDataPath(): string | null {
   return loadElectron()?.app.getPath('userData') ?? null;
 }
 
-function fallbackPath(): string {
+function authFilePath(): string | null {
   const base = userDataPath();
-  if (!base) throw new Error('Electron app is not available');
-  return join(base, FALLBACK_FILE);
+  return base ? join(base, FALLBACK_FILE) : null;
+}
+
+function readRawAuthFile(): string | null {
+  const file = authFilePath();
+  if (!file) return null;
+  const electron = loadElectron();
+  try {
+    if (electron?.safeStorage.isEncryptionAvailable()) {
+      try {
+        const enc = readFileSync(file);
+        return electron.safeStorage.decryptString(enc);
+      } catch {
+        return null;
+      }
+    }
+    return readFileSync(file, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+function parseBundle(raw: string): StoredAuthBundle | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('{')) {
+    try {
+      const json = JSON.parse(trimmed) as StoredAuthBundle;
+      if (typeof json.accessToken === 'string' && json.accessToken) return json;
+    } catch { /* legacy plain token */ }
+  }
+  return { accessToken: trimmed };
 }
 
 export function isAuthEncryptionAvailable(): boolean {
@@ -40,51 +76,46 @@ export function isAuthEncryptionAvailable(): boolean {
   return !!electron?.safeStorage.isEncryptionAvailable();
 }
 
-export function readStoredApiToken(): string | null {
-  const base = userDataPath();
-  if (!base) return null;
-  const electron = loadElectron();
-  try {
-    if (electron?.safeStorage.isEncryptionAvailable()) {
-      const file = join(base, FALLBACK_FILE);
-      try {
-        const enc = readFileSync(file);
-        const plain = electron.safeStorage.decryptString(enc);
-        return plain || null;
-      } catch {
-        return null;
-      }
-    }
-    const plain = readFileSync(join(base, FALLBACK_FILE), 'utf8').trim();
-    return plain || null;
-  } catch {
-    return null;
-  }
+export function readStoredAuthBundle(): StoredAuthBundle | null {
+  const raw = readRawAuthFile();
+  return raw ? parseBundle(raw) : null;
 }
 
-export function writeStoredApiToken(token: string): void {
+export function readStoredApiToken(): string | null {
+  return readStoredAuthBundle()?.accessToken ?? null;
+}
+
+function writeRawAuthFile(contents: string): void {
   const electron = loadElectron();
   if (!electron) throw new Error('Electron app is not available');
   mkdirSync(electron.app.getPath('userData'), { recursive: true });
+  const file = authFilePath()!;
   if (electron.safeStorage.isEncryptionAvailable()) {
-    const enc = electron.safeStorage.encryptString(token);
-    writeFileSync(fallbackPath(), enc);
+    writeFileSync(file, electron.safeStorage.encryptString(contents));
     return;
   }
-  writeFileSync(fallbackPath(), token, { mode: 0o600 });
+  writeFileSync(file, contents, { mode: 0o600 });
+}
+
+export function writeStoredAuthBundle(bundle: StoredAuthBundle): void {
+  writeRawAuthFile(JSON.stringify(bundle));
+}
+
+export function writeStoredApiToken(token: string): void {
+  writeStoredAuthBundle({ accessToken: token });
 }
 
 export function clearStoredApiToken(): void {
   try {
-    const base = userDataPath();
-    if (base) unlinkSync(join(base, FALLBACK_FILE));
+    const file = authFilePath();
+    if (file) unlinkSync(file);
   } catch { /* ok */ }
 }
 
 /** Packaged: safeStorage only. Dev unpackaged: stored token or SNAPFLOW_API_TOKEN fallback. */
 export function resolveApiToken(): string | undefined {
-  const stored = readStoredApiToken();
-  if (stored) return stored;
+  const stored = readStoredAuthBundle();
+  if (stored?.accessToken) return stored.accessToken;
   const electron = loadElectron();
   const unpackaged = !electron?.app.isPackaged;
   if (unpackaged && process.env.SNAPFLOW_API_TOKEN) {
