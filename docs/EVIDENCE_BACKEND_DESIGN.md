@@ -4,7 +4,9 @@
 >
 > **Audience:** Luke Holmes, validation/QA pilot stakeholders.  
 > **Regulatory framing:** 21 CFR Part 11, EU GMP Annex 11, ALCOA+ (Attributable, Legible, Contemporaneous, Original, Accurate + Complete, Consistent, Enduring, Available).  
-> **Hosting target (planned):** Supabase **Free** tier, org *The Holmes Syndicate*, region **`eu-central-1`** (EU data residency preference).  
+> **Part 11 scope (pilot):** Formal Part 11–style controls apply to the **cloud evidence module** only; the wider SnapFlow desktop remains a supporting system in the customer’s validated stack.  
+> **Hosting (pilot):** Supabase **Free** tier, org *The Holmes Syndicate*, region **`eu-central-1`** (Frankfurt).  
+> **Architecture (pilot):** **Hybrid** — Supabase (Postgres, Storage, Auth) + existing Node **`/v1` BFF**.  
 > **Desktop principle (unchanged):** Capture, OCR, PII detection, and local search remain **local-first** with **zero runtime dependency** on cloud; evidence sync is **opt-in** and tier-gated.
 
 ---
@@ -16,7 +18,7 @@
 | Entity | Purpose |
 |--------|---------|
 | **Organisation (tenant)** | Legal/customer boundary; all RLS keys off `organisation_id`. |
-| **User** | Human actor; linked to Supabase Auth `auth.users` (recommended) or mapped from custom IdP. |
+| **User** | Human actor; **pilot:** Google / GitHub via Supabase Auth; **later:** corporate SSO. |
 | **Membership** | `(organisation_id, user_id, role)` — roles: `tester`, `reviewer`, `qa_approver`, `admin`. |
 | **Audit identity** | Every cloud row stores `created_by_user_id` + server `created_at`; client-supplied user id is never trusted alone. |
 
@@ -33,8 +35,8 @@
 
 | Entity | Purpose |
 |--------|---------|
-| **Evidence item** | One logical piece of proof: links **local capture id** (UUID), optional **step** and **CR**, metadata (tag, timestamps, hashes), and **blob refs**. |
-| **Evidence version** | Immutable file generation: `original` (hash sealed at ingest), `processed` (annotations/focus-blur), `redacted` (PII masked) — each a new version row + storage object, never overwrite. |
+| **Evidence item** | One logical piece of proof: links **local capture id** (UUID), metadata (tag, timestamps, hashes), and **blob refs**. **Must** reference a **test step** *or* a **change record** (CR is not mandatory on every item). |
+| **Evidence version** | **Desktop:** immutable local generations (`original`, `processed`, `redacted`). **Cloud (pilot):** ingest **`redacted` only** — no original/processed PNGs in Supabase Storage; local original hash may be stored in metadata for traceability. |
 | **Evidence pack** | Bundle for review/export: selected items + manifest hash + status (`draft` → `submitted` → `reviewed` → `approved`). |
 | **Deviation / defect** | Non-conformance linked to step/item; workflow state; may reference evidence items. |
 | **Review / approval** | Part 11-style signature records on pack or deviation; bound to content hash at sign time. |
@@ -66,11 +68,11 @@ erDiagram
 
 | Control | Design |
 |---------|--------|
-| **Content hashing** | SHA-256 of each stored object (original and each derivative). Hash computed **server-side** on upload (stream hash); client may send `client_sha256` for mismatch detection only. |
+| **Content hashing** | SHA-256 of each **cloud-stored** object (pilot: redacted PNG only). Hash computed **server-side** on upload (stream hash). Desktop may send `local_original_sha256` (no blob) for linkage to the local immutable original. |
 | **Trusted time** | `recorded_at` = `now()` at ingest (Postgres `timestamptz`); `client_captured_at` stored separately, labelled non-authoritative. |
 | **Attribution** | `created_by_user_id` from JWT; desktop local captures keep `local_user_ref` until sync binds to cloud user. |
-| **Immutable originals** | `evidence_versions.kind = 'original'` — no UPDATE on blob path or hash; new processing → new version row. |
-| **Redaction lineage** | `redacted` version `parent_version_id` → `original`; delivery/redacted desktop path mirrors this model. |
+| **Immutable originals** | **Local only:** original PNG + hash never overwritten on disk. **Cloud:** no original object; audit records ingest of redacted derivative only. |
+| **Redaction lineage** | Desktop redaction pipeline links redacted → local original; cloud `redacted` row stores `local_original_sha256` (and optional `local_capture_id`) in metadata. |
 | **Audit hash chain** | Each `audit_log` row: `payload_hash`, `prev_hash`, `chain_hash = SHA256(prev_hash \|\| canonical_json(payload))`. Genesis row uses fixed `prev_hash = '0'`. |
 | **Anchoring (optional, later)** | Daily Merkle root of `chain_hash` values stored off-box (e.g. object metadata, third-party timestamp service) for pilot+; not required for MVP demo. |
 
@@ -105,8 +107,8 @@ Draft DDL patterns live in `docs/design/evidence-schema.draft.sql` (**not applie
 
 | Topic | Pilot MVP | Later |
 |-------|-----------|-------|
-| **Re-authentication** | Password / MFA step via Supabase Auth immediately before sign action | SSO + hardware key, step-up policies |
-| **Meaning** | Enum: `author`, `review`, `approve` stored on `signatures` row | Configurable signature meanings per org SOP |
+| **Re-authentication** | Password / MFA step via Supabase Auth (Google/GitHub-linked account) immediately before sign action | Corporate SSO + hardware key, step-up policies |
+| **Meaning** | Enum: `author`, `reviewer`, `approver` stored on `signatures` row | Configurable **display labels** per organisation SOP |
 | **Manifest binding** | `signed_payload_hash` = SHA-256 of canonical pack manifest JSON at sign time | Full CFR11 compliant manifest + printed PDF embed |
 | **Display** | Pack PDF footer: name, meaning, UTC time, hash short-id | Legally reviewed label text |
 | **Non-repudiation** | Session + audit chain + hash; not qualified eIDAS | Legal review for EU QP sign-off |
@@ -135,9 +137,7 @@ Service role used only for **background jobs** (hash verify, export render), wit
 evidence/
   {organisation_id}/
     {evidence_item_id}/
-      {version_id}_original.png
-      {version_id}_processed.png
-      {version_id}_redacted.png
+      {version_id}_redacted.png    # pilot: only redacted objects in cloud
 exports/
   {organisation_id}/
     {pack_id}/
@@ -161,9 +161,9 @@ exports/
 
 | Topic | Design |
 |-------|--------|
-| **Retention** | Org-level policy: default N years on `evidence_versions`; packs inherit. |
-| **Legal hold** | `legal_hold` flag on organisation/project/item — blocks purge jobs. |
-| **Export** | **PDF evidence pack** (human-readable) + **JSON/CSV manifest** (hashes, versions, signatures, audit excerpt). |
+| **Retention** | **Per-organisation** policy; **default: retain indefinitely** (no automatic purge). |
+| **Legal hold** | `legal_hold` on organisation/project/item — **blocks all deletion** and scheduled purge. |
+| **Export** | **SnapFlow generic PDF evidence pack** (pilot) + **JSON/CSV manifest** (hashes, versions, signatures, audit excerpt). |
 | **Verification tool** | CLI or admin UI: re-download objects, recompute SHA-256, compare manifest; verify audit chain from genesis. |
 | **Purge** | Soft-delete metadata + storage lifecycle; prohibited when hold active; purge itself is an audit event. |
 
@@ -176,26 +176,26 @@ exports/
 | **Queue** | Local `sync_outbox` table: payload idempotency key = `local_capture_id` + `operation` + `content_hash`. |
 | **Offline** | Queue persists; retry with exponential backoff; no user blocking. |
 | **Conflict** | **Last-write-wins on metadata** only for non-GxP fields (title, tag); **evidence versions are append-only** — never merge binary conflicts. |
-| **Never leaves device (default)** | Full **OCR text** when PII flagged; **unredacted** images unless user explicitly opts in to cloud evidence upload for that item. |
-| **What syncs when opted in** | Redacted/processed versions + hashes + minimal metadata; optional original only with explicit QA role + reason captured in audit. |
+| **Never leaves device (default)** | Full **OCR text** (especially when PII flagged); **unredacted** and **original** images. |
+| **What syncs when opted in (pilot)** | **Redacted PNG only** + hashes + minimal metadata; **no cloud originals**. **Cloud AI is off by default** for GxP evidence records (no auto-tag / diff summary on evidence ingest). |
 | **FTS5** | Stays local; cloud search uses Postgres `tsvector` on **non-PII** metadata fields only. |
 
 Maps to existing desktop: cloud sync opt-in, `piiRedactedApplied`, `auth_sessions` bearer, refresh rotation.
 
 ---
 
-## 8. API: Node `/v1` vs Supabase direct
+## 8. API: Node `/v1` BFF + Supabase (decided)
+
+**Pilot architecture:** **Hybrid** — Supabase hosts Postgres, Storage, and Auth (`eu-central-1`); the existing Node service remains the **BFF** for evidence ingest, signing, export, and non-GxP features (deliver, optional product AI).
 
 | Approach | Pros | Cons |
 |----------|------|------|
-| **A. Supabase Auth + direct client** (PostgREST / Realtime / Storage SDK) | Fewer moving parts; RLS is source of truth; good for pilot dashboard later | Business rules in SQL/RPC; less reuse of existing Express deliver/AI routes |
-| **B. Keep Node backend as BFF** | Reuse `auth_sessions`, deliver integrations, AI proxy, hash pipeline | Two auth systems unless unified; more ops |
-| **C. Hybrid (recommended)** | Desktop → **Node BFF** for evidence ingest, signing, export, AI; **Supabase** for Postgres + Storage + Auth; RLS for future web reviewer UI | Slightly more design discipline |
+| **A. Supabase direct only** | Simpler ops | Does not reuse Express evidence/hash pipeline; rejected for pilot |
+| **B. Node-only DB** | Single codepath | Loses RLS-native reviewer UI; rejected |
+| **C. Hybrid (chosen)** | Desktop → **Node BFF** for GxP evidence; **Supabase** for data plane + future reviewer UI | Requires clear boundaries between BFF and RLS |
 
-**Recommendation:** **Hybrid (C)** for pilot.
-
-- **Supabase Auth** as IdP (email/OAuth); org invites via `memberships`.
-- Node exchanges Supabase JWT **or** continues **custom `auth_sessions`** with mapping table `user_auth_links(supabase_user_id, snapflow_account_id)` during transition.
+- **Supabase Auth** for pilot sign-in (**Google / GitHub**); org invites via `memberships`; corporate SSO deferred.
+- Transition mapping: `user_auth_links(supabase_user_id, snapflow_account_id)` while desktop may still use `auth_sessions` for non-evidence APIs.
 - New routes (illustrative): `POST /v1/evidence/ingest`, `POST /v1/evidence/packs`, `POST /v1/evidence/sign`, `GET /v1/evidence/packs/:id/export`.
 - Read-only reviewer UI (later) can use Supabase client + RLS directly.
 
@@ -216,9 +216,9 @@ Sources: [Supabase pricing](https://supabase.com/pricing), [billing guide](https
 | Max upload (single file) | **50 MB** |
 | Backups / PITR | **Not** on Free |
 
-**Pilot fit:** A small QA pilot (tens of users, hundreds of PNGs, metadata-heavy) fits if images are **redacted/compressed** and originals stay local by default. Risk: **1 GB storage** and **50 MB** upload cap — design evidence around **redacted** screenshots and chunked metadata sync.
+**Pilot fit:** Redacted-only uploads and indefinite retention (metadata-heavy) fit if images are **compressed** and originals remain **local only**. Risk: **1 GB storage** and **50 MB** upload cap — keep evidence PNGs redacted and reasonably sized.
 
-**Likely paid triggers (flag only, no decision):** Storage > 1 GB, need **non-pausing** uptime, **PITR/backups**, SSO, >50 MB captures, or regulatory demand for dedicated compute/Enterprise BAA.
+**Likely paid triggers (flag only, no decision):** Storage > 1 GB, need **non-pausing** uptime, **PITR/backups**, **corporate SSO**, >50 MB captures, or regulatory demand for dedicated compute/Enterprise BAA.
 
 ---
 
@@ -227,10 +227,10 @@ Sources: [Supabase pricing](https://supabase.com/pricing), [billing guide](https
 ### Phase 0 — Pilot MVP (credible demo)
 
 1. Organisation + roles + one protocol with steps.  
-2. Desktop: capture → PII redact → diff → attach to **step** + **CR**.  
-3. Opt-in sync: upload **redacted** version only; server stores hash + trusted timestamp.  
+2. Desktop: capture → PII redact → diff → attach to a **test step** *or* **change record** (CR optional).  
+3. Opt-in sync: upload **redacted** PNG only; server stores hash + trusted timestamp (**no cloud originals**, **no cloud AI** on evidence).  
 4. Build **evidence pack** (draft); **reviewer** signature with re-auth.  
-5. Export PDF + JSON manifest; run **verify** script on sample pack.
+5. Export **SnapFlow generic** PDF + JSON manifest; run **verify** script on sample pack.
 
 ### Phase 1 — Hardening
 
@@ -242,18 +242,20 @@ Qualified validation package, SSO, automated regression evidence from CI, multi-
 
 ---
 
-## Open questions (for Luke)
+## Decisions (12 Nov 2026, pilot)
 
-1. **Qualified system boundary:** Is SnapFlow **Part 11 applicable** as a whole, or only the cloud evidence module in a larger validated stack?  
-2. **Original vs redacted in cloud:** For pilot, is **redacted-only** upload acceptable to QA, or must originals reside in cloud under encryption?  
-3. **Identity:** Google/GitHub OAuth vs corporate SSO (Azure AD) for first pharma pilot?  
-4. **Signature wording:** Exact labels for `author` / `review` / `approve` per customer SOP?  
-5. **CR linkage:** Mandatory CR on every evidence item, or only for production-like environments?  
-6. **Retention default:** 2, 5, or 7 years; who sets per organisation?  
-7. **Node BFF vs pure Supabase:** Confirm hybrid (C) or prefer single stack?  
-8. **EU data:** Is `eu-central-1` sufficient, or customer-specific region / self-host requirement?  
-9. **AI in GxP path:** Confirm **zero** cloud AI for evidence records (only local heuristics) unless explicit protocol allows?  
-10. **Export format:** PDF template ownership — SnapFlow generic vs customer Word template merge?
+Luke accepted the recommended defaults for the former open questions. These are binding for pilot design unless explicitly revised:
+
+1. **Part 11 scope:** Controls apply to the **cloud evidence module only** (not the entire desktop product).  
+2. **Cloud images:** Pilot uploads **redacted images only** — **no cloud originals**.  
+3. **Sign-in:** **Google / GitHub** for pilot; **corporate SSO** later.  
+4. **Signatures:** Meaning codes **`author` / `reviewer` / `approver`**; display **labels** configurable per org later.  
+5. **Linkage:** Each evidence item must link to a **test step** *or* a **change record** (CR **not** mandatory on every item).  
+6. **Retention:** Set **per organisation**; default **retain indefinitely**; **legal hold** blocks deletion.  
+7. **Stack:** **Hybrid** — Supabase (Postgres / Storage / Auth) + Node **`/v1` BFF**.  
+8. **Region:** **`eu-central-1`**.  
+9. **Cloud AI:** **Off by default** for GxP evidence records (no proxy tagging/summary on evidence ingest).  
+10. **Export PDF:** **Generic SnapFlow template** for now (customer templates later).
 
 ---
 
