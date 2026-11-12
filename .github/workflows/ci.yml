@@ -49,7 +49,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb
-          xvfb-run -a env ELECTRON_SMOKE_XVFB=1 node --test --import tsx tests/electron-smoke.test.ts
+          xvfb-run -a env ELECTRON_SMOKE_XVFB=1 ELECTRON_SMOKE_NO_CHROME_SANDBOX=1 node --test --import tsx tests/electron-smoke.test.ts
 
   backend:
     name: Backend (typecheck + tests)

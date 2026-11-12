@@ -7,6 +7,11 @@ const { join } = require('node:path');
 
 const root = join(__dirname, '..');
 
+// GitHub-hosted Linux runners lack a setuid chrome-sandbox; renderer preload sandbox
+// (webPreferences.sandbox) is still enabled below.
+if (process.env.CI === 'true' || process.env.ELECTRON_SMOKE_NO_CHROME_SANDBOX === '1') {
+  app.commandLine.appendSwitch('no-sandbox');
+}
 app.commandLine.appendSwitch('disable-gpu');
 
 app.whenReady().then(async () => {
