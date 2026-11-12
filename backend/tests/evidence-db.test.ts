@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import pg from 'pg';
 import { applyEvidenceMigrations } from '../scripts/apply-evidence-migrations.ts';
-import { auditPayloadCanonical, verifyExportedAuditChain } from '../src/evidence/audit-chain.ts';
+import { auditPayloadCanonical } from '../src/evidence/audit-chain.ts';
 
 const databaseUrl =
   process.env.EVIDENCE_DATABASE_URL ??
