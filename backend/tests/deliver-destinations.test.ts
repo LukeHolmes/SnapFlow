@@ -44,7 +44,7 @@ test('gmail deliver builds MIME and posts to Gmail send API', async () => {
     imageBase64: Buffer.from('png').toString('base64'),
     filename: 'Bug report',
     config: { recipients: ['qa@example.com'] },
-    metadata: { tag: 'ui', ocrText: 'Submit', hasPii: false, createdAt: Date.now() },
+    metadata: { tag: 'ui', piiRedacted: false, createdAt: Date.now() },
   });
   assert.equal(result.ok, true);
   assert.match(sendBody, /"raw"/);
@@ -68,7 +68,7 @@ test('notion deliver appends image block with signed capture URL', async () => {
     imageBase64: Buffer.from('png').toString('base64'),
     filename: 'Release',
     config: { page_id: 'page_abc' },
-    metadata: { tag: null, ocrText: '', hasPii: false, createdAt: Date.now() },
+    metadata: { tag: null, piiRedacted: false, createdAt: Date.now() },
   });
   assert.equal(result.ok, true);
   assert.match(patchUrl, /page_abc/);
@@ -83,7 +83,7 @@ test('jira deliver surfaces not_connected when vault is empty', async () => {
       imageBase64: Buffer.from('png').toString('base64'),
       filename: 'Ticket',
       config: { issue_key: 'ENG-1' },
-      metadata: { tag: 'bug', ocrText: '', hasPii: false, createdAt: Date.now() },
+      metadata: { tag: 'bug', piiRedacted: false, createdAt: Date.now() },
     }),
     (err: unknown) => err instanceof AppError && err.code === 'not_connected',
   );

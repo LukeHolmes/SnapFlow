@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { imagesDir } from '../paths';
 import { SyncClient } from './client';
 import { isCloudSyncOptIn } from './prefs';
+import { backendBaseUrl, resolveApiToken } from '../auth/token-store';
 import type { Engine } from '../engine';
 import type { SyncResult } from '../../shared/types';
 
@@ -14,6 +15,8 @@ export type SyncRunOptions = {
   uploadBlobs?: boolean;
   /** Upload blobs only for these capture IDs (delivery path). */
   blobIds?: string[];
+  /** Use a specific on-disk PNG for blob upload (e.g. delivery-time redacted render). */
+  blobImagePaths?: Record<string, string>;
 };
 
 const URL_DESTINATIONS = new Set(['notion', 'github', 'jira']);
@@ -44,15 +47,21 @@ export class SyncAgent {
       const dirty = history.dirty(WS, 200);
       if (dirty.length) {
         await this.client.push(dirty);
-        if (uploadBlobs || blobIdSet) {
+        if (uploadBlobs && !blobIdSet) {
           for (const r of dirty) {
             if (r.deleted) continue;
-            if (blobIdSet && !blobIdSet.has(r.id)) continue;
-            const uploaded = await this.uploadCaptureBlob(r.id);
+            const uploaded = await this.uploadCaptureBlob(r.id, options.blobImagePaths?.[r.id]);
             if (uploaded) this.events.emit(`blob:${r.id}`);
           }
         }
         history.markClean(dirty.map(r => r.id));
+      }
+
+      if (blobIdSet) {
+        for (const id of blobIdSet) {
+          const uploaded = await this.uploadCaptureBlob(id, options.blobImagePaths?.[id]);
+          if (uploaded) this.events.emit(`blob:${id}`);
+        }
       }
 
       const since = history.getCursor(WS);
@@ -75,14 +84,14 @@ export class SyncAgent {
     }
   }
 
-  async uploadCaptureBlob(captureId: string): Promise<boolean> {
+  async uploadCaptureBlob(captureId: string, imagePathOverride?: string): Promise<boolean> {
     if (!this.client) return false;
     const { history, workspace: WS } = this.engine;
     const cap = history.get(WS, captureId);
-    if (!cap?.imagePath || !existsSync(cap.imagePath)) return false;
-    if (cap.hasPii) return false;
+    const path = imagePathOverride ?? cap?.imagePath;
+    if (!cap || !path || !existsSync(path)) return false;
     try {
-      await this.client.putBlob(captureId, readFileSync(cap.imagePath));
+      await this.client.putBlob(captureId, readFileSync(path));
       return true;
     } catch {
       return false;
@@ -108,8 +117,8 @@ export class SyncAgent {
 }
 
 export function createSyncAgent(engine: Engine): SyncAgent {
-  const base = process.env.SNAPFLOW_CLOUD_URL || process.env.SNAPFLOW_AI_PROXY_URL;
-  const token = process.env.SNAPFLOW_API_TOKEN;
+  const base = backendBaseUrl();
+  const token = resolveApiToken();
   const client = base && token ? new SyncClient(base, token) : null;
   return new SyncAgent(engine, client);
 }

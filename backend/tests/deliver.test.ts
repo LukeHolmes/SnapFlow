@@ -68,7 +68,7 @@ test('slack destination uploads with the vault token and channel id', async () =
     imageBase64: Buffer.from('png-bytes').toString('base64'),
     filename: 'Login bug',
     config: { channel_id: 'C123' },
-    metadata: { tag: 'ui', ocrText: '', hasPii: false, createdAt: Date.now() },
+    metadata: { tag: 'ui', piiRedacted: false, createdAt: Date.now() },
   });
   assert.equal(result.ok, true);
   assert.equal(result.url, 'https://slack.example/files/F123');

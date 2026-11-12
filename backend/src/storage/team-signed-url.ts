@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { config } from '../config';
-import { defaultCaptureExpiry } from './signed-url';
+import { defaultCaptureExpiry, shareLinkSigningSecret } from './signed-url';
 
 export function signTeamLibraryCapture(teamId: string, ownerAccountId: string, captureId: string, expiresAt = defaultCaptureExpiry()) {
   const sig = hmac(teamId, ownerAccountId, captureId, expiresAt);
@@ -34,7 +34,7 @@ export function verifyTeamLibrarySignature(
 }
 
 function hmac(teamId: string, ownerAccountId: string, captureId: string, exp: number): string {
-  return createHmac('sha256', config.authSecret).update(`team:${teamId}:${ownerAccountId}:${captureId}:${exp}`).digest('hex');
+  return createHmac('sha256', shareLinkSigningSecret()).update(`team:${teamId}:${ownerAccountId}:${captureId}:${exp}`).digest('hex');
 }
 
 function safeEqual(a: string, b: string): boolean {

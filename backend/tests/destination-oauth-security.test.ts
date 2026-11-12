@@ -18,7 +18,7 @@ process.env.OAUTH_REDIRECT_BASE = 'http://localhost:3001';
 const { initDb } = await import('../src/store');
 await initDb();
 const { accounts } = await import('../src/accounts/store');
-const { issueToken } = await import('../src/auth/tokens');
+const { issueBearerToken } = await import('../src/auth/sessions');
 const { createApp } = await import('../src/index');
 const { vault } = await import('../src/vault/store');
 const { oauthState } = await import('../src/oauth/state');
@@ -32,7 +32,7 @@ after(() => { globalThis.fetch = originalFetch; });
 
 test('authorize URLs match Nov 2025 provider registrations (scopes and redirect)', async () => {
   const account = await accounts.getOrCreate('scopes@example.com', 'pro');
-  const token = issueToken(account.id);
+  const token = await issueBearerToken(account.id);
 
   const slack = await request.post('/v1/integrations/slack/oauth-url').set('authorization', `Bearer ${token}`).send({});
   const slackUrl = new URL(slack.body.url);
@@ -86,7 +86,7 @@ test('OAuth callback rejects provider mismatch for destination flow', async () =
 
 test('jira refresh stores rotated refresh_token when Atlassian returns one', async () => {
   const account = await accounts.getOrCreate('jira-rotate@example.com', 'pro');
-  const token = issueToken(account.id);
+  const token = await issueBearerToken(account.id);
   await vault.put(account.id, 'jira', JSON.stringify({
     accessToken: 'expired',
     refreshToken: 'jira-refresh-old',

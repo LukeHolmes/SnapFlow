@@ -25,6 +25,17 @@ CREATE TABLE IF NOT EXISTS accounts (
   created_at ${intType} NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  id            TEXT PRIMARY KEY,
+  account_id    TEXT NOT NULL,
+  refresh_hash  TEXT NOT NULL UNIQUE,
+  created_at    ${intType} NOT NULL,
+  expires_at    ${intType} NOT NULL,
+  revoked_at    ${intType},
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_account ON auth_sessions(account_id);
+
 CREATE TABLE IF NOT EXISTS oauth_tokens (
   account_id  TEXT NOT NULL,
   destination TEXT NOT NULL,

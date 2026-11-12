@@ -8,7 +8,7 @@ import { getDestinationProvider } from './destination-providers';
 import { storeDestinationToken } from './destination-tokens';
 import { oauthState } from './state';
 import { accounts } from '../accounts/store';
-import { issueToken } from '../auth/tokens';
+import { mintAuthCredentials } from '../auth/sessions';
 import { config } from '../config';
 import { AppError, asyncHandler } from '../errors';
 import { routeParam } from '../params';
@@ -76,12 +76,22 @@ oauthRouter.get('/auth/oauth/:provider/callback', asyncHandler(async (req, res) 
 
   // New users start on Free; tier changes flow through billing.
   const account = await accounts.getOrCreate(email, 'free');
-  const token = issueToken(account.id);
+  const credentials = await mintAuthCredentials(account.id);
 
   // Deep-link back into the desktop app when configured; otherwise return JSON.
   if (config.appRedirectUrl) {
-    res.redirect(`${config.appRedirectUrl}?token=${encodeURIComponent(token)}`);
+    const q = new URLSearchParams({
+      token: credentials.accessToken,
+      access: credentials.accessToken,
+      refresh: credentials.refreshToken,
+      expires_in: String(credentials.expiresIn),
+    });
+    res.redirect(`${config.appRedirectUrl}?${q.toString()}`);
   } else {
-    res.json({ token, account: { id: account.id, email: account.email, tier: account.tier } });
+    res.json({
+      token: credentials.accessToken,
+      ...credentials,
+      account: { id: account.id, email: account.email, tier: account.tier },
+    });
   }
 }));

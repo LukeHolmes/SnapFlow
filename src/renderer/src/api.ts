@@ -190,6 +190,18 @@ const mock: SnapFlowApi = {
     maxRecordingDurationSec: 3600, recordingSystemAudio: true, recordingMicrophone: true, recordingGifExport: true,
   }) },
   account: { get: async () => ({ signedIn: true, email: 'demo@snapflow.app', displayName: 'Demo User', tier: 'pro' as const }) },
+  auth: {
+    session: async () => ({ signedIn: true, encryptionAvailable: true, hasToken: true }),
+    login: async () => ({ ok: true, detail: 'Complete sign-in in your browser' }),
+    signOut: async () => ({ ok: true }),
+  },
+  prefs: {
+    aiTagging: {
+      get: async () => ({ enabled: false }),
+      set: async (enabled: boolean) => ({ enabled }),
+    },
+  },
+  onAuthChanged: (_cb: () => void) => () => {},
   app: {
     getMeta: async () => ({
       version: '1.1.0 (mock)',

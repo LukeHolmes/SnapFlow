@@ -21,7 +21,7 @@ process.env.APP_REDIRECT_URL = '';
 const { initDb } = await import('../src/store');
 await initDb();
 const { accounts } = await import('../src/accounts/store');
-const { issueToken } = await import('../src/auth/tokens');
+const { issueBearerToken } = await import('../src/auth/sessions');
 const { createApp } = await import('../src/index');
 const { vault } = await import('../src/vault/store');
 const { readDestinationToken } = await import('../src/oauth/destination-tokens');
@@ -115,7 +115,7 @@ const cases: Case[] = [
 for (const c of cases) {
   test(`${c.destination} OAuth flow stores the exchanged token in the vault`, async () => {
     const account = await accounts.getOrCreate(`${c.destination}@example.com`, 'pro');
-    const token = issueToken(account.id);
+    const token = await issueBearerToken(account.id);
 
     mockFetch((url) => {
       if (url === c.tokenUrl) return json(c.exchangeResponse);
@@ -140,7 +140,7 @@ for (const c of cases) {
 
   test(`${c.destination} resource routes refresh expired tokens before use`, async () => {
     const account = await accounts.getOrCreate(`${c.destination}-refresh@example.com`, 'pro');
-    const token = issueToken(account.id);
+    const token = await issueBearerToken(account.id);
     await vault.put(account.id, c.destination, JSON.stringify({
       accessToken: 'expired-token',
       refreshToken: `${c.destination}-refresh-token`,
@@ -166,7 +166,7 @@ for (const c of cases) {
 
 test('jira OAuth flow stores token metadata including cloudId', async () => {
   const account = await accounts.getOrCreate('jira@example.com', 'pro');
-  const token = issueToken(account.id);
+  const token = await issueBearerToken(account.id);
 
   mockFetch((url) => {
     if (url === 'https://auth.atlassian.com/oauth/token') {
@@ -196,7 +196,7 @@ test('jira OAuth flow stores token metadata including cloudId', async () => {
 
 test('DELETE /v1/integrations/:destination removes vault credentials', async () => {
   const account = await accounts.getOrCreate('disconnect@example.com', 'pro');
-  const token = issueToken(account.id);
+  const token = await issueBearerToken(account.id);
   await vault.put(account.id, 'slack', JSON.stringify({ accessToken: 'xoxb-test' }));
   const response = await request.delete('/v1/integrations/slack').set('authorization', `Bearer ${token}`);
   assert.equal(response.status, 200);
@@ -213,7 +213,7 @@ test('legacy raw vault tokens still read as access tokens', async () => {
 
 test('missing destination token surfaces not_connected instead of 500', async () => {
   const account = await accounts.getOrCreate('missing-destination@example.com', 'pro');
-  const token = issueToken(account.id);
+  const token = await issueBearerToken(account.id);
   const response = await request.get('/v1/integrations/slack/channels').set('authorization', `Bearer ${token}`);
   assert.equal(response.status, 409);
   assert.equal(response.body.error, 'not_connected');
@@ -221,7 +221,7 @@ test('missing destination token surfaces not_connected instead of 500', async ()
 
 test('expired destination token without refresh surfaces reconnect_required', async () => {
   const account = await accounts.getOrCreate('expired-destination@example.com', 'pro');
-  const token = issueToken(account.id);
+  const token = await issueBearerToken(account.id);
   await vault.put(account.id, 'gmail', JSON.stringify({
     accessToken: 'expired-gmail-token',
     expiresAt: Date.now() - 60_000,

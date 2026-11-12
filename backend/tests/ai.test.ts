@@ -7,7 +7,7 @@ import { join } from 'node:path';
 process.env.DATABASE_URL = '';
 process.env.DB_PATH = join(mkdtempSync(join(tmpdir(), 'snapflow-ai-')), 'test.db');
 const { initDb } = await import('../src/store');
-const { issueToken } = await import('../src/auth/tokens');
+const { issueBearerToken } = await import('../src/auth/sessions');
 const { accounts } = await import('../src/accounts/store');
 const { createApp } = await import('../src/index');
 await initDb();
@@ -15,7 +15,7 @@ const app = createApp();
 
 const mkToken = async (tier: string) => {
   const a = await accounts.getOrCreate(`${tier}-ai@test.com`, tier as any);
-  return issueToken(a.id);
+  return issueBearerToken(a.id);
 };
 
 const fakePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==').toString('base64');

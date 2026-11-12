@@ -8,8 +8,6 @@ import { runOcr } from './ocr';
 import { detectPii } from './ai/pii';
 import { aiProxyFromEnv, heuristicTag } from './ai/proxy-client';
 
-const proxy = aiProxyFromEnv();
-
 export async function contextualise(
   capture: Capture,
   ent: Entitlements,
@@ -17,7 +15,7 @@ export async function contextualise(
   events: EventLog,
   // Injectable for testing; defaults to the real on-device OCR engine.
   ocrFn: (path: string) => Promise<{ text: string }> = runOcr,
-  opts?: { fixedTag?: ContentTag },
+  opts?: { fixedTag?: ContentTag; aiTaggingEnabled?: boolean },
 ): Promise<Capture> {
   events.append(capture.workspaceId, 'capture', `${capture.filename} captured`);
 
@@ -32,9 +30,10 @@ export async function contextualise(
   const hasPii = pii.length > 0;
 
   let tag: ContentTag = opts?.fixedTag ?? heuristicTag(ocrText);
-  if (!opts?.fixedTag && ent.aiEnabled) {
+  const aiAllowed = !!opts?.aiTaggingEnabled && ent.aiEnabled && !hasPii;
+  if (!opts?.fixedTag && aiAllowed) {
     try {
-      const aiTag = await proxy.autoTag(readFileSync(capture.imagePath), ent);
+      const aiTag = await aiProxyFromEnv().autoTag(readFileSync(capture.imagePath), ent);
       if (aiTag) tag = aiTag;
     } catch { /* keep heuristic */ }
   }

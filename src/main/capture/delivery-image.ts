@@ -23,7 +23,7 @@ export interface DeliveryImageOptions {
 export async function buildDeliveryImagePath(
   capture: Capture,
   options: DeliveryImageOptions,
-): Promise<{ imagePath: string; temporary: boolean }> {
+): Promise<{ imagePath: string; temporary: boolean; piiRedacted: boolean }> {
   const png = PNG.sync.read(readFileSync(capture.imagePath));
   let effect: FocusBlurEffect | null = normaliseFocusBlur(options.annotationDoc?.focusBlur);
   if (!hasActiveFocusBlur(effect) && options.preset && presetRequestsFocusBlur(options.preset)) {
@@ -44,7 +44,9 @@ export async function buildDeliveryImagePath(
   }
 
   const needsRender = (effect && hasActiveFocusBlur(effect)) || redactionBoxes.length > 0;
-  if (!needsRender) return { imagePath: capture.imagePath, temporary: false };
+  if (!needsRender) {
+    return { imagePath: capture.imagePath, temporary: false, piiRedacted: !!capture.piiRedactedApplied };
+  }
 
   const buf = renderFocusBlurPng(
     capture.imagePath,
@@ -53,7 +55,7 @@ export async function buildDeliveryImagePath(
   );
   const tempPath = join(imagesDir(), `delivery_${randomUUID()}.png`);
   writeFileSync(tempPath, buf);
-  return { imagePath: tempPath, temporary: true };
+  return { imagePath: tempPath, temporary: true, piiRedacted: redactionBoxes.length > 0 || !!capture.piiRedactedApplied };
 }
 
 export function disposeDeliveryImage(path: string, temporary: boolean): void {

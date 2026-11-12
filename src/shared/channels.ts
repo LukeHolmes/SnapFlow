@@ -37,6 +37,12 @@ export const CH = {
   guidesExportMarkdown:'guides:exportMarkdown',
   entitlementsGet:    'entitlements:get',
   accountGet:         'account:get',
+  authSessionGet:     'auth:sessionGet',
+  authLoginStart:     'auth:loginStart',
+  authSignOut:        'auth:signOut',
+  authChanged:        'auth:changed',
+  aiTaggingPrefGet:   'prefs:aiTaggingGet',
+  aiTaggingPrefSet:   'prefs:aiTaggingSet',
   statsGet:           'stats:get',
   eventsRecent:       'events:recent',
   // Region-select overlay

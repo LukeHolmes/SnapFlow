@@ -332,7 +332,11 @@ function openIndicator(): void {
     alwaysOnTop: true,
     skipTaskbar: true,
     focusable: false,
-    webPreferences: { contextIsolation: true, nodeIntegration: false },
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
   });
   indicatorWin.setIgnoreMouseEvents(true);
   indicatorWin.setAlwaysOnTop(true, 'screen-saver');

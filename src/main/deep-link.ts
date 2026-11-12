@@ -13,6 +13,12 @@ export interface DeepLinkResult {
   message?: string;
 }
 
+export interface AccountTokenDeepLink {
+  accessToken: string;
+  refreshToken?: string;
+  expiresIn?: number;
+}
+
 export interface GoogleDriveOAuthDeepLink {
   code: string;
   state: string;
@@ -47,6 +53,28 @@ export function parseGoogleDriveOAuthDeepLink(raw: string): GoogleDriveOAuthDeep
   const state = readBoundedParam(url, 'state');
   if (!code || !state) return null;
   return { code, state };
+}
+
+/** Account login callback: snapflow://...?token=... */
+export function parseAccountTokenDeepLink(raw: string): AccountTokenDeepLink | null {
+  if (raw.length > MAX_URL_LEN) return null;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'snapflow:') return null;
+  const accessToken = readBoundedParam(url, 'access') ?? readBoundedParam(url, 'token');
+  if (!accessToken) return null;
+  const refreshToken = readBoundedParam(url, 'refresh') ?? undefined;
+  const expiresRaw = readBoundedParam(url, 'expires_in');
+  const expiresIn = expiresRaw ? Number(expiresRaw) : undefined;
+  return {
+    accessToken,
+    refreshToken,
+    expiresIn: Number.isFinite(expiresIn) ? expiresIn : undefined,
+  };
 }
 
 /** Parses snapflow:// deep links returned after OAuth (see backend oauth/routes.ts). */

@@ -16,7 +16,7 @@ process.env.TEAM_DEFAULT_SEAT_LIMIT = '3';
 const { initDb, _resetDb } = await import('../src/store');
 const { _resetBlobStorage } = await import('../src/storage');
 const { sync } = await import('../src/sync/store');
-const { issueToken } = await import('../src/auth/tokens');
+const { issueBearerToken } = await import('../src/auth/sessions');
 const { accounts } = await import('../src/accounts/store');
 const { teams } = await import('../src/teams/store');
 const { hashInviteToken } = await import('../src/teams/invites');
@@ -28,7 +28,7 @@ const app = createApp();
 
 async function bearer(email: string, tier: 'free' | 'pro' | 'team' = 'pro') {
   const account = await accounts.getOrCreate(email, tier);
-  return { token: issueToken(account.id), accountId: account.id, email: account.email };
+  return { token: await issueBearerToken(account.id), accountId: account.id, email: account.email };
 }
 
 after(async () => {

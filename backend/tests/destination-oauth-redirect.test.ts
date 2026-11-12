@@ -15,7 +15,7 @@ process.env.OAUTH_REDIRECT_BASE = 'http://localhost:3001';
 const { initDb } = await import('../src/store');
 await initDb();
 const { accounts } = await import('../src/accounts/store');
-const { issueToken } = await import('../src/auth/tokens');
+const { issueBearerToken } = await import('../src/auth/sessions');
 const { createApp } = await import('../src/index');
 
 const { default: supertest } = await import('supertest');
@@ -27,7 +27,7 @@ after(() => { globalThis.fetch = originalFetch; });
 
 test('failed destination OAuth redirects to snapflow error deep link', async () => {
   const account = await accounts.getOrCreate('redirect-err@example.com', 'pro');
-  const token = issueToken(account.id);
+  const token = await issueBearerToken(account.id);
 
   globalThis.fetch = (async () => {
     return new Response(JSON.stringify({ ok: false, error: 'invalid_code' }), {

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { Capture, DeliverResult, DestinationId, IntegrationOption, IntegrationStatus } from '../../shared/types';
+import { backendBaseUrl, resolveApiToken } from '../auth/token-store';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -44,8 +45,7 @@ export class IntegrationBackendClient {
         config,
         metadata: {
           tag: capture.tag,
-          ocrText: capture.ocrText,
-          hasPii: capture.hasPii,
+          piiRedacted: !!capture.piiRedactedApplied,
           createdAt: capture.createdAt,
         },
       },
@@ -118,4 +118,4 @@ function toDeliverResult(json: JsonRecord): DeliverResult {
 }
 
 export const integrationBackendClientFromEnv = (): IntegrationBackendClient =>
-  new IntegrationBackendClient(process.env.SNAPFLOW_CLOUD_URL || process.env.SNAPFLOW_AI_PROXY_URL, process.env.SNAPFLOW_API_TOKEN);
+  new IntegrationBackendClient(backendBaseUrl(), resolveApiToken());

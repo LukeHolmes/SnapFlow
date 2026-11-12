@@ -6,6 +6,7 @@
 // proxy. heuristicTag() is a local rule (NOT an AI call) used as the offline fallback.
 
 import type { ContentTag, Entitlements } from '../../shared/types';
+import { backendBaseUrl, resolveApiToken } from '../auth/token-store';
 
 export class AiProxyClient {
   constructor(private proxyUrl?: string, private token?: string) {}
@@ -49,7 +50,7 @@ export class AiProxyClient {
 }
 
 export const aiProxyFromEnv = (): AiProxyClient =>
-  new AiProxyClient(process.env.SNAPFLOW_AI_PROXY_URL, process.env.SNAPFLOW_API_TOKEN);
+  new AiProxyClient(backendBaseUrl(), resolveApiToken());
 
 /** Offline heuristic classifier — the fallback when the AI proxy is unavailable. */
 export function heuristicTag(ocr: string): ContentTag {

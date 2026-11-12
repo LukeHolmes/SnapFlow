@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, globalShortcut, session } from 'electron';
+import { app, BrowserWindow, shell, globalShortcut, session, type WebContents } from 'electron';
 import { configureLinuxChromeSandbox, installAutoUpdate } from './update/install';
 import { installAppMenu } from './menu';
 import { join } from 'node:path';
@@ -16,12 +16,15 @@ import { registerBuiltins } from './integrations/registry';
 import { configureIntegrationRuntime } from './integrations/runtime';
 import { disposeOcr } from './ocr';
 import { closePinnedCaptures } from './pin';
-import { parseDeepLinkUrl, parseGoogleDriveOAuthDeepLink } from './deep-link';
+import { parseAccountTokenDeepLink, parseDeepLinkUrl, parseGoogleDriveOAuthDeepLink } from './deep-link';
+import { writeStoredAuthBundle } from './auth/token-store';
+import { openExternalHttps } from './shell-safe';
 import { completeGoogleDriveOAuthFromDeepLink } from './integrations/google-drive/service';
 import { scheduleEntitlementsRefresh } from './entitlements';
 import { DEV_CSP, PACKAGED_CSP } from './security/csp';
 
 let win: BrowserWindow | null = null;
+let engineRef: ReturnType<typeof createEngine> | null = null;
 
 configureLinuxChromeSandbox();
 
@@ -34,6 +37,25 @@ if (process.defaultApp) {
 }
 
 function handleDeepLink(url: string): void {
+  const accountToken = parseAccountTokenDeepLink(url);
+  if (accountToken) {
+    writeStoredAuthBundle({
+      accessToken: accountToken.accessToken,
+      refreshToken: accountToken.refreshToken,
+      accessExpiresAt: accountToken.expiresIn
+        ? Date.now() + accountToken.expiresIn * 1000
+        : undefined,
+    });
+    engineRef?.entitlementsCache.clear();
+    void engineRef?.entitlementsCache.refresh();
+    if (win && !win.isDestroyed()) {
+      win.show();
+      win.focus();
+      win.webContents.send(CH.authChanged);
+    }
+    return;
+  }
+
   const google = parseGoogleDriveOAuthDeepLink(url);
   if (google) {
     void completeGoogleDriveOAuthFromDeepLink(google.code, google.state).then(result => {
@@ -105,15 +127,41 @@ function createWindow(): void {
     },
   });
   win.once('ready-to-show', () => win?.show());
-  win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      openExternalHttps(url);
+    } catch {
+      /* block non-https */
+    }
+    return { action: 'deny' };
+  });
 
   if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL);
   else win.loadFile(join(__dirname, '../renderer/index.html'));
 }
 
+function installSessionPermissions(): void {
+  const allowed = new Set(['media', 'display-capture', 'fullscreen']);
+  const allowForSession = (webContents: WebContents | null, permission: string) => {
+    if (!webContents) return false;
+    const host = webContents.getURL();
+    if (host.startsWith('file://') || host.startsWith('devtools://')) return false;
+    if (process.env.ELECTRON_RENDERER_URL && host.startsWith(process.env.ELECTRON_RENDERER_URL)) {
+      return allowed.has(permission);
+    }
+    return false;
+  };
+  session.defaultSession.setPermissionRequestHandler((wc, permission, callback) => {
+    callback(allowForSession(wc, permission));
+  });
+  session.defaultSession.setPermissionCheckHandler((wc, permission) => allowForSession(wc, permission));
+}
+
 app.whenReady().then(() => {
   installContentSecurityPolicy();
+  installSessionPermissions();
   const engine = createEngine(openDb(dbPath()));
+  engineRef = engine;
   const stopEntitlementsRefresh = scheduleEntitlementsRefresh(engine.entitlementsCache);
   app.on('will-quit', () => stopEntitlementsRefresh());
 

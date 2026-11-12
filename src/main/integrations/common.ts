@@ -19,10 +19,11 @@ export function ocrWordCount(capture: Capture): number {
 
 export function metadataComment(capture: Capture): string {
   const tag = capture.tag ?? 'untagged';
+  const piiLabel = capture.piiRedactedApplied ? 'Redacted (pixels masked)' : 'Clear';
   return [
     `Tag: ${tag}`,
     `Timestamp: ${formatCaptureTimestamp(capture.createdAt)}`,
-    `PII redaction: ${capture.hasPii ? 'redacted' : 'clear'}`,
+    `PII: ${piiLabel}`,
   ].join(' • ');
 }
 
@@ -30,18 +31,19 @@ export function queuedResult(detail = 'Capture still syncing, delivery queued'):
   return { ok: true, queued: true, detail };
 }
 
-export async function ensureCaptureUrl(capture: Capture, timeoutMs = 30_000): Promise<string | null> {
+export async function ensureCaptureUrl(capture: Capture, opts?: { timeoutMs?: number; blobImagePath?: string }): Promise<string | null> {
+  const timeoutMs = opts?.timeoutMs ?? 30_000;
   if (!backend.configured) return null;
   const sync = getIntegrationRuntime().sync;
   const engine = getIntegrationRuntime().engine;
   if (!sync || !engine?.db) return null;
   if (!isCloudSyncOptIn(engine.db)) return null;
-  if (capture.hasPii) return null;
 
   const existing = await backend.getCaptureUrl(capture.id).catch(() => null);
   if (existing) return existing;
 
-  await sync.run({ blobIds: [capture.id], uploadBlobs: true });
+  const blobPath = opts?.blobImagePath ?? capture.imagePath;
+  await sync.run({ blobIds: [capture.id], uploadBlobs: true, blobImagePaths: { [capture.id]: blobPath } });
   const uploaded = await sync.waitForBlobUpload(capture.id, timeoutMs);
   if (!uploaded) return null;
   return backend.getCaptureUrl(capture.id).catch(() => null);

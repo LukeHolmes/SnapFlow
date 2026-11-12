@@ -21,7 +21,7 @@ export const githubDestination: OutputDestination = {
     }
     const backend = backendClient();
     if (!backend.configured) throw new NotConfiguredError('GitHub');
-    await ensureCaptureUrl(capture);
+    await ensureCaptureUrl(capture, { blobImagePath: capture.imagePath });
     return backend.deliver('github', capture, { ...cfg } as Record<string, unknown>);
   },
 };

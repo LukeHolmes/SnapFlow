@@ -1,4 +1,5 @@
 import type { Entitlements, Tier } from '../../shared/types';
+import { backendBaseUrl, resolveApiToken } from '../auth/token-store';
 import { entitlementsFor } from './index';
 import { isDevEnvironment, tierFromDevEnv } from './tier';
 
@@ -39,8 +40,8 @@ export class EntitlementsCache {
     const devTier = tierFromDevEnv();
     if (devTier) return entitlementsFor(devTier);
 
-    const baseUrl = process.env.SNAPFLOW_CLOUD_URL || process.env.SNAPFLOW_AI_PROXY_URL;
-    const token = process.env.SNAPFLOW_API_TOKEN;
+    const baseUrl = backendBaseUrl();
+    const token = resolveApiToken();
     if (!baseUrl || !token) {
       this.clear();
       return this.get();
@@ -80,8 +81,7 @@ export class EntitlementsCache {
 }
 
 export function backendConfigured(): boolean {
-  const baseUrl = process.env.SNAPFLOW_CLOUD_URL || process.env.SNAPFLOW_AI_PROXY_URL;
-  return !!(baseUrl && process.env.SNAPFLOW_API_TOKEN);
+  return !!(backendBaseUrl() && resolveApiToken());
 }
 
 export function scheduleEntitlementsRefresh(cache: EntitlementsCache, intervalMs = DEFAULT_TTL_MS): () => void {

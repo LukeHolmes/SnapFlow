@@ -10,6 +10,8 @@ import { join } from 'node:path';
 import { CH } from '../shared/channels';
 import { grabAllFrames, cropFrame, type Frame } from './capture';
 import { contextualise } from './pipeline';
+import { isAiTaggingOptIn } from './prefs/ai-tagging';
+import { runOcr } from './ocr';
 import type { Engine } from './engine';
 import type { Capture } from '../shared/types';
 
@@ -178,7 +180,9 @@ async function finish(frame: Frame, rect: { x: number; y: number; width: number;
     tag: null, ocrText: '', hasPii: false, createdAt: Date.now(),
   };
   engine.history.insert(capture);
-  const enriched = await contextualise(capture, engine.ent(), engine.history, engine.events);
+  const enriched = await contextualise(capture, engine.ent(), engine.history, engine.events, runOcr, {
+    aiTaggingEnabled: isAiTaggingOptIn(engine.db),
+  });
 
   const dash = getMainWindow();
   if (dash && !dash.isDestroyed()) dash.webContents.send(CH.captureAdded, enriched);

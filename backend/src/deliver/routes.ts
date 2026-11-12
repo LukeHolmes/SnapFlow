@@ -32,8 +32,7 @@ deliverRouter.post('/v1/deliver', requireAuth, asyncHandler(async (req, res) => 
     config: typeof config === 'object' && config ? config : {},
     metadata: {
       tag: typeof metadata?.tag === 'string' ? metadata.tag : null,
-      ocrText: typeof metadata?.ocrText === 'string' ? metadata.ocrText : '',
-      hasPii: !!metadata?.hasPii,
+      piiRedacted: !!metadata?.piiRedacted,
       createdAt: Number(metadata?.createdAt ?? Date.now()),
     },
   });
