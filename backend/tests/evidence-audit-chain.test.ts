@@ -4,7 +4,7 @@ import {
   computeAuditChainFields,
   manifestHashFromCanonical,
   verifyExportedAuditChain,
-} from '../src/evidence/audit-chain.ts';
+} from '../src/evidence/audit-chain';
 
 describe('audit-chain (pure)', () => {
   it('computes chain fields and verifies export excerpt', () => {

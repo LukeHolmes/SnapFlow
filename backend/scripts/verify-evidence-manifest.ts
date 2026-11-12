@@ -9,7 +9,7 @@ import {
   manifestHashFromCanonical,
   verifyExportedAuditChain,
   type AuditLogExportRow,
-} from '../src/evidence/audit-chain.ts';
+} from '../src/evidence/audit-chain';
 
 type Manifest = {
   manifest_hash?: string;
