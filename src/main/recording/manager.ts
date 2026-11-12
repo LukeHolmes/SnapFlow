@@ -277,6 +277,7 @@ async function ensureWorkerWindow(): Promise<void> {
       preload: join(__dirname, '../preload/recording-worker.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   });
   if (process.env.ELECTRON_RENDERER_URL) {
@@ -306,6 +307,7 @@ function openControl(): void {
       preload: join(__dirname, '../preload/recording-control.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   });
   controlWin.setAlwaysOnTop(true, 'screen-saver');

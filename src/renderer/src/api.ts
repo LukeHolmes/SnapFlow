@@ -1,6 +1,6 @@
-// Typed access to the preload bridge. Falls back to an in-memory mock when opened
-// in a plain browser (vite without Electron) so the UI still renders for design work.
+// Typed access to the preload bridge. Mock data is opt-in for browser-only design work.
 import type { SnapFlowApi } from '../../preload';
+import { allowWebMock, isElectronRenderer } from './runtime';
 import type { AnnotationDocument, Capture, Preset, ActivityEvent, Stats, Entitlements, CaptureSource, DeliverResult, ScrollCapturePreview, Guide, GuideExportResult, GuideListItem, GuideType, IntegrationStatus, ColorFormat, PickedColor } from '../../shared/types';
 
 declare global { interface Window { snapflow?: SnapFlowApi } }
@@ -238,5 +238,30 @@ const mock: SnapFlowApi = {
   onIntegrationError: () => () => {},
 };
 
-export const api: SnapFlowApi = window.snapflow ?? mock;
+function resolveApi(): SnapFlowApi {
+  if (window.snapflow) return window.snapflow;
+  if (isElectronRenderer()) {
+    throw new Error('SnapFlow preload bridge (window.snapflow) is not available');
+  }
+  if (allowWebMock()) return mock;
+  throw new Error('Set VITE_ALLOW_WEB_MOCK=true to run the dashboard mock in a plain browser');
+}
+
+let apiSingleton: SnapFlowApi | undefined;
+
+export function getApi(): SnapFlowApi {
+  if (!apiSingleton) apiSingleton = resolveApi();
+  return apiSingleton;
+}
+
+/** Lazy bridge — avoids throwing at import time when the preload error screen is shown. */
+export const api: SnapFlowApi = new Proxy({} as SnapFlowApi, {
+  get(_target, prop) {
+    const bridge = getApi() as unknown as Record<string | symbol, unknown>;
+    const value = bridge[prop as keyof typeof bridge];
+    if (typeof value === 'function') return (value as (...a: unknown[]) => unknown).bind(bridge);
+    return value;
+  },
+});
+
 export const isLive = !!window.snapflow;

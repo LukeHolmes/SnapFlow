@@ -107,7 +107,12 @@ export async function startRegionCapture(): Promise<void> {
       transparent: true, frame: false, resizable: false, movable: false,
       alwaysOnTop: true, skipTaskbar: true, hasShadow: false, fullscreenable: false,
       enableLargerThanScreen: true,
-      webPreferences: { preload: join(__dirname, '../preload/overlay.js'), contextIsolation: true, nodeIntegration: false },
+      webPreferences: {
+        preload: join(__dirname, '../preload/overlay.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+      },
     });
     win.setAlwaysOnTop(true, 'screen-saver');
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });

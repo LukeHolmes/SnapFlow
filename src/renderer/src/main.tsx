@@ -1,10 +1,22 @@
-import React from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App';
+import { shouldShowPreloadError } from './runtime';
 import './styles.css';
 
-createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+async function boot(): Promise<void> {
+  const root = createRoot(document.getElementById('root')!);
+
+  if (shouldShowPreloadError()) {
+    const React = await import('react');
+    const { default: PreloadError } = await import('./PreloadError');
+    root.render(React.createElement(PreloadError));
+    return;
+  }
+
+  const React = await import('react');
+  const { default: App } = await import('./App');
+  root.render(
+    React.createElement(React.StrictMode, null, React.createElement(App)),
+  );
+}
+
+void boot();
