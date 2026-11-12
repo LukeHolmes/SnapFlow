@@ -27,6 +27,22 @@ async function waitForPostgres(maxAttempts = 30): Promise<void> {
   throw new Error(`Postgres not reachable at ${databaseUrl}`);
 }
 
+async function asAnon(fn: (c: pg.Client) => Promise<void>): Promise<void> {
+  const c = new pg.Client({ connectionString: databaseUrl });
+  await c.connect();
+  await c.query('BEGIN');
+  try {
+    await c.query('SET LOCAL ROLE anon');
+    await fn(c);
+    await c.query('COMMIT');
+  } catch (e) {
+    await c.query('ROLLBACK');
+    throw e;
+  } finally {
+    await c.end();
+  }
+}
+
 async function asUser(userId: string, fn: (c: pg.Client) => Promise<void>): Promise<void> {
   const c = new pg.Client({ connectionString: databaseUrl });
   await c.connect();
@@ -49,6 +65,8 @@ before(async () => {
     await waitForPostgres();
     const bootstrap = new pg.Client({ connectionString: databaseUrl });
     await bootstrap.connect();
+    await bootstrap.query('DROP SCHEMA IF EXISTS snapflow_private CASCADE');
+    await bootstrap.query('DROP SCHEMA IF EXISTS extensions CASCADE');
     await bootstrap.query('DROP SCHEMA IF EXISTS auth CASCADE');
     await bootstrap.query('DROP SCHEMA IF EXISTS storage CASCADE');
     await bootstrap.query('DROP SCHEMA public CASCADE');
@@ -90,18 +108,22 @@ describe('GxP evidence database (migrations)', { skip: !process.env.EVIDENCE_DAT
       [orgId, userId],
     );
 
-    await client.query(`SELECT append_audit_event($1, 'evidence.created', 'evidence_item', $2, $3, 'seed', '{}'::jsonb)`, [
+    await client.query(
+      `SELECT snapflow_private.append_audit_event($1, 'evidence.created', 'evidence_item', $2, $3, 'seed', '{}'::jsonb)`,
+      [
       orgId,
       entityId,
       userId,
     ]);
-    await client.query(`SELECT append_audit_event($1, 'version.ingested', 'evidence_version', $2, $3, 'ingest', '{"kind":"redacted"}'::jsonb)`, [
+    await client.query(
+      `SELECT snapflow_private.append_audit_event($1, 'version.ingested', 'evidence_version', $2, $3, 'ingest', '{"kind":"redacted"}'::jsonb)`,
+      [
       orgId,
       entityId,
       userId,
     ]);
 
-    const okRows = await client.query(`SELECT * FROM verify_audit_chain($1) WHERE NOT ok`, [orgId]);
+    const okRows = await client.query(`SELECT * FROM snapflow_private.verify_audit_chain($1) WHERE NOT ok`, [orgId]);
     assert.equal(okRows.rowCount, 0);
 
     await client.query(`ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_mutation`);
@@ -111,13 +133,13 @@ describe('GxP evidence database (migrations)', { skip: !process.env.EVIDENCE_DAT
     ]);
     await client.query(`ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_mutation`);
 
-    const bad = await client.query(`SELECT * FROM verify_audit_chain($1) WHERE NOT ok`, [orgId]);
+    const bad = await client.query(`SELECT * FROM snapflow_private.verify_audit_chain($1) WHERE NOT ok`, [orgId]);
     assert.ok((bad.rowCount ?? 0) > 0);
 
     const sample = await client.query(
       `SELECT event_type, entity_type, entity_id::text AS entity_id, actor_user_id::text AS actor_user_id,
               reason, metadata,
-              audit_payload_canonical(event_type, entity_type, entity_id, actor_user_id, reason, metadata) AS canonical
+              snapflow_private.audit_payload_canonical(event_type, entity_type, entity_id, actor_user_id, reason, metadata) AS canonical
        FROM audit_log WHERE organisation_id = $1 ORDER BY id LIMIT 1`,
       [orgId],
     );
@@ -301,6 +323,46 @@ describe('GxP evidence database (migrations)', { skip: !process.env.EVIDENCE_DAT
     await asUser(userB, async (c) => {
       const r = await c.query(`SELECT id FROM projects WHERE organisation_id = $1`, [orgB]);
       assert.equal(r.rowCount, 1);
+    });
+  });
+
+  it('denies anon execute on snapflow_private definer functions', async (t) => {
+    if (!dbReady) return t.skip('database not available');
+
+    const orgId = 'a1a1a1a1-a1a1-41a1-81a1-a1a1a1a1a1a1';
+    const userId = 'b2b2b2b2-b2b2-42b2-82b2-b2b2b2b2b2b2';
+    const entityId = 'c3c3c3c3-c3c3-43c3-83c3-c3c3c3c3c3c3';
+
+    for (const sql of [
+      `SELECT snapflow_private.append_audit_event('${orgId}', 'x', 'y', '${entityId}', '${userId}', 'r', '{}'::jsonb)`,
+      `SELECT snapflow_private.is_org_member('${orgId}')`,
+      `SELECT snapflow_private.verify_audit_chain('${orgId}')`,
+    ]) {
+      await asAnon(async (c) => {
+        await assert.rejects(
+          () => c.query(sql),
+          /permission denied|insufficient_privilege|42501/i,
+        );
+      });
+    }
+
+    await client.query('INSERT INTO auth.users (id) VALUES ($1) ON CONFLICT DO NOTHING', [userId]);
+    await client.query(
+      `INSERT INTO organisations (id, name, slug) VALUES ($1, 'Anon Org', 'anon-org') ON CONFLICT DO NOTHING`,
+      [orgId],
+    );
+    await client.query(
+      `INSERT INTO memberships (organisation_id, user_id, role) VALUES ($1, $2, 'admin') ON CONFLICT DO NOTHING`,
+      [orgId, userId],
+    );
+    await client.query(
+      `SELECT snapflow_private.append_audit_event($1, 'evidence.created', 'evidence_item', $2, $3, 'seed', '{}'::jsonb)`,
+      [orgId, entityId, userId],
+    );
+
+    await asUser(userId, async (c) => {
+      const ok = await c.query(`SELECT * FROM snapflow_private.verify_audit_chain($1) WHERE NOT ok`, [orgId]);
+      assert.equal(ok.rowCount, 0);
     });
   });
 });
