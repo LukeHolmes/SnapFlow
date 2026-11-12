@@ -125,8 +125,7 @@ Electron’s native toolchain; CI uses `windows-latest`).
 can still fail on Linux with `ERR_REQUIRE_ESM` when the main bundle `require()`s ESM-only
 `pixelmatch` — see `AGENTS.md`.
 
-Copy `.env.example` to `.env` to configure local desktop runs. Set the tier for local
-testing with `SNAPFLOW_TIER=free npm run dev` (default `pro`).
+Copy `.env.example` to `.env` to configure local desktop runs. Packaged builds default to the **free** tier and fetch entitlements from `GET /v1/entitlements` when signed in. For local tier overrides, use `SNAPFLOW_TIER=pro npm run dev` (dev/unpackaged only).
 
 For Slack/Jira/Notion/Gmail/GitHub delivery, configure the backend per `docs/DESTINATION_SETUP.md`.
 

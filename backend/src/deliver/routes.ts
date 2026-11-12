@@ -3,10 +3,13 @@
 // reveals it server-side, and performs the delivery. Tokens never reach the client.
 import { Router } from 'express';
 import { requireAuth } from '../auth/middleware';
+import { effectiveTierForAccount } from '../entitlements/resolve';
 import { getServerDestination } from './destinations';
 import { AppError, asyncHandler } from '../errors';
 
 export const deliverRouter = Router();
+
+const SERVER_DESTINATIONS = new Set(['slack', 'notion', 'gmail', 'github', 'jira']);
 
 deliverRouter.post('/v1/deliver', requireAuth, asyncHandler(async (req, res) => {
   const { destination, imageBase64, filename, captureId, workspaceId, config, metadata } = req.body ?? {};
@@ -14,6 +17,10 @@ deliverRouter.post('/v1/deliver', requireAuth, asyncHandler(async (req, res) => 
     throw new AppError(400, 'bad_request', 'destination, captureId, workspaceId and imageBase64 are required');
   }
 
+  const tier = await effectiveTierForAccount(req.account!.id);
+  if (SERVER_DESTINATIONS.has(destination) && tier === 'free') {
+    throw new AppError(402, 'deliver_not_entitled', 'Cloud delivery requires a Pro, Team, or Perpetual plan');
+  }
   const dest = getServerDestination(destination);
   if (!dest) throw new AppError(400, 'unknown_destination', `No server destination '${destination}'`);
 

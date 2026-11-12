@@ -49,6 +49,16 @@ Use this list for **on-device** validation before tagging `v1.1.0`. Cloud CI cov
 
 Do **not** commit secrets. Use `.env.example` as the template.
 
+## Release hardening (v1.1+)
+
+- [ ] Packaged desktop defaults to **free** tier; `GET /v1/entitlements` when signed in (15 min cache).
+- [ ] `SNAPFLOW_TIER` env honored **only** in unpackaged dev builds.
+- [ ] Backend: `DEV_LOGIN` defaults **false**; `AUTH_SECRET` and `BILLING_WEBHOOK_SECRET` required in production.
+- [ ] `POST /v1/billing/webhook` rejects unsigned requests when a webhook secret is set; checkout stub returns 503 in production.
+- [ ] `POST /v1/deliver` returns **402** for free-tier accounts on server destinations.
+- [ ] Dashboard CSP + `sandbox: true` on the main window; IPC inputs validated in main process.
+- [ ] `snapflow://oauth/callback` deep links reject unknown paths/destinations.
+
 ## Before tag
 
 - [ ] CI green on `main` (desktop + backend jobs, Windows installer job if touched).

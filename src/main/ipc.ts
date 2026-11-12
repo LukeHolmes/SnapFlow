@@ -13,7 +13,21 @@ import { diffCaptureFromRaw, persistDiffImage } from './diff/save';
 import { diffsDir } from './paths';
 import type { DiffComputeOptions } from './diff/options';
 import { pinCapture } from './pin';
-import { canAddPreset, canUseDestination, canUseFocusBlurPresetAutomation } from './entitlements';
+import { backendConfigured, canAddPreset, canUseDestination, canUseFocusBlurPresetAutomation } from './entitlements';
+import {
+  assertBool,
+  assertCaptureId,
+  assertColorFormat,
+  assertDestinationId,
+  assertDiffThreshold,
+  assertGuideType,
+  assertHistoryLimit,
+  assertPresetId,
+  assertSearchQuery,
+  assertTeamId,
+  assertTeamName,
+  IpcValidationError,
+} from './ipc-validate';
 import { presetFocusBlurConfig } from '../focus-blur/preset';
 import { buildDeliveryImagePath, disposeDeliveryImage } from './capture/delivery-image';
 import { normaliseFocusBlur } from '../focus-blur/model';
@@ -27,7 +41,19 @@ import { teamClientFromEnv } from './team/client';
 import type { AnnotationDocument, Capture, ColorFormat, DestinationId, Guide, GuideType, IntegrationStatus } from '../shared/types';
 
 export function registerIpc(engine: Engine, sync: SyncAgent): void {
-  const { history, colors, presets, events, ent, workspace: WS } = engine;
+  const { history, colors, presets, events, ent, entitlementsCache, workspace: WS } = engine;
+  const resolveEntitlements = async () => {
+    if (backendConfigured() && entitlementsCache.needsRefresh()) return entitlementsCache.refresh();
+    return entitlementsCache.get();
+  };
+  const guard = <T>(fn: () => T): T => {
+    try {
+      return fn();
+    } catch (err) {
+      if (err instanceof IpcValidationError) throw new Error(err.message);
+      throw err;
+    }
+  };
   const proxy = aiProxyFromEnv();
   const teamApi = teamClientFromEnv();
   const integrations = integrationBackendClientFromEnv();
@@ -97,21 +123,23 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     return saveRawCapture(persistRedactedImage(original.imagePath, boxes, `${original.filename} redacted`));
   });
 
-  ipcMain.handle(CH.captureAnnotationsGet, (_e, id: string) => history.getAnnotationDocument(WS, id));
+  ipcMain.handle(CH.captureAnnotationsGet, (_e, id: string) =>
+    history.getAnnotationDocument(WS, guard(() => assertCaptureId(id))));
   ipcMain.handle(CH.captureAnnotationsSave, (_e, args: { captureId: string; doc: AnnotationDocument }) => {
-    const capture = history.get(WS, args.captureId);
+    const captureId = guard(() => assertCaptureId(args?.captureId));
+    const capture = history.get(WS, captureId);
     if (!capture) return { ok: false, detail: 'Capture not found' };
     const fx = normaliseFocusBlur(args.doc.focusBlur);
     const maxRegions = ent().focusBlurMaxRegions;
     if (maxRegions != null && fx.regions.length > maxRegions) {
       return { ok: false, detail: `Your plan allows ${maxRegions} focus region. Upgrade to Pro for multi-region.` };
     }
-    history.saveAnnotationDocument(WS, args.captureId, args.doc);
+    history.saveAnnotationDocument(WS, captureId, args.doc);
     return { ok: true, detail: 'Annotation draft saved' };
   });
 
   ipcMain.handle(CH.captureCopyImage, (_e, id: string) => {
-    const capture = history.get(WS, id);
+    const capture = history.get(WS, guard(() => assertCaptureId(id)));
     if (!capture?.imagePath) return { ok: false, detail: 'Capture not found' };
     const image = nativeImage.createFromPath(capture.imagePath);
     if (image.isEmpty()) return { ok: false, detail: 'Capture image is unavailable' };
@@ -120,7 +148,7 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   });
 
   ipcMain.handle(CH.captureCopyOcr, (_e, id: string) => {
-    const capture = history.get(WS, id);
+    const capture = history.get(WS, guard(() => assertCaptureId(id)));
     if (!capture) return { ok: false, detail: 'Capture not found' };
     if (!capture.ocrText.trim()) return { ok: false, detail: 'No OCR text available yet' };
     clipboard.writeText(capture.ocrText);
@@ -128,16 +156,20 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   });
 
   ipcMain.handle(CH.capturePin, (_e, id: string) => {
-    const capture = history.get(WS, id);
+    const capture = history.get(WS, guard(() => assertCaptureId(id)));
     if (!capture) return { ok: false, detail: 'Capture not found' };
     return pinCapture(capture);
   });
 
-  ipcMain.handle(CH.historyList, (_e, limit = 50) => history.list(WS, { limit, sinceDays: ent().historyWindowDays }));
-  ipcMain.handle(CH.historySearch, (_e, query: string) => history.search(WS, query));
+  ipcMain.handle(CH.historyList, (_e, limit = 50) => {
+    const safeLimit = guard(() => assertHistoryLimit(limit));
+    return history.list(WS, { limit: safeLimit, sinceDays: ent().historyWindowDays });
+  });
+  ipcMain.handle(CH.historySearch, (_e, query: string) => history.search(WS, guard(() => assertSearchQuery(query))));
   ipcMain.handle(CH.historyDelete, async (_e, id: string) => {
-    const existing = history.get(WS, id);
-    const imagePath = history.delete(WS, id);
+    const safeId = guard(() => assertCaptureId(id));
+    const existing = history.get(WS, safeId);
+    const imagePath = history.delete(WS, safeId);
     if (imagePath) unlink(imagePath).catch(() => {});
     if (existing?.mediaPath) unlink(existing.mediaPath).catch(() => {});
     return { ok: true };
@@ -158,10 +190,15 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     }
     return { ok: true, preset: presets.upsertByDestination({ workspaceId: WS, ...p }) };
   });
-  ipcMain.handle(CH.presetsRemove, (_e, id: string) => { presets.remove(WS, id); return { ok: true }; });
+  ipcMain.handle(CH.presetsRemove, (_e, id: string) => {
+    presets.remove(WS, guard(() => assertPresetId(id)));
+    return { ok: true };
+  });
   ipcMain.handle(CH.presetsSend, async (_e, args: { captureId: string; presetId: string }) => {
-    const preset = presets.get(WS, args.presetId);
-    const capture = history.get(WS, args.captureId);
+    const captureId = guard(() => assertCaptureId(args?.captureId));
+    const presetId = guard(() => assertPresetId(args?.presetId));
+    const preset = presets.get(WS, presetId);
+    const capture = history.get(WS, captureId);
     if (!preset || !capture) return { ok: false, detail: 'Preset or capture not found' };
     if (!canUseDestination(ent(), preset.destination)) {
       return { ok: false, detail: 'Your current plan only supports clipboard delivery for this destination' };
@@ -267,7 +304,7 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     }
   });
 
-  ipcMain.handle(CH.entitlementsGet, () => ent());
+  ipcMain.handle(CH.entitlementsGet, () => resolveEntitlements());
   ipcMain.handle(CH.statsGet, () => history.stats(WS));
   ipcMain.handle(CH.eventsRecent, (_e, limit = 8) => events.recent(WS, limit));
   ipcMain.handle(CH.integrationsStatuses, async () => {
@@ -297,23 +334,25 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     return remote;
   });
   ipcMain.handle(CH.integrationsConnect, async (_e, args: { destination: DestinationId; params?: Record<string, string> }) => {
-    if (args.destination === 'clipboard' || args.destination === 'zapier') return { ok: false, detail: 'This destination does not use OAuth' };
-    if (args.destination === 'google-drive') return connectGoogleDrive();
+    const destination = guard(() => assertDestinationId(args?.destination));
+    if (destination === 'clipboard' || destination === 'zapier') return { ok: false, detail: 'This destination does not use OAuth' };
+    if (destination === 'google-drive') return connectGoogleDrive();
     try {
-      const url = await integrations.getOAuthUrl(args.destination, args.params ?? {});
+      const url = await integrations.getOAuthUrl(destination, args.params ?? {});
       await shell.openExternal(url);
-      return { ok: true, detail: `Opening ${args.destination} connection` };
+      return { ok: true, detail: `Opening ${destination} connection` };
     } catch (err) {
       return { ok: false, detail: err instanceof Error ? err.message : 'Unable to start OAuth' };
     }
   });
   ipcMain.handle(CH.integrationsDisconnect, async (_e, destination: DestinationId) => {
-    if (destination === 'clipboard' || destination === 'zapier') return { ok: false, detail: 'This destination does not use OAuth' };
-    if (destination === 'google-drive') return disconnectGoogleDrive();
+    const dest = guard(() => assertDestinationId(destination));
+    if (dest === 'clipboard' || dest === 'zapier') return { ok: false, detail: 'This destination does not use OAuth' };
+    if (dest === 'google-drive') return disconnectGoogleDrive();
     if (!integrations.configured) return { ok: false, detail: 'SnapFlow backend is not configured' };
     try {
-      await integrations.disconnect(destination);
-      return { ok: true, detail: `Disconnected ${destination}` };
+      await integrations.disconnect(dest);
+      return { ok: true, detail: `Disconnected ${dest}` };
     } catch (err) {
       return { ok: false, detail: err instanceof Error ? err.message : 'Disconnect failed' };
     }
@@ -331,16 +370,19 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
   ipcMain.handle(CH.syncNow, () => sync.run({ uploadBlobs: true }));
   ipcMain.handle(CH.syncPrefGet, () => ({ enabled: isCloudSyncOptIn(engine.db) }));
   ipcMain.handle(CH.syncPrefSet, (_e, enabled: boolean) => {
-    setCloudSyncOptIn(engine.db, !!enabled);
-    return { enabled: !!enabled };
+    const on = guard(() => assertBool(enabled));
+    setCloudSyncOptIn(engine.db, on);
+    return { enabled: on };
   });
 
   // ── Diff mode (v1.1) ────────────────────────────────────────────────────────
   ipcMain.handle(CH.diffCompute, async (_e, args: { beforeId: string; afterId: string; options?: DiffComputeOptions }) => {
-    const before = history.get(WS, args.beforeId);
-    const after  = history.get(WS, args.afterId);
+    const beforeId = guard(() => assertCaptureId(args?.beforeId));
+    const afterId = guard(() => assertCaptureId(args?.afterId));
+    const before = history.get(WS, beforeId);
+    const after  = history.get(WS, afterId);
     if (!before?.imagePath || !after?.imagePath) return { ok: false, error: 'Capture not found or has no image' };
-    const threshold = args.options?.threshold;
+    const threshold = guard(() => assertDiffThreshold(args.options?.threshold));
     if (threshold != null && !ent().diffAdvanced) {
       return { ok: false, error: 'Diff sensitivity control requires Pro or Team' };
     }
@@ -419,8 +461,8 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
 
   ipcMain.handle(CH.colourFormatGet, () => colors.getFormat());
   ipcMain.handle(CH.colourFormatSet, (_e, format: ColorFormat) => {
-    if (format !== 'hex' && format !== 'rgb' && format !== 'hsl') return colors.getFormat();
-    colors.setFormat(format);
+    const f = guard(() => assertColorFormat(format));
+    colors.setFormat(f);
     return colors.getFormat();
   });
   ipcMain.handle(CH.colourRecentList, (_e, limit = 24) => colors.list(WS, limit));

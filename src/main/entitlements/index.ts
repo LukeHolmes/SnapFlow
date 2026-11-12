@@ -9,14 +9,11 @@
 import type { DestinationId, Entitlements, Tier } from '../../shared/types';
 import { ENTITLEMENTS_MATRIX } from '../../../shared/entitlements-matrix';
 
+export { currentTier, isDevEnvironment, tierFromDevEnv } from './tier';
+export { EntitlementsCache, backendConfigured, scheduleEntitlementsRefresh } from './cache';
+
 export function entitlementsFor(tier: Tier): Entitlements {
   return { tier, ...ENTITLEMENTS_MATRIX[tier] };
-}
-
-/** Dev convenience: tier comes from env, defaults to pro. Real builds read it from the backend. */
-export function currentTier(): Tier {
-  const t = (process.env.SNAPFLOW_TIER as Tier) || 'pro';
-  return (['free', 'pro', 'team', 'perpetual'] as Tier[]).includes(t) ? t : 'pro';
 }
 
 export function canAddPreset(ent: Entitlements, currentCount: number): boolean {
