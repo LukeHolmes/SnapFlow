@@ -337,6 +337,8 @@ describe('GxP evidence database (migrations)', { skip: !process.env.EVIDENCE_DAT
       `SELECT snapflow_private.append_audit_event('${orgId}', 'x', 'y', '${entityId}', '${userId}', 'r', '{}'::jsonb)`,
       `SELECT snapflow_private.is_org_member('${orgId}')`,
       `SELECT snapflow_private.verify_audit_chain('${orgId}')`,
+      `SELECT public.assert_evidence_deletion_allowed()`,
+      `SELECT snapflow_private.sha256_hex('probe')`,
     ]) {
       await asAnon(async (c) => {
         await assert.rejects(

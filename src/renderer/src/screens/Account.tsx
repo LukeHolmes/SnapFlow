@@ -21,6 +21,7 @@ export default function Account({ flash }: Props) {
   const [stats, setStats] = useState<Stats>({ total: 0, ocrIndexed: 0, sent: 0, piiRedacted: 0 });
   const [ent, setEnt] = useState<Entitlements | null>(null);
   const [cloudSync, setCloudSync] = useState(false);
+  const [evidenceSync, setEvidenceSync] = useState(false);
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [aiTagging, setAiTagging] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
@@ -30,12 +31,14 @@ export default function Account({ flash }: Props) {
       api.stats.get(),
       api.entitlements.get(),
       api.sync.getEnabled(),
+      api.evidence.getEnabled(),
       api.account.get(),
       api.prefs.aiTagging.get(),
-    ]).then(([s, e, syncPref, acct, aiPref]) => {
+    ]).then(([s, e, syncPref, evPref, acct, aiPref]) => {
       setStats(s);
       setEnt(e);
       setCloudSync(syncPref.enabled);
+      setEvidenceSync(evPref.enabled);
       setAccount(acct);
       setAiTagging(aiPref.enabled);
     });
@@ -189,6 +192,32 @@ export default function Account({ flash }: Props) {
       )}
 
       <TeamPanel flash={flash} teamEligible={Boolean(ent?.sharedLibrary || ent?.tier === 'team')} />
+
+      {ent?.cloudSync && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="plan-feature-row" style={{ alignItems: 'center' }}>
+            <div>
+              <span className="plan-feature-key">GxP evidence cloud sync</span>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#666' }}>
+                Off by default. Uploads redacted images only to the validation evidence module (test step or change record). Does not upload OCR text or unredacted originals.
+              </p>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={evidenceSync}
+                onChange={async e => {
+                  const enabled = e.target.checked;
+                  setEvidenceSync(enabled);
+                  await api.evidence.setEnabled(enabled);
+                  flash(enabled ? 'GxP evidence sync enabled' : 'GxP evidence sync disabled');
+                }}
+              />
+              <span>{evidenceSync ? 'On' : 'Off'}</span>
+            </label>
+          </div>
+        </div>
+      )}
 
       {ent?.cloudSync && (
         <div className="card" style={{ marginTop: 16 }}>

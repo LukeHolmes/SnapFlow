@@ -51,6 +51,10 @@ import { connectGoogleDrive, disconnectGoogleDrive, getGoogleDriveStatus } from 
 import type { Engine } from './engine';
 import type { SyncAgent } from './sync/agent';
 import { isCloudSyncOptIn, setCloudSyncOptIn } from './sync/prefs';
+import { isEvidenceCloudSyncOptIn, setEvidenceCloudSyncOptIn } from './evidence/prefs';
+import { enqueueEvidenceOutbox, upsertLocalLink } from './evidence/outbox';
+import { runEvidenceOutbox, buildRedactedUploadPayload, localOriginalSha256FromPath } from './evidence/agent';
+import { apiCreatePack, apiExportPack, apiSignPack } from './evidence/client';
 import { teamClientFromEnv } from './team/client';
 import type { AnnotationDocument, Capture, ColorFormat, DestinationId, Guide, GuideType, IntegrationStatus } from '../shared/types';
 
@@ -429,6 +433,100 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     const on = guard(() => assertBool(enabled));
     setCloudSyncOptIn(engine.db, on);
     return { enabled: on };
+  });
+
+  ipcMain.handle(CH.evidenceSyncPrefGet, () => ({ enabled: isEvidenceCloudSyncOptIn(engine.db) }));
+  ipcMain.handle(CH.evidenceSyncPrefSet, (_e, enabled: boolean) => {
+    const on = guard(() => assertBool(enabled));
+    setEvidenceCloudSyncOptIn(engine.db, on);
+    return { enabled: on };
+  });
+  ipcMain.handle(CH.evidenceSyncNow, async () => runEvidenceOutbox(engine));
+  ipcMain.handle(
+    CH.evidenceLinkCapture,
+    async (
+      _e,
+      args: {
+        captureId: string;
+        organisationId: string;
+        testStepId?: string;
+        changeRecordRef?: string;
+        localOriginalSha256?: string;
+      },
+    ) => {
+      const captureId = guard(() => assertCaptureId(args?.captureId));
+      const cap = history.get(WS, captureId);
+      if (!cap) return { ok: false, error: 'Capture not found' };
+      if (!ent().cloudSync || !isEvidenceCloudSyncOptIn(engine.db)) {
+        return { ok: false, error: 'GxP evidence cloud sync is disabled' };
+      }
+      if (cap.hasPii && !cap.piiRedactedApplied) {
+        return { ok: false, error: 'Apply PII redaction before GxP evidence sync' };
+      }
+      const imagePath = cap.imagePath;
+      const contentHash = localOriginalSha256FromPath(imagePath);
+      const idempotencyKey = `${captureId}:create_item:${contentHash}`;
+      enqueueEvidenceOutbox(engine.db, {
+        operation: 'create_item',
+        idempotencyKey,
+        captureId,
+        payload: {
+          organisationId: args.organisationId,
+          localCaptureId: captureId,
+          testStepId: args.testStepId,
+          changeRecordId: args.changeRecordRef,
+          localOriginalSha256: args.localOriginalSha256 ?? contentHash,
+          metadata: { tag: cap.tag, pii_redacted: true },
+        },
+      });
+      upsertLocalLink(engine.db, {
+        captureId,
+        testStepId: args.testStepId,
+        changeRecordRef: args.changeRecordRef,
+        organisationId: args.organisationId,
+      });
+      const flush = await runEvidenceOutbox(engine);
+      const link = engine.db
+        .prepare(`SELECT cloud_item_id FROM evidence_local_links WHERE capture_id = ?`)
+        .get(captureId) as { cloud_item_id?: string } | undefined;
+      const itemId = link?.cloud_item_id;
+      if (itemId) {
+        const idemVer = `${captureId}:upload_version:${contentHash}`;
+        enqueueEvidenceOutbox(engine.db, {
+          operation: 'upload_version',
+          idempotencyKey: idemVer,
+          captureId,
+          payload: buildRedactedUploadPayload({
+            captureId,
+            imagePath,
+            piiRedacted: true,
+            clientCapturedAt: new Date(cap.createdAt).toISOString(),
+            itemId,
+          }),
+        });
+        await runEvidenceOutbox(engine);
+      }
+      return { ok: true, sync: flush };
+    },
+  );
+  ipcMain.handle(
+    CH.evidenceBuildPack,
+    async (_e, args: { organisationId: string; title: string; evidenceItemIds: string[] }) => {
+      if (!backendConfigured()) return { ok: false, error: 'Backend not configured' };
+      const pack = await apiCreatePack(args);
+      return { ok: true, ...pack };
+    },
+  );
+  ipcMain.handle(
+    CH.evidenceSignPack,
+    async (_e, args: { packId: string; meaning: 'author' | 'reviewer' | 'approver'; reauthConfirmed: boolean }) => {
+      const sig = await apiSignPack(args.packId, args);
+      return { ok: true, ...sig };
+    },
+  );
+  ipcMain.handle(CH.evidenceExportPack, async (_e, packId: string) => {
+    const data = await apiExportPack(packId);
+    return { ok: true, ...data };
   });
 
   // ── Diff mode (v1.1) ────────────────────────────────────────────────────────

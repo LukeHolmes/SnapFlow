@@ -243,6 +243,15 @@ const mock: SnapFlowApi = {
     getEnabled: async () => ({ enabled: false }),
     setEnabled: async (enabled: boolean) => ({ enabled }),
   },
+  evidence: {
+    getEnabled: async () => ({ enabled: false }),
+    setEnabled: async (enabled: boolean) => ({ enabled }),
+    syncNow: async () => ({ processed: 0, errors: 0, skipped: true }),
+    linkCapture: async () => ({ ok: false, error: 'Mock — run in Electron' }),
+    buildPack: async () => ({ ok: false, error: 'Mock' }),
+    signPack: async () => ({ ok: false, error: 'Mock' }),
+    exportPack: async () => ({ ok: false, error: 'Mock' }),
+  },
   team: {
     me: async () => ({ configured: false, team: null }),
     create: async () => ({ ok: false, detail: 'Mock — run in Electron with backend token' }),

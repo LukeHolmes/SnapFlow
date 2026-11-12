@@ -2,6 +2,7 @@
 // Deliberately free of any Electron import so the store is unit-testable headless.
 import Database from 'better-sqlite3';
 import { SCHEMA, SYNC_SCHEMA, COLOR_SCHEMA } from './history/schema';
+import { EVIDENCE_SYNC_SCHEMA } from './evidence/schema';
 
 export type Db = Database.Database;
 
@@ -13,6 +14,7 @@ export function openDb(path: string): Db {
   db.exec(SCHEMA);
   db.exec(SYNC_SCHEMA);
   db.exec(COLOR_SCHEMA);
+  db.exec(EVIDENCE_SYNC_SCHEMA);
   rebuildFts(db);
   return db;
 }

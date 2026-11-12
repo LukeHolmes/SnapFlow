@@ -118,6 +118,22 @@ const api = {
     getEnabled: (): Promise<{ enabled: boolean }> => ipcRenderer.invoke(CH.syncPrefGet),
     setEnabled: (enabled: boolean): Promise<{ enabled: boolean }> => ipcRenderer.invoke(CH.syncPrefSet, enabled),
   },
+  evidence: {
+    getEnabled: (): Promise<{ enabled: boolean }> => ipcRenderer.invoke(CH.evidenceSyncPrefGet),
+    setEnabled: (enabled: boolean): Promise<{ enabled: boolean }> => ipcRenderer.invoke(CH.evidenceSyncPrefSet, enabled),
+    syncNow: () => ipcRenderer.invoke(CH.evidenceSyncNow),
+    linkCapture: (args: {
+      captureId: string;
+      organisationId: string;
+      testStepId?: string;
+      changeRecordRef?: string;
+    }) => ipcRenderer.invoke(CH.evidenceLinkCapture, args),
+    buildPack: (args: { organisationId: string; title: string; evidenceItemIds: string[] }) =>
+      ipcRenderer.invoke(CH.evidenceBuildPack, args),
+    signPack: (args: { packId: string; meaning: 'author' | 'reviewer' | 'approver'; reauthConfirmed: boolean }) =>
+      ipcRenderer.invoke(CH.evidenceSignPack, args),
+    exportPack: (packId: string) => ipcRenderer.invoke(CH.evidenceExportPack, packId),
+  },
   team: {
     me: () => ipcRenderer.invoke(CH.teamMe),
     create: (name: string) => ipcRenderer.invoke(CH.teamCreate, name),
