@@ -10,10 +10,11 @@ const outFile = join(outDir, 'third-party-licenses.txt');
 
 mkdirSync(outDir, { recursive: true });
 
+const checkerCli = join(root, 'node_modules', 'license-checker', 'bin', 'license-checker');
 const run = spawnSync(
-  'npx',
-  ['license-checker', '--production', '--out', outFile, '--plainVertical'],
-  { cwd: root, encoding: 'utf8', shell: false },
+  process.execPath,
+  [checkerCli, '--production', '--out', outFile, '--plainVertical'],
+  { cwd: root, encoding: 'utf8', windowsHide: true },
 );
 
 if (run.status !== 0) {
