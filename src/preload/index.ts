@@ -71,6 +71,11 @@ const api = {
   },
   entitlements: { get: (): Promise<Entitlements> => ipcRenderer.invoke(CH.entitlementsGet) },
   account: { get: (): Promise<AccountSummary> => ipcRenderer.invoke(CH.accountGet) },
+  app: {
+    getMeta: (): Promise<{ version: string; licenseNotices: string; privacyDraft: string; eulaDraft: string }> =>
+      ipcRenderer.invoke(CH.appGetMeta),
+    openLegal: (doc: 'privacy' | 'eula' | 'license'): Promise<string> => ipcRenderer.invoke(CH.appOpenLegal, doc),
+  },
   stats: { get: (): Promise<Stats> => ipcRenderer.invoke(CH.statsGet) },
   events: { recent: (limit?: number): Promise<ActivityEvent[]> => ipcRenderer.invoke(CH.eventsRecent, limit) },
 
@@ -145,6 +150,11 @@ const api = {
     const handler = (_e: unknown, destination: DestinationId | 'unknown', message: string) => cb(destination, message);
     ipcRenderer.on(CH.integrationError, handler);
     return () => ipcRenderer.removeListener(CH.integrationError, handler);
+  },
+  onOpenAbout: (cb: () => void): (() => void) => {
+    const handler = () => cb();
+    ipcRenderer.on(CH.openAbout, handler);
+    return () => ipcRenderer.removeListener(CH.openAbout, handler);
   },
 };
 

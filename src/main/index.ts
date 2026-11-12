@@ -1,4 +1,6 @@
 import { app, BrowserWindow, shell, globalShortcut, session } from 'electron';
+import { configureLinuxChromeSandbox, installAutoUpdate } from './update/install';
+import { installAppMenu } from './menu';
 import { join } from 'node:path';
 import { CH } from '../shared/channels';
 import { openDb } from './db';
@@ -20,6 +22,8 @@ import { scheduleEntitlementsRefresh } from './entitlements';
 import { DEV_CSP, PACKAGED_CSP } from './security/csp';
 
 let win: BrowserWindow | null = null;
+
+configureLinuxChromeSandbox();
 
 if (process.defaultApp) {
   if (process.argv.length >= 2) {
@@ -121,6 +125,14 @@ app.whenReady().then(() => {
   registerColourPicker(engine, () => win);
   registerRecordingManager(engine, () => win);
   createWindow();
+  installAutoUpdate(() => win);
+  installAppMenu({
+    showAbout: () => {
+      win?.show();
+      win?.focus();
+      win?.webContents.send(CH.openAbout);
+    },
+  });
   installTray(() => win);
 
   const deepLinkArg = process.argv.find(arg => arg.startsWith('snapflow://'));

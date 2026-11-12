@@ -1,0 +1,73 @@
+# Manual macOS / Linux packaging only — does NOT run on push or pull_request (Actions budget).
+name: Package (macOS / Linux)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which platforms to build
+        type: choice
+        options:
+          - linux
+          - macos
+          - both
+        default: linux
+
+concurrency:
+  group: package-unix-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-packages:
+    name: Linux (AppImage + deb)
+    if: github.event.inputs.target == 'linux' || github.event.inputs.target == 'both'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and package (no publish)
+        run: npm run dist -- --linux --publish never
+
+      - name: Upload Linux artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapflow-linux
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+          if-no-files-found: error
+
+  macos-dmg:
+    name: macOS (unsigned DMG)
+    if: github.event.inputs.target == 'macos' || github.event.inputs.target == 'both'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and package (no publish)
+        run: npm run dist -- --mac --publish never
+
+      - name: Upload macOS artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapflow-macos
+          path: dist/*.dmg
+          if-no-files-found: error
