@@ -65,6 +65,10 @@ Wire the desktop app via `.env`: `SNAPFLOW_AI_PROXY_URL=http://localhost:3001` a
 
 If native module errors appear after switching Node/Electron versions, rerun the matching rebuild script.
 
+### Sandboxed preload builds
+
+Preload bundles must be **self-contained** (`require('electron')` only) for `sandbox: true`. `electron.vite.config.ts` rebundles each preload entry with esbuild after Rollup; `tests/preload-build.test.ts` enforces this after `npm run build`. Web mock data needs `VITE_ALLOW_WEB_MOCK=true` (`npm run web:dev` sets it).
+
 ### Electron dev on Linux (known issue)
 
 As of this tree, `npm run dev` can fail at Electron startup with `ERR_REQUIRE_ESM` when the main bundle `require()`s `pixelmatch` (ESM-only). **`npm run build` succeeds** and **headless `npm test` passes**; use backend API smoke tests for cloud verification until that import is fixed. Do not assume `npm run dev` works in CI/cloud without checking this error.

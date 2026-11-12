@@ -92,6 +92,7 @@ export async function startColourPicker(): Promise<void> {
         preload: join(__dirname, '../preload/picker-overlay.js'),
         contextIsolation: true,
         nodeIntegration: false,
+        sandbox: true,
       },
     });
     win.setAlwaysOnTop(true, 'screen-saver');

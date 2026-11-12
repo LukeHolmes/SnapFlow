@@ -9,7 +9,7 @@
   "scripts": {
     "predev": "npm run rebuild:electron",
     "dev": "electron-vite dev",
-    "web:dev": "vite --host 0.0.0.0 src/renderer",
+    "web:dev": "VITE_ALLOW_WEB_MOCK=true vite --host 0.0.0.0 src/renderer",
     "web:build": "vite build src/renderer",
     "web:build:pages": "VITE_BASE=/SnapFlow/ vite build src/renderer",
     "web:preview": "vite preview --host 0.0.0.0 src/renderer",
