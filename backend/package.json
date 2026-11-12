@@ -8,6 +8,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node --import tsx src/index.ts",
     "test": "node --test --import tsx ./tests/*.test.ts",
+    "test:evidence-db": "node --test --import tsx ./tests/evidence-db.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

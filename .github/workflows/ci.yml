@@ -54,6 +54,20 @@ jobs:
   backend:
     name: Backend (typecheck + tests)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: snapflow
+          POSTGRES_PASSWORD: snapflow
+          POSTGRES_DB: snapflow_evidence_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U snapflow -d snapflow_evidence_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     defaults:
       run:
         shell: bash
@@ -79,6 +93,9 @@ jobs:
         run: npm run typecheck
 
       - name: Test
+        env:
+          EVIDENCE_DATABASE_URL: postgres://snapflow:snapflow@localhost:5432/snapflow_evidence_test
+          CI: true
         run: npm test
 
   windows-installer:
