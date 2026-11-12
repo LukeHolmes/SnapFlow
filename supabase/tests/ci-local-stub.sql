@@ -59,3 +59,5 @@ SET search_path = storage
 AS $$
   SELECT string_to_array(name, '/');
 $$;
+
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;

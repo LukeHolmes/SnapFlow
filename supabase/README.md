@@ -11,9 +11,17 @@ Versioned SQL for the **cloud evidence module** (`eu-central-1`). Design: [`docs
 | `20261112100200_evidence_and_signatures.sql` | Evidence items/versions/packs, Part 11 signatures |
 | `20261112100300_audit_immutability_legal_hold.sql` | Append-only `audit_log`, hash chain, legal hold |
 | `20261112100400_rls_policies.sql` | RLS on all tenant tables |
-| `20261112100500_storage_evidence_bucket.sql` | Private `evidence` bucket + object policies |
+| `20261112100500_storage_evidence_bucket.sql` | Private `evidence` bucket + object policies (no `ALTER` on `storage.objects`) |
+| `20261112100600_advisor_hardening.sql` | Private definer schema, advisor fixes (apply after `005` on hosted) |
 
-**Do not apply to the hosted project until Luke approves.** After approval, apply via the Supabase connector (or CLI linked to project ref `nrkgzsrgqnhbiamknjws`) in filename order.
+**Do not apply to the hosted project until Luke approves.**
+
+**Hosted SnapFlow (if `000000`–`004` already applied, `005` failed):** apply only:
+
+1. `20261112100500_storage_evidence_bucket.sql`
+2. `20261112100600_advisor_hardening.sql`
+
+Fresh environments: apply `000000` … `006000` in order. Skip `ci-local-stub.sql` on hosted.
 
 `supabase/tests/ci-local-stub.sql` is **CI/local only** — stubs `auth` and `storage` for plain Postgres. **Skip on hosted Supabase** (platform provides these).
 

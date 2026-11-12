@@ -1,4 +1,5 @@
 -- Private evidence bucket (redacted PNGs only); path: {org_id}/{item_id}/{version_id}_*
+-- On hosted Supabase, storage.objects RLS is already enabled (do not ALTER).
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
@@ -8,14 +9,9 @@ VALUES (
   52428800,
   ARRAY['image/png', 'image/jpeg', 'image/webp']
 )
-ON CONFLICT (id) DO UPDATE
-SET
-  public = EXCLUDED.public,
-  file_size_limit = EXCLUDED.file_size_limit,
-  allowed_mime_types = EXCLUDED.allowed_mime_types;
+ON CONFLICT (id) DO NOTHING;
 
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
+DROP POLICY IF EXISTS evidence_objects_select ON storage.objects;
 CREATE POLICY evidence_objects_select ON storage.objects
   FOR SELECT TO authenticated
   USING (
@@ -24,6 +20,7 @@ CREATE POLICY evidence_objects_select ON storage.objects
     AND public.is_org_member((storage.foldername(name))[1]::uuid)
   );
 
+DROP POLICY IF EXISTS evidence_objects_insert ON storage.objects;
 CREATE POLICY evidence_objects_insert ON storage.objects
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -33,6 +30,7 @@ CREATE POLICY evidence_objects_insert ON storage.objects
     AND (storage.foldername(name))[3] LIKE '%\_%'
   );
 
+DROP POLICY IF EXISTS evidence_objects_delete ON storage.objects;
 CREATE POLICY evidence_objects_delete ON storage.objects
   FOR DELETE TO authenticated
   USING (
