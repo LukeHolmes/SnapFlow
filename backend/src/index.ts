@@ -14,6 +14,7 @@ import { deliverRouter } from './deliver/routes';
 import { oauthRouter } from './oauth/routes';
 import { integrationsRouter } from './integrations/routes';
 import { teamsRouter } from './teams/routes';
+import { evidenceRouter } from './evidence/routes';
 import { initDb } from './store';
 import { validateConfig } from './config';
 
@@ -38,6 +39,7 @@ export function createApp() {
   app.use(oauthRouter);
   app.use(integrationsRouter);
   app.use(teamsRouter);
+  app.use(evidenceRouter);
 
   app.use(errorMiddleware);
   return app;

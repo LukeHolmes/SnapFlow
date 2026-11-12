@@ -69,6 +69,13 @@ export const CH = {
   syncNow:            'sync:now',
   syncPrefGet:        'sync:prefGet',
   syncPrefSet:        'sync:prefSet',
+  evidenceSyncPrefGet: 'evidence:syncPrefGet',
+  evidenceSyncPrefSet: 'evidence:syncPrefSet',
+  evidenceLinkCapture: 'evidence:linkCapture',
+  evidenceBuildPack:   'evidence:buildPack',
+  evidenceSignPack:    'evidence:signPack',
+  evidenceExportPack:  'evidence:exportPack',
+  evidenceSyncNow:     'evidence:syncNow',
   diffCompute:        'diff:compute',    // before+after capture IDs → pixel diff result + path
   diffSummarise:      'diff:summarise',  // before+after IDs → AI plain-English summary (Pro/Team)
   diffGetImage:       'diff:getImage',   // diff PNG path → data URL
