@@ -1,0 +1,119 @@
+-- =============================================================================
+-- SnapFlow GxP Evidence Schema — DRAFT SQL (NOT APPLIED)
+-- =============================================================================
+-- This file is design documentation only. Do not run against production.
+-- Intended target: Supabase Postgres (eu-central-1), with RLS enabled.
+-- Pilot decisions (12 Nov 2026): cloud stores redacted PNGs only; see
+-- docs/EVIDENCE_BACKEND_DESIGN.md § Decisions.
+-- =============================================================================
+
+-- organisations
+-- CREATE TABLE organisations (
+--   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   name                  text NOT NULL,
+--   slug                  text UNIQUE NOT NULL,
+--   legal_hold            boolean NOT NULL DEFAULT false,
+--   retention_policy      jsonb NOT NULL DEFAULT '{"mode":"indefinite"}',
+--   created_at            timestamptz NOT NULL DEFAULT now()
+-- );
+
+-- memberships (role: tester | reviewer | qa_approver | admin)
+-- CREATE TABLE memberships (
+--   organisation_id uuid NOT NULL REFERENCES organisations(id),
+--   user_id         uuid NOT NULL, -- Supabase auth.users.id (Google/GitHub pilot)
+--   role            text NOT NULL CHECK (role IN ('tester','reviewer','qa_approver','admin')),
+--   created_at      timestamptz NOT NULL DEFAULT now(),
+--   PRIMARY KEY (organisation_id, user_id)
+-- );
+
+-- evidence_items: must anchor to protocol step OR change record (CR optional)
+-- CREATE TABLE evidence_items (
+--   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   organisation_id     uuid NOT NULL REFERENCES organisations(id),
+--   local_capture_id    uuid NOT NULL,
+--   test_step_id        uuid REFERENCES test_steps(id),
+--   change_record_id    uuid REFERENCES change_records(id),
+--   local_original_sha256 char(64), -- hash only; no original blob in cloud
+--   metadata            jsonb NOT NULL DEFAULT '{}',
+--   created_by_user_id  uuid NOT NULL,
+--   created_at          timestamptz NOT NULL DEFAULT now(),
+--   CONSTRAINT evidence_item_anchor CHECK (
+--     test_step_id IS NOT NULL OR change_record_id IS NOT NULL
+--   )
+-- );
+
+-- evidence_versions: pilot cloud ingest — redacted kind only
+-- CREATE TABLE evidence_versions (
+--   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   evidence_item_id    uuid NOT NULL REFERENCES evidence_items(id),
+--   kind                text NOT NULL DEFAULT 'redacted'
+--     CHECK (kind = 'redacted'), -- pilot: no original/processed blobs in Storage
+--   storage_path        text NOT NULL,
+--   sha256              char(64) NOT NULL,
+--   byte_size           bigint NOT NULL,
+--   recorded_at         timestamptz NOT NULL DEFAULT now(),
+--   client_captured_at  timestamptz,
+--   created_by_user_id  uuid NOT NULL
+-- );
+-- REVOKE UPDATE, DELETE ON evidence_versions FROM authenticated, anon;
+
+-- signatures (Part 11 pilot meanings)
+-- CREATE TABLE signatures (
+--   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   organisation_id       uuid NOT NULL,
+--   pack_id               uuid NOT NULL,
+--   meaning               text NOT NULL CHECK (meaning IN ('author','reviewer','approver')),
+--   display_label         text, -- optional org override; default from meaning
+--   signed_payload_hash   char(64) NOT NULL,
+--   signed_by_user_id     uuid NOT NULL,
+--   signed_at             timestamptz NOT NULL DEFAULT now()
+-- );
+
+-- audit_log: append-only with hash chain
+-- CREATE TABLE audit_log (
+--   id                bigserial PRIMARY KEY,
+--   organisation_id   uuid NOT NULL,
+--   event_type        text NOT NULL,
+--   entity_type       text NOT NULL,
+--   entity_id         uuid NOT NULL,
+--   actor_user_id     uuid,
+--   reason            text NOT NULL,
+--   metadata          jsonb NOT NULL DEFAULT '{}',
+--   payload_hash      char(64) NOT NULL,
+--   prev_hash         char(64) NOT NULL,
+--   chain_hash        char(64) NOT NULL,
+--   created_at        timestamptz NOT NULL DEFAULT now()
+-- );
+-- REVOKE UPDATE, DELETE ON audit_log FROM authenticated, anon;
+
+-- Example SECURITY DEFINER append (sketch):
+-- CREATE OR REPLACE FUNCTION append_audit_event(
+--   p_org uuid, p_event text, p_entity_type text, p_entity_id uuid,
+--   p_actor uuid, p_reason text, p_metadata jsonb
+-- ) RETURNS bigint
+-- LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE
+--   v_prev char(64);
+--   v_payload_hash char(64);
+--   v_chain char(64);
+--   v_id bigint;
+-- BEGIN
+--   SELECT chain_hash INTO v_prev FROM audit_log
+--     WHERE organisation_id = p_org ORDER BY id DESC LIMIT 1;
+--   IF v_prev IS NULL THEN v_prev := repeat('0', 64); END IF;
+--   v_payload_hash := encode(digest(p_metadata::text, 'sha256'), 'hex');
+--   v_chain := encode(digest(v_prev || v_payload_hash || p_event || p_entity_id::text, 'sha256'), 'hex');
+--   INSERT INTO audit_log (organisation_id, event_type, entity_type, entity_id, actor_user_id, reason,
+--     metadata, payload_hash, prev_hash, chain_hash)
+--   VALUES (p_org, p_event, p_entity_type, p_entity_id, p_actor, p_reason, p_metadata, v_payload_hash, v_prev, v_chain)
+--   RETURNING id INTO v_id;
+--   RETURN v_id;
+-- END; $$;
+
+-- Prevent mutation on audit_log
+-- CREATE OR REPLACE FUNCTION deny_audit_mutation() RETURNS trigger AS $$
+-- BEGIN
+--   RAISE EXCEPTION 'audit_log is append-only';
+-- END; $$ LANGUAGE plpgsql;
+-- CREATE TRIGGER audit_log_no_update BEFORE UPDATE OR DELETE ON audit_log
+--   FOR EACH ROW EXECUTE FUNCTION deny_audit_mutation();
