@@ -21,7 +21,7 @@ export const jiraDestination: OutputDestination = {
     const backend = backendClient();
     if (!backend.configured) throw new NotConfiguredError('Jira');
 
-    await ensureCaptureUrl(capture);
+    await ensureCaptureUrl(capture, { blobImagePath: capture.imagePath });
     return backend.deliver('jira', capture, { ...cfg });
   },
 };

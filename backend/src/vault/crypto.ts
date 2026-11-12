@@ -3,8 +3,13 @@ import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'node:
 import { config } from '../config';
 
 function key(): Buffer {
-  if (config.vaultKey) return Buffer.from(config.vaultKey, 'hex');         // 32-byte hex in prod
-  return createHash('sha256').update(`vault:${config.authSecret}`).digest(); // dev fallback
+  if (config.vaultKey && config.vaultKey.length === 64) {
+    return Buffer.from(config.vaultKey, 'hex');
+  }
+  if (config.isProduction) {
+    throw new Error('VAULT_KEY must be set to 32-byte hex in production');
+  }
+  return createHash('sha256').update(`vault:${config.authSecret}`).digest(); // dev-only fallback
 }
 
 export function encrypt(plaintext: string): string {

@@ -11,12 +11,15 @@ export interface DeliverPayload {
   config: Record<string, unknown>;
   metadata: {
     tag: string | null;
-    ocrText: string;
-    hasPii: boolean;
+    piiRedacted: boolean;
     createdAt: number;
   };
 }
 export interface DeliverResult { ok: boolean; detail: string; url?: string; queued?: boolean; }
+
+function piiStatusLabel(meta: DeliverPayload['metadata']): string {
+  return meta.piiRedacted ? 'Redacted (pixels masked)' : 'Clear';
+}
 
 export interface ServerDestination {
   id: string;
@@ -32,7 +35,7 @@ const slack: ServerDestination = {
       const comment = [
         `Tag: ${payload.metadata.tag ?? 'untagged'}`,
         `Timestamp: ${new Date(payload.metadata.createdAt).toISOString()}`,
-        `PII redaction: ${payload.metadata.hasPii ? 'redacted' : 'clear'}`,
+        `PII: ${piiStatusLabel(payload.metadata)}`,
       ].join(' • ');
 
       const init = await slackApi<any>('/files.getUploadURLExternal', token.accessToken, {
@@ -73,8 +76,7 @@ const notion: ServerDestination = {
       const metaLine = [
         `Captured ${new Date(payload.metadata.createdAt).toISOString()}`,
         `Tag: ${payload.metadata.tag ?? 'untagged'}`,
-        `OCR words: ${wordCount(payload.metadata.ocrText)}`,
-        `PII redaction: ${payload.metadata.hasPii ? 'redacted' : 'clear'}`,
+        `PII: ${piiStatusLabel(payload.metadata)}`,
         externalUrl ? undefined : 'Image not embedded — enable cloud sync and upload for a public URL',
       ].filter(Boolean).join(' | ');
       const children: Record<string, unknown>[] = [];
@@ -117,8 +119,7 @@ const gmail: ServerDestination = {
       const bodyText = [
         `Tag: ${tag}`,
         `Timestamp: ${timestamp}`,
-        `PII redaction: ${payload.metadata.hasPii ? 'redacted' : 'clear'}`,
-        `OCR word count: ${wordCount(payload.metadata.ocrText)}`,
+        `PII: ${piiStatusLabel(payload.metadata)}`,
         '',
         'Sent from SnapFlow',
       ].join('\n');
@@ -151,8 +152,7 @@ const github: ServerDestination = {
       '| --- | --- |',
       `| Tag | ${tag} |`,
       `| Timestamp | ${timestamp} |`,
-      `| PII status | ${payload.metadata.hasPii ? 'Redacted' : 'Clear'} |`,
-      `| OCR excerpt | ${escapeCell(payload.metadata.ocrText.trim().slice(0, 200) || 'None')} |`,
+      `| PII status | ${payload.metadata.piiRedacted ? 'Redacted' : 'Clear'} |`,
     ].join('\n');
     return withDestinationAccessToken(accountId, 'github', async token => {
       if (mode === 'comment') {
@@ -310,10 +310,6 @@ function normaliseRecipients(value: unknown): string[] {
   return [];
 }
 
-function wordCount(text: string): number {
-  return text.trim().match(/\S+/g)?.length ?? 0;
-}
-
 function requiredString(value: unknown, label: string): string {
   if (typeof value !== 'string' || !value.trim()) throw new Error(`${label} is required`);
   return value.trim();
@@ -321,10 +317,6 @@ function requiredString(value: unknown, label: string): string {
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
-}
-
-function escapeCell(value: string): string {
-  return value.replace(/\|/g, '\\|').replace(/\n/g, ' ');
 }
 
 function delay(ms: number): Promise<void> {
@@ -424,8 +416,7 @@ function jiraComment(payload: DeliverPayload, captureLink: string | null): strin
     `Capture: ${payload.filename}`,
     `Tag: ${tag}`,
     `Timestamp: ${timestamp}`,
-    `PII redaction: ${payload.metadata.hasPii ? 'redacted' : 'clear'}`,
-    `OCR words: ${wordCount(payload.metadata.ocrText)}`,
+    `PII: ${piiStatusLabel(payload.metadata)}`,
     captureLink ? `Capture link: ${captureLink}` : 'Capture link: unavailable (cloud sync disabled or blob missing)',
   ].join(' | ');
 }

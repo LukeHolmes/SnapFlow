@@ -1,5 +1,6 @@
 import { Menu, app, shell, type MenuItemConstructorOptions } from 'electron';
 import { checkForUpdatesFromMenu } from './update/install';
+import { openExternalHttps } from './shell-safe';
 
 export function installAppMenu(opts?: { showAbout?: () => void }): void {
   const showAbout = opts?.showAbout;
@@ -37,7 +38,7 @@ export function installAppMenu(opts?: { showAbout?: () => void }): void {
         ...(showAbout ? [{ label: 'About SnapFlow', click: showAbout }] : []),
         {
           label: 'SnapFlow on GitHub',
-          click: () => { void shell.openExternal('https://github.com/LukeHolmes/SnapFlow'); },
+          click: () => { openExternalHttps('https://github.com/LukeHolmes/SnapFlow'); },
         },
       ] satisfies MenuItemConstructorOptions[],
     },

@@ -1,4 +1,4 @@
-import { backendConfigured } from '../entitlements';
+import { backendBaseUrl, resolveApiToken } from '../auth/token-store';
 import type { AccountSummary, Tier } from '../../shared/types';
 
 const VALID_TIERS: Tier[] = ['free', 'pro', 'team', 'perpetual'];
@@ -12,10 +12,9 @@ function displayNameFromEmail(email: string): string {
 
 /** Signed-in profile from GET /v1/account when SNAPFLOW_API_TOKEN is configured. */
 export async function fetchAccountSummary(): Promise<AccountSummary> {
-  if (!backendConfigured()) return { signedIn: false };
-
-  const baseUrl = (process.env.SNAPFLOW_CLOUD_URL || process.env.SNAPFLOW_AI_PROXY_URL || '').replace(/\/$/, '');
-  const token = process.env.SNAPFLOW_API_TOKEN!;
+  const baseUrl = backendBaseUrl();
+  const token = resolveApiToken();
+  if (!baseUrl || !token) return { signedIn: false };
   try {
     const res = await fetch(`${baseUrl}/v1/account`, {
       headers: { authorization: `Bearer ${token}` },

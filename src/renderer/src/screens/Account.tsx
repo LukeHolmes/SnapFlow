@@ -22,14 +22,29 @@ export default function Account({ flash }: Props) {
   const [ent, setEnt] = useState<Entitlements | null>(null);
   const [cloudSync, setCloudSync] = useState(false);
   const [account, setAccount] = useState<AccountSummary | null>(null);
+  const [aiTagging, setAiTagging] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
 
-  useEffect(() => {
-    Promise.all([api.stats.get(), api.entitlements.get(), api.sync.getEnabled(), api.account.get()]).then(([s, e, syncPref, acct]) => {
+  const refreshAccount = () => {
+    Promise.all([
+      api.stats.get(),
+      api.entitlements.get(),
+      api.sync.getEnabled(),
+      api.account.get(),
+      api.prefs.aiTagging.get(),
+    ]).then(([s, e, syncPref, acct, aiPref]) => {
       setStats(s);
       setEnt(e);
       setCloudSync(syncPref.enabled);
       setAccount(acct);
+      setAiTagging(aiPref.enabled);
     });
+  };
+
+  useEffect(() => {
+    refreshAccount();
+    const off = api.onAuthChanged?.(() => refreshAccount());
+    return () => { off?.(); };
   }, []);
 
   const tier = ent?.tier ?? account?.tier ?? 'free';
@@ -55,11 +70,56 @@ export default function Account({ flash }: Props) {
           ) : (
             <>
               <span className="account-name">Signed out</span>
-              <span className="account-email">Configure SNAPFLOW_API_TOKEN in .env to link your account</span>
+              <span className="account-email">Sign in with Google or GitHub to link cloud sync, AI proxy, and delivery.</span>
             </>
           )}
         </div>
         <span className="tier-badge" style={{ marginLeft: 'auto' }}>{tier}</span>
+      </div>
+
+      <div className="card" style={{ marginTop: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        {account?.signedIn ? (
+          <button
+            className="btn-secondary"
+            disabled={authBusy}
+            onClick={async () => {
+              setAuthBusy(true);
+              await api.auth.signOut();
+              refreshAccount();
+              flash('Signed out');
+              setAuthBusy(false);
+            }}
+          >
+            Sign out
+          </button>
+        ) : (
+          <>
+            <button
+              className="btn-primary"
+              disabled={authBusy}
+              onClick={async () => {
+                setAuthBusy(true);
+                const r = await api.auth.login('google');
+                flash(r.detail, r.ok);
+                setAuthBusy(false);
+              }}
+            >
+              Sign in with Google
+            </button>
+            <button
+              className="btn-secondary"
+              disabled={authBusy}
+              onClick={async () => {
+                setAuthBusy(true);
+                const r = await api.auth.login('github');
+                flash(r.detail, r.ok);
+                setAuthBusy(false);
+              }}
+            >
+              Sign in with GitHub
+            </button>
+          </>
+        )}
       </div>
 
       {/* Stats */}
@@ -102,6 +162,32 @@ export default function Account({ flash }: Props) {
         </div>
       </div>
 
+      {ent?.aiEnabled && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="plan-feature-row" style={{ alignItems: 'center' }}>
+            <div>
+              <span className="plan-feature-key">Cloud AI auto-tagging</span>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#666' }}>
+                Off by default. When enabled, capture PNGs are sent to your configured SnapFlow AI proxy for tagging. Captures with detected PII are never sent; redact first or rely on local heuristics only.
+              </p>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={aiTagging}
+                onChange={async e => {
+                  const enabled = e.target.checked;
+                  setAiTagging(enabled);
+                  await api.prefs.aiTagging.set(enabled);
+                  flash(enabled ? 'Cloud AI tagging enabled' : 'Cloud AI tagging disabled');
+                }}
+              />
+              <span>{aiTagging ? 'On' : 'Off'}</span>
+            </label>
+          </div>
+        </div>
+      )}
+
       <TeamPanel flash={flash} teamEligible={Boolean(ent?.sharedLibrary || ent?.tier === 'team')} />
 
       {ent?.cloudSync && (
@@ -110,7 +196,7 @@ export default function Account({ flash }: Props) {
             <div>
               <span className="plan-feature-key">Cloud sync</span>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: '#666' }}>
-                Off by default. When enabled, metadata syncs in the background; images upload when you send to Notion, GitHub, or Jira, or when you tap Sync now. PII-tagged captures are not uploaded until redacted.
+                Off by default. Metadata syncs in the background; images upload when you deliver to Notion, GitHub, or Jira (processed/redacted renders), or when you tap Sync now.
               </p>
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

@@ -67,6 +67,7 @@
       "**/node_modules/better-sqlite3/**"
     ],
     "extraResources": [
+      { "from": "resources/tesseract", "to": "tesseract" },
       { "from": "resources/third-party-licenses.txt", "to": "third-party-licenses.txt" },
       { "from": "LICENSE", "to": "legal/LICENSE" },
       { "from": "docs/PRIVACY.md", "to": "legal/PRIVACY.md" },

@@ -24,8 +24,11 @@ export const config = {
   databaseUrl: process.env.DATABASE_URL ?? '',
   dataDir: process.env.DATA_DIR ?? '.',   // local blob driver root is <dataDir>/blobs
 
-  // Short-lived HMAC capture URLs (Notion / GitHub / Jira). Default 7 days.
-  signedUrlTtlMs: Number(process.env.SIGNED_URL_TTL_MS ?? 7 * 24 * 60 * 60 * 1000),
+  // Short-lived HMAC capture URLs (Notion / GitHub / Jira). Default 24 hours.
+  signedUrlTtlMs: Number(process.env.SIGNED_URL_TTL_MS ?? 24 * 60 * 60 * 1000),
+
+  /** HMAC secret for public capture share links (distinct from AUTH_SECRET). */
+  shareLinkSecret: process.env.SHARE_LINK_SECRET ?? '',
 
   // Blob storage: `local` (disk under DATA_DIR) or `s3` (R2, MinIO, Supabase S3 API, etc.)
   blobStorageDriver: (process.env.BLOB_STORAGE_DRIVER ?? 'local') as 'local' | 's3',
@@ -94,6 +97,13 @@ export function validateConfig(cfg: typeof config = config): void {
     }
     if (cfg.authSecret.length < MIN_AUTH_SECRET_LENGTH) {
       throw new Error(`AUTH_SECRET must be at least ${MIN_AUTH_SECRET_LENGTH} characters in production`);
+    }
+    const shareSecret = cfg.shareLinkSecret || process.env.SHARE_LINK_SECRET;
+    if (!shareSecret || shareSecret === cfg.authSecret || shareSecret.length < MIN_AUTH_SECRET_LENGTH) {
+      throw new Error('SHARE_LINK_SECRET must be set to a unique value (≥32 chars) in production');
+    }
+    if (!cfg.vaultKey || cfg.vaultKey.length !== 64) {
+      throw new Error('VAULT_KEY must be set to 32-byte hex (64 characters) in production');
     }
     if (!cfg.billingWebhookSecret || cfg.billingWebhookSecret.length < MIN_AUTH_SECRET_LENGTH) {
       throw new Error('BILLING_WEBHOOK_SECRET must be set (≥32 chars) in production');

@@ -71,6 +71,19 @@ const api = {
   },
   entitlements: { get: (): Promise<Entitlements> => ipcRenderer.invoke(CH.entitlementsGet) },
   account: { get: (): Promise<AccountSummary> => ipcRenderer.invoke(CH.accountGet) },
+  auth: {
+    session: (): Promise<{ signedIn: boolean; encryptionAvailable: boolean; hasToken: boolean }> =>
+      ipcRenderer.invoke(CH.authSessionGet),
+    login: (provider: 'google' | 'github'): Promise<{ ok: boolean; detail: string }> =>
+      ipcRenderer.invoke(CH.authLoginStart, provider),
+    signOut: (): Promise<{ ok: boolean }> => ipcRenderer.invoke(CH.authSignOut),
+  },
+  prefs: {
+    aiTagging: {
+      get: (): Promise<{ enabled: boolean }> => ipcRenderer.invoke(CH.aiTaggingPrefGet),
+      set: (enabled: boolean): Promise<{ enabled: boolean }> => ipcRenderer.invoke(CH.aiTaggingPrefSet, enabled),
+    },
+  },
   app: {
     getMeta: (): Promise<{ version: string; licenseNotices: string; privacyDraft: string; eulaDraft: string }> =>
       ipcRenderer.invoke(CH.appGetMeta),
@@ -155,6 +168,11 @@ const api = {
     const handler = () => cb();
     ipcRenderer.on(CH.openAbout, handler);
     return () => ipcRenderer.removeListener(CH.openAbout, handler);
+  },
+  onAuthChanged: (cb: () => void): (() => void) => {
+    const handler = () => cb();
+    ipcRenderer.on(CH.authChanged, handler);
+    return () => ipcRenderer.removeListener(CH.authChanged, handler);
   },
 };
 

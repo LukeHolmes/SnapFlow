@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { Capture, DeliverResult } from '../../shared/types';
 import { teamInviteErrorMessage } from '../../shared/team-invite';
+import { backendBaseUrl, resolveApiToken } from '../auth/token-store';
 
 export type TeamRole = 'owner' | 'admin' | 'member';
 
@@ -109,4 +110,4 @@ export class TeamBackendClient {
 }
 
 export const teamClientFromEnv = (): TeamBackendClient =>
-  new TeamBackendClient(process.env.SNAPFLOW_CLOUD_URL || process.env.SNAPFLOW_AI_PROXY_URL, process.env.SNAPFLOW_API_TOKEN);
+  new TeamBackendClient(backendBaseUrl(), resolveApiToken());

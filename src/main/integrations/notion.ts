@@ -17,7 +17,7 @@ export const notionDestination: OutputDestination = {
     if (!cfg.page_id) throw new NotConfiguredError('Notion');
     const backend = backendClient();
     if (!backend.configured) throw new NotConfiguredError('Notion');
-    await ensureCaptureUrl(capture);
+    await ensureCaptureUrl(capture, { blobImagePath: capture.imagePath });
     return backend.deliver('notion', capture, { ...cfg });
   },
 };

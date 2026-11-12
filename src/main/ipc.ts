@@ -8,10 +8,19 @@ import { fetchAccountSummary } from './account/client';
 import { readBundledLicenseNotices, readLegalDraft } from './app-meta';
 import { getDestination } from './integrations/registry';
 import { contextualise } from './pipeline';
+import { isAiTaggingOptIn, setAiTaggingOptIn } from './prefs/ai-tagging';
+import {
+  clearStoredApiToken,
+  isAuthEncryptionAvailable,
+  isBackendSignedIn,
+  readStoredApiToken,
+} from './auth/token-store';
+import { startOAuthLogin, type LoginProvider } from './auth/login';
+import { openExternalHttps } from './shell-safe';
 import { boxesForDetections, locatePiiInOcr } from './ai/pii-locate';
 import { aiProxyFromEnv } from './ai/proxy-client';
 import { runOcr } from './ocr';
-import { computeDiff, findPreviousCapture } from './diff';
+import { findPreviousCapture } from './diff/match';
 import { diffCaptureFromRaw, persistDiffImage } from './diff/save';
 import { diffsDir } from './paths';
 import type { DiffComputeOptions } from './diff/options';
@@ -63,6 +72,12 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
 
   ipcMain.handle(CH.captureListSources, () => listSources());
 
+  const contextualiseCapture = (capture: Capture, extra?: { fixedTag?: import('../shared/types').ContentTag }) =>
+    contextualise(capture, ent(), history, events, runOcr, {
+      aiTaggingEnabled: isAiTaggingOptIn(engine.db),
+      ...extra,
+    });
+
   const saveRawCapture = async (raw: RawCapture, opts?: { piiRedactedApplied?: boolean }): Promise<Capture> => {
     const capture: Capture = {
       id: raw.id, workspaceId: WS, filename: raw.filename, imagePath: raw.imagePath,
@@ -70,7 +85,7 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
       piiRedactedApplied: opts?.piiRedactedApplied,
     };
     history.insert(capture);
-    return contextualise(capture, ent(), history, events);
+    return contextualiseCapture(capture);
   };
 
   ipcMain.handle(CH.captureScreen, async (e, sourceId?: string) => {
@@ -215,13 +230,17 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     }
 
     const annotationDoc = history.getAnnotationDocument(WS, capture.id);
-    const { imagePath, temporary } = await buildDeliveryImagePath(capture, {
+    const { imagePath, temporary, piiRedacted } = await buildDeliveryImagePath(capture, {
       entitlements: ent(),
       annotationDoc,
       preset,
       applyPiiRedaction: true,
     });
-    const deliverCapture = { ...capture, imagePath };
+    const deliverCapture = {
+      ...capture,
+      imagePath,
+      piiRedactedApplied: capture.piiRedactedApplied || piiRedacted,
+    };
 
     try {
       const dest = getDestination(preset.destination);
@@ -364,7 +383,17 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     if (destination === 'google-drive') return connectGoogleDrive();
     try {
       const url = await integrations.getOAuthUrl(destination, args.params ?? {});
-      await shell.openExternal(url);
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol === 'https:') openExternalHttps(url);
+        else if (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) {
+          await shell.openExternal(url);
+        } else {
+          return { ok: false, detail: 'OAuth URL must use HTTPS' };
+        }
+      } catch {
+        return { ok: false, detail: 'Invalid OAuth URL' };
+      }
       return { ok: true, detail: `Opening ${destination} connection` };
     } catch (err) {
       return { ok: false, detail: err instanceof Error ? err.message : 'Unable to start OAuth' };
@@ -414,6 +443,7 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     try {
       const { join } = require('node:path') as typeof import('node:path');
       const outputPath = join(diffsDir(), `diff-${Date.now()}.png`);
+      const { computeDiff } = await import('./diff/index.js');
       const result = await computeDiff(before.imagePath, after.imagePath, outputPath, args.options);
       const regions = ent().diffAdvanced ? result.regions : [];
       return { ok: true, ...result, regions };
@@ -441,7 +471,7 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
       const raw = persistDiffImage(args.diffImagePath, before.filename, after.filename);
       const capture = diffCaptureFromRaw(raw, WS);
       history.insert(capture);
-      const saved = await contextualise(capture, ent(), history, events, runOcr, { fixedTag: 'diff' });
+      const saved = await contextualiseCapture(capture, { fixedTag: 'diff' });
       return { ok: true, capture: saved };
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : 'Could not save diff to history' };
@@ -491,6 +521,28 @@ export function registerIpc(engine: Engine, sync: SyncAgent): void {
     return colors.getFormat();
   });
   ipcMain.handle(CH.colourRecentList, (_e, limit = 24) => colors.list(WS, limit));
+
+  ipcMain.handle(CH.authSessionGet, () => ({
+    signedIn: isBackendSignedIn(),
+    encryptionAvailable: isAuthEncryptionAvailable(),
+    hasToken: !!readStoredApiToken(),
+  }));
+  ipcMain.handle(CH.authLoginStart, async (_e, provider: LoginProvider) => startOAuthLogin(provider));
+  ipcMain.handle(CH.authSignOut, () => {
+    clearStoredApiToken();
+    entitlementsCache.clear();
+    for (const w of BrowserWindow.getAllWindows()) {
+      w.webContents.send(CH.authChanged);
+    }
+    return { ok: true };
+  });
+
+  ipcMain.handle(CH.aiTaggingPrefGet, () => ({ enabled: isAiTaggingOptIn(engine.db) }));
+  ipcMain.handle(CH.aiTaggingPrefSet, (_e, enabled: boolean) => {
+    const on = guard(() => assertBool(enabled));
+    setAiTaggingOptIn(engine.db, on);
+    return { enabled: on };
+  });
 }
 
 function isHttpsUrl(value: string): boolean {

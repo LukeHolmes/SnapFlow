@@ -34,8 +34,14 @@ export function verifyCaptureSignature(accountId: string, captureId: string, exp
   return { ok: true };
 }
 
+export function shareLinkSigningSecret(): string {
+  if (config.shareLinkSecret) return config.shareLinkSecret;
+  if (config.isProduction) throw new Error('SHARE_LINK_SECRET is required');
+  return config.authSecret;
+}
+
 function hmac(accountId: string, captureId: string, exp: number): string {
-  return createHmac('sha256', config.authSecret).update(`${accountId}:${captureId}:${exp}`).digest('hex');
+  return createHmac('sha256', shareLinkSigningSecret()).update(`${accountId}:${captureId}:${exp}`).digest('hex');
 }
 
 function safeEqual(a: string, b: string): boolean {
