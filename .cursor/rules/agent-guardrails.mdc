@@ -1,0 +1,17 @@
+---
+description: SnapFlow Electron and backend safety, verified testing, and release gates
+alwaysApply: true
+globs: ""
+---
+
+# SnapFlow — Cursor guardrails
+
+Read AGENTS.md, README.md and docs/CONTRIBUTING.md. SnapFlow has two independent npm projects: root Electron desktop app and backend/. Do not assume workspace commands cover both.
+
+- Identify whether a change crosses renderer, main process, preload, IPC, backend, database or auth. Define the trust boundary before editing.
+- Preserve Electron sandbox isolation and self-contained preload bundles. Do not give the renderer unrestricted filesystem, shell, IPC or credentials access.
+- Keep DEV_LOGIN disabled by default. Never enable it in production or commit env files, tokens, customer screenshots or blob data.
+- For relevant desktop work run npm run typecheck, npm test and npm run build. For backend work use cd backend plus npm run typecheck and npm test. Follow AGENTS.md for target-specific better-sqlite3 native rebuilds.
+- Cloud headless testing is partial evidence for GUI/capture features: do not claim it verifies Windows screen capture or OS permissions. State known environment failures.
+- Prefer repeatable scripts and test fixtures to long AI-supervised sessions. Keep changes small and produce branch/commit, exact test results, evidence and risks.
+- Never merge, perform production database migrations, publish installers, deploy or alter paid integrations without approval.
