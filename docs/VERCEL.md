@@ -5,11 +5,12 @@ The React dashboard runs in the browser with **mock data** (no Electron, capture
 ## Deploy from Git
 
 1. [Import the repo](https://vercel.com/new) in Vercel (or open an existing SnapFlow project).
-2. Use branch **`cursor/vercel-deploy-preview-5807`** (or `main` once merged).
+2. Use branch **`main`**.
 3. Vercel reads **`vercel.json`** at the repo root:
    - **Build:** `npm run web:build`
    - **Output:** `src/renderer/dist`
-4. Deploy. No backend or env vars are required for the static preview.
+4. Deploy. No backend or env vars are required for the static preview; the web build enables the mock API by default.
+5. After building, run `npm run web:check` to confirm the bundle can render without Electron.
 
 ## Local preview
 
@@ -17,6 +18,7 @@ The React dashboard runs in the browser with **mock data** (no Electron, capture
 npm install
 npm run web:dev      # http://localhost:5173
 npm run web:build
+npm run web:check
 npm run web:preview
 ```
 
