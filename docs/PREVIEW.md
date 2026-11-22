@@ -4,9 +4,9 @@ The dashboard UI can run in a **browser** with mock data (no Electron, no `npm i
 
 ## GitHub Pages (recommended if Vercel is blocked)
 
-After enabling Pages (see below), the live preview is:
+The live preview is:
 
-**https://lukeholmes.github.io/SnapFlow/**
+**https://coldforge.tech/SnapFlow/**
 
 Built automatically on every push to `main` via `.github/workflows/web-preview-pages.yml`.
 
@@ -18,7 +18,15 @@ Built automatically on every push to `main` via `.github/workflows/web-preview-p
 4. Open **Actions** → **Web preview (GitHub Pages)** → confirm the latest run is green.
 5. Visit the URL above (allow a minute after the first deploy).
 
-No environment variables or secrets are required.
+No environment variables or secrets are required. The standalone web build
+(`src/renderer/vite.config.ts`) enables the mock API by default, because a plain
+browser has no Electron preload bridge. The Pages build uses base `/SnapFlow/`
+so assets resolve under the project sub-path.
+
+Before deploying, the workflow runs `npm run web:check`, which fails if the
+bundle has no mock data source, keeps the disabled-mock error guard, or points at
+missing/root-relative assets. Run the same check locally after
+`npm run web:build:pages`.
 
 ## Vercel (optional)
 

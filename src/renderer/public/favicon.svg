@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="SnapFlow">
+  <rect width="32" height="32" rx="8" fill="#4F46E5"/>
+  <path d="M10.5 12.5h2.6l1.1-1.8h3.6l1.1 1.8h2.6a2 2 0 0 1 2 2v5.2a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-5.2a2 2 0 0 1 2-2Z" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/>
+  <circle cx="16" cy="17.2" r="2.6" fill="none" stroke="#fff" stroke-width="1.7"/>
+</svg>

@@ -67,7 +67,7 @@ If native module errors appear after switching Node/Electron versions, rerun the
 
 ### Sandboxed preload builds
 
-Preload bundles must be **self-contained** (`require('electron')` only) for `sandbox: true`. `electron.vite.config.ts` rebundles each preload entry with esbuild after Rollup; `tests/preload-build.test.ts` enforces this after `npm run build`. Web mock data needs `VITE_ALLOW_WEB_MOCK=true` (`npm run web:dev` sets it).
+Preload bundles must be **self-contained** (`require('electron')` only) for `sandbox: true`. `electron.vite.config.ts` rebundles each preload entry with esbuild after Rollup; `tests/preload-build.test.ts` enforces this after `npm run build`. Web mock data is enabled by default for the standalone web preview build (`src/renderer/vite.config.ts`); override with `VITE_ALLOW_WEB_MOCK=false` only for a deliberate bridge-only build. `npm run web:check` verifies the built preview can run without Electron.
 
 ### Electron dev on Linux (known issue)
 

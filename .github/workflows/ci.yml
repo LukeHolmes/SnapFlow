@@ -39,6 +39,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Web preview build (GitHub Pages base)
+        run: npm run web:build:pages
+
+      - name: Web preview smoke check
+        run: npm run web:check
+
       - name: Preload bundle regression
         run: node --test --import tsx tests/preload-build.test.ts
 

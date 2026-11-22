@@ -27,6 +27,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run web:build:pages
+      - run: npm run web:check
       - uses: actions/upload-pages-artifact@v3
         with:
           path: src/renderer/dist
